@@ -1,0 +1,14 @@
+= Changelog
+Rizzen Yazston
+
+== i18n 0.0.0 (2022-10-12)
+
+* The `i18n` project's Git repository initialised with:
+
+** .gitignore
+
+** LICENSE-BSD-3-Clause
+
+** README.asciidoc
+
+** CHANGELOG.asciidoc
