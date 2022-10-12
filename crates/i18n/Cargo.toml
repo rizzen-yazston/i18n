@@ -1,0 +1,31 @@
+# This file is part of `i18n` crate. For the terms of use, please see the file
+# called LICENSE-BSD-3-Clause at the top level of the `i18n` crate.
+
+[package]
+# suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
+name = "i18n-rizzen-yazston"
+version = "0.0.0"
+authors = ["Rizzen Yazston"]
+edition = "2021"
+rust-version = "1.64.0"
+description = "The `i18n` crate of the Internationalisation project."
+license = "BSD-3-Clause"
+readme = "README.asciidoc"
+# false prevents publishing while developing, else string of repository identfier
+publish = false
+
+# these keys are used when preparing to publish to 'crates.io'
+#documentation = "<url, default is docs.rs>"
+#homepage = "<url"
+# once public GitHub repository is used
+#repository = "<github url>"
+#'crates.io' has max 5 keywords, of max 20 characters [A-Za-z0-9_-] 
+#keywords = ["",...]
+#'crates.io' has max 5 categories, selected from `crates.io` list
+#categories = ["internationalization"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#i18n-pattern-rizzen-yazston = { version = "0.0.0", path = "../pattern" }
+#i18n-message-rizzen-yazston = { version = "0.0.0", path = "../message" }

@@ -1,0 +1,13 @@
+# This file is part of `i18n` project. For the terms of use, please see the file
+# called LICENSE-BSD-3-Clause at the top level of the `i18n` project's Git repository.
+
+[workspace]
+resolver = "2"
+members = [
+#    "crates/pattern",
+#    "crates/message",
+]
+
+exclude = [
+    # Currently no exclusions.
+]

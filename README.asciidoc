@@ -4,7 +4,7 @@ Rizzen Yazston
 :url-unicode: https://unicode.org/
 :icu4x: https://github.com/unicode-org/icu4x
 
-Welcome to the internationalisation (`i18n`) project.
+Welcome to the Internationalisation (`i18n`) project.
 
 `i18n` provides alternative components for the {icu4x}[`ICU4X`] project (maintained by the {url-unicode}[*Unicode Consortium*]), yet still depends on many core components of `ICU4X` for internal functionality, thus can also be seen as an extension library to `ICU4X`. The `i18n` project consists of an alternative messaging system, and adding macro functionality to pattern.
 
@@ -14,7 +14,7 @@ The repository contains the following crates:
 
 - `message`: The multilingual messaging system,
 
-- `i18n`: The convenience meta crate that contains all the available crates.
+- `i18n`: The convenience meta crate that contains selected available crates.
 
 Note:: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from other internationalisation creates by other authors.
 
