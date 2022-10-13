@@ -3,6 +3,6 @@
 
 //! Copy README.asciidoc content to here before release.
 
-// Commented out for now until crates is added.
+pub use i18n_lstring-rizzen-yazston as lstring;
 //pub use pattern-rizzen-yazston as pattern;
 //pub use message-rizzen-yazston as message;

@@ -1,0 +1,34 @@
+= i18n_lstring
+Rizzen Yazston
+
+`LString` (short for `LanguageString`) is a simple struct for associating a text string to a specific language.
+
+The ICU's `Locale` is used instead of the ICU's `LanguageIdentifier` due to that the `Locale` supports the entire [BCP47 Language Tag](https://www.rfc-editor.org/rfc/bcp/bcp47.txt), where as the `LanguageIdentifier` excludes the **extension** subtags of the BCP47 Language Tag.
+
+== Usage
+
+In the `Cargo.toml` file:
+
+```
+[dependencies]
+icu_locid = "1.0.0"
+i18n_lstring-rizzen-yazston = "0.1.0"
+```
+ 
+And in the Rust `.rs` files:
+
+```
+use icu_locid::Locale;
+use std::rc::Rc;
+use i18n_lstring::*;
+
+fn main() {
+    let string = "This is a test string.";
+    let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
+    let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+
+    assert_eq!( lang_string.locale(), locale, "Locale failed." );
+}
+
+```
+ 

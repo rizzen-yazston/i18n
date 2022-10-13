@@ -13,7 +13,7 @@ In the `Cargo.toml` file:
 
 ```
 [dependencies]
-i18n-rizzen-yazston = "0.0.0"
+i18n-rizzen-yazston = "0.1.0"
 ```
  
 And in the Rust `.rs` files:

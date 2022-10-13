@@ -10,6 +10,8 @@ Welcome to the Internationalisation (`i18n`) project.
 
 The repository contains the following crates:
 
+- `lstring`: Binding a `Locale` to a `String`,
+
 - `pattern`: Similar to the `icu_pattern` crate of `ICU4X` with added macro functionality,
 
 - `message`: The multilingual messaging system,
@@ -26,7 +28,7 @@ In the `Cargo.toml` file:
 
 ```
 [dependencies]
-i18n-rizzen-yazston = "0.0.0"
+i18n-rizzen-yazston = "0.1.0"
 ```
  
 And in the Rust `.rs` files:
