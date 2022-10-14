@@ -1,34 +1,41 @@
 = i18n_lstring
 Rizzen Yazston
+:String: https://doc.rust-lang.org/std/string/struct.String.html
+:Locale: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
+:icu_locid: https://crates.io/crates/icu_locid
+:icu: https://crates.io/crates/icu
+:ICU4X: https://github.com/unicode-org/icu4x
+:Unicode_Consortium: https://home.unicode.org/
+:LanguageIdentifier: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
+:BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
-`LString` (short for `LanguageString`) is a simple struct for associating a text string to a specific language.
+Language string.
 
-The ICU's `Locale` is used instead of the ICU's `LanguageIdentifier` due to that the `Locale` supports the entire [BCP47 Language Tag](https://www.rfc-editor.org/rfc/bcp/bcp47.txt), where as the `LanguageIdentifier` excludes the **extension** subtags of the BCP47 Language Tag.
+This crate contains the `LString` type (aka LanguageString), for associating a text string ({String}[`String`]) to a specific language ({Locale}[`Locale`]).
 
-== Usage
+The {Locale}[`Locale`] type can be provided by either the {icu_locid}[`icu_locid`] crate or the {icu}[`icu`] meta-crate. These two crates are part of the {ICU4X}[`ICU4X`] protect developed by the {Unicode_Consortium}[Unicode Consortium].
 
-In the `Cargo.toml` file:
+This crate makes use of the {Locale}[`Locale`] type instead of the {LanguageIdentifier}[`LanguageIdentifier`] type due to that the {Locale}[`Locale`] type supports the entire {BCP_47_Language_Tag}[BCP 47 Language Tag] specification, where as the {LanguageIdentifier}[`LanguageIdentifier`] type excludes the **extension** subtags of the BCP 47 Language Tag specification.
+
+
+== Cargo.toml
 
 ```
 [dependencies]
 icu_locid = "1.0.0"
 i18n_lstring-rizzen-yazston = "0.1.0"
 ```
- 
-And in the Rust `.rs` files:
+
+== Examples
 
 ```
 use icu_locid::Locale;
 use std::rc::Rc;
-use i18n_lstring::*;
+use i18n_lstring::LString;
 
-fn main() {
-    let string = "This is a test string.";
-    let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-    let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+let string = "This is a test string.";
+let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
+let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
 
-    assert_eq!( lang_string.locale(), locale, "Locale failed." );
-}
-
+assert_eq!( lang_string.locale(), locale, "Locale failed." );
 ```
- 
