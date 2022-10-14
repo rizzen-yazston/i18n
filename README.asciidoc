@@ -16,7 +16,9 @@ The repository contains the following crates:
 
 - `message`: The multilingual messaging system,
 
-- `i18n`: The convenience meta crate that contains selected available crates.
+- `i18n`: The convenience meta crate that contains selected available crates,
+
+- `utility`: Contains various useful components.
 
 Note:: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from other internationalisation creates by other authors.
 

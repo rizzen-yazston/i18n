@@ -1,0 +1,36 @@
+= i18n_utility
+Rizzen Yazston
+
+The `i18n_utility` crate contains various useful components that be handy to the users of the Internationalisation project.
+
+Contains the follow:
+
+* LocaleRegistry: A simply registry for holding `ICU4X` Locale objects.
+
+== Usage
+
+In the `Cargo.toml` file:
+
+```
+[dependencies]
+icu_locid = "1.0.0"
+i18n_lstring-rizzen-yazston = "0.1.0"
+```
+ 
+And in the Rust `.rs` files:
+
+```
+use icu_locid::Locale;
+use std::rc::Rc;
+use i18n_lstring::*;
+
+fn main() {
+    let string = "This is a test string.";
+    let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
+    let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+
+    assert_eq!( lang_string.locale(), locale, "Locale failed." );
+}
+
+```
+ 

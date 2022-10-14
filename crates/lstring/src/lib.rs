@@ -1,5 +1,5 @@
-// This file is part of `i18n` crate. For the terms of use, please see the file
-// called LICENSE-BSD-3-Clause at the top level of the `i18n` crate.
+// This file is part of `i18n-lstring` crate. For the terms of use, please see the file
+// called LICENSE-BSD-3-Clause at the top level of the `i18n-lstring` crate.
 
 /// `LString` (short for `LanguageString`) is a simple struct for associating a text string to a specific language.
 /// 
@@ -15,15 +15,18 @@ pub struct LString {
     locale: Rc<Locale>,
 }
 
-impl<'a> LString {
+impl LString {
+    /// Creates a LString object from a String and a reference counter Locale.
     pub fn new( string: String, locale: Rc<Locale> ) -> Self {
-        LString { string: string, locale: locale }
+        LString { string, locale }
     }
 
+    /// Returns a reference to the internal String.
     pub fn string( &self ) -> &str {
         &self.string
     }
 
+    /// Returns a reference counter Locale.
     pub fn locale( &self ) -> Rc<Locale> {
         Rc::clone( &self.locale )
     }

@@ -1,6 +1,10 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.1.0 (2022-10-13)
+
+* Added the `i18n-lstring` crate.
+
 == i18n 0.0.0 (2022-10-12)
 
 * The `i18n` project's Git repository initialised with:
