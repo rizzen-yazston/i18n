@@ -1,8 +1,6 @@
 // This file is part of `i18n-lstring` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n-lstring` crate.
 
-#![warn(missing_docs)]
-
 //! Language string.
 //! 
 //! This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
@@ -81,7 +79,7 @@ pub struct LString {
 }
 
 impl LString {
-    /// Creates a LString object from a String and a reference counter Locale.
+    /// Creates a `LString` object from a [`String`] and a reference counter [`Locale`].
     /// 
     /// # Examples
     /// 
@@ -96,11 +94,14 @@ impl LString {
     /// 
     /// assert_eq!( lang_string.locale(), locale, "Locale failed." );
     /// ```
+    /// 
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     pub fn new( string: String, locale: Rc<Locale> ) -> Self {
         LString { string, locale }
     }
 
-    /// Returns a reference to the internal String.
+    /// Returns a reference to the internal [`String`].
     /// 
     /// # Examples
     /// 
@@ -115,11 +116,13 @@ impl LString {
     /// 
     /// assert_eq!( lang_string.locale(), locale, "Locale failed." );
     /// ```
+    /// 
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     pub fn string( &self ) -> &str {
         &self.string
     }
 
-    /// Returns a reference counter Locale.
+    /// Returns a reference counter for [`Locale`].
     /// 
     /// # Examples
     /// 
@@ -134,6 +137,8 @@ impl LString {
     /// 
     /// assert_eq!( lang_string.locale(), locale, "Locale failed." );
     /// ```
+    /// 
+    /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     pub fn locale( &self ) -> Rc<Locale> {
         Rc::clone( &self.locale )
     }

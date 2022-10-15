@@ -8,5 +8,5 @@
 ///
 /// * LocaleRegistry: A simply registry for holding `ICU4X` Locale objects.
 
-mod locale;
+pub mod locale;
 pub use locale::*;
