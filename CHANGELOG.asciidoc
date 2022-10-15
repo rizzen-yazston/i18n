@@ -1,6 +1,16 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.2.0 (2022-10-15)
+
+* Added the `i18n-utility` crate:
+
+** Added `locale`` module:
+
+*** Added `LocaleRegistry`
+
+* Fixed all the documentation of the project.
+
 == i18n 0.1.0 (2022-10-13)
 
 * Added the `i18n-lstring` crate.

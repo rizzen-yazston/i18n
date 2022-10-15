@@ -3,23 +3,23 @@ Rizzen Yazston
 
 `i18n` is the main meta-crate of the Internationalisation (`i18n`) project.
 
-This convenience meta crate contains selected available crates.
+This convenience meta crate contains selected available crates:
+
+- i18n_lstring-rizzen-yazston
 
 == Usage
 
 For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficient to use the multilingual message system, though the individual crates can be selected individual if the entire `i18n` project is not required.
 
-In the `Cargo.toml` file:
+=== Cargo.toml
 
 ```
 [dependencies]
-i18n-rizzen-yazston = "0.1.0"
+icu_locid = "1.0.0"
+i18n-rizzen-yazston = "0.2.0"
 ```
- 
-And in the Rust `.rs` files:
 
-```
-extern crate i18n;
-use i18n::*;
-```
+=== Examples
+ 
+See the various component crates for usage examples.
  

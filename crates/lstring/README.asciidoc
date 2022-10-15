@@ -17,13 +17,12 @@ The {Locale}[`Locale`] type can be provided by either the {icu_locid}[`icu_locid
 
 This crate makes use of the {Locale}[`Locale`] type instead of the {LanguageIdentifier}[`LanguageIdentifier`] type due to that the {Locale}[`Locale`] type supports the entire {BCP_47_Language_Tag}[BCP 47 Language Tag] specification, where as the {LanguageIdentifier}[`LanguageIdentifier`] type excludes the **extension** subtags of the BCP 47 Language Tag specification.
 
-
 == Cargo.toml
 
 ```
 [dependencies]
 icu_locid = "1.0.0"
-i18n_lstring-rizzen-yazston = "0.1.0"
+i18n_lstring-rizzen-yazston = "0.2.0"
 ```
 
 == Examples

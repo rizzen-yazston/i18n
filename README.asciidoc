@@ -1,6 +1,5 @@
 = Internationalisation
 Rizzen Yazston
-// URLs:
 :url-unicode: https://unicode.org/
 :icu4x: https://github.com/unicode-org/icu4x
 
@@ -26,17 +25,16 @@ Note:: All these crates on `crates.io` have the names appended with the suffix `
 
 For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficient to use the multilingual message system, though the individual crates can be selected individual if the entire `i18n` project is not required.
 
-In the `Cargo.toml` file:
+=== Cargo.toml
 
 ```
 [dependencies]
-i18n-rizzen-yazston = "0.1.0"
+icu_locid = "1.0.0"
+i18n-rizzen-yazston = "0.2.0"
+i18n_utility-rizzen-yazston = "0.2.0"
 ```
- 
-And in the Rust `.rs` files:
 
-```
-extern crate i18n;
-use i18n::*;
-```
+=== Examples
+ 
+See the various component crates for usage examples.
  
