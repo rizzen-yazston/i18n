@@ -34,8 +34,8 @@ use i18n_utility::locale::LocaleRegistry;
 
 let mut registry = LocaleRegistry::new();
 let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
-let entries = registry.list().iter().count();
+let tags = registry.list().iter().count();
 
 assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
-assert_eq!( entries, 2, "Supposed to be 2 entries: en_ZA and en-ZA." )
+assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
 ```
