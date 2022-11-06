@@ -5,11 +5,13 @@ Rizzen Yazston
 
 Welcome to the Internationalisation (`i18n`) project.
 
-`i18n` provides alternative components for the {icu4x}[`ICU4X`] project (maintained by the {url-unicode}[*Unicode Consortium*]), yet still depends on many core components of `ICU4X` for internal functionality, thus can also be seen as an extension library to `ICU4X`. The `i18n` project consists of an alternative messaging system, and adding macro functionality to pattern.
+`i18n` provides alternative components for the {icu4x}[ICU4X] project (maintained by the {url-unicode}[*Unicode Consortium*]), yet still depends on many core components of `ICU4X` for internal functionality, thus can also be seen as an extension library to ICU4X. The `i18n` project consists of an alternative messaging system, and adding macro functionality to pattern.
 
 The repository contains the following crates:
 
 - `lstring`: Binding a `Locale` to a `String`,
+
+- `lexer`: A simple lexer to tokenise a string,
 
 - `pattern`: Similar to the `icu_pattern` crate of `ICU4X` with added macro functionality,
 

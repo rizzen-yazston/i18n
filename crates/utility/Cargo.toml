@@ -1,5 +1,5 @@
-# This file is part of `i18n-utility` crate. For the terms of use, please see the file
-# called `LICENSE-BSD-3-Clause` at the top level of the `i18n-utility` crate.
+# This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
+# called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'

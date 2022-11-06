@@ -13,7 +13,7 @@ Language string.
 
 This crate contains the `LString` type (aka LanguageString), for associating a text string ({String}[`String`]) to a specific language ({Locale}[`Locale`]).
 
-The {Locale}[`Locale`] type can be provided by either the {icu_locid}[`icu_locid`] crate or the {icu}[`icu`] meta-crate. These two crates are part of the {ICU4X}[`ICU4X`] protect developed by the {Unicode_Consortium}[Unicode Consortium].
+The {Locale}[`Locale`] type can be provided by either the {icu_locid}[`icu_locid`] crate or the {icu}[`icu`] meta-crate. These two crates are part of the {ICU4X}[ICU4X] protect developed by the {Unicode_Consortium}[Unicode Consortium].
 
 This crate makes use of the {Locale}[`Locale`] type instead of the {LanguageIdentifier}[`LanguageIdentifier`] type due to that the {Locale}[`Locale`] type supports the entire {BCP_47_Language_Tag}[BCP 47 Language Tag] specification, where as the {LanguageIdentifier}[`LanguageIdentifier`] type excludes the **extension** subtags of the BCP 47 Language Tag specification.
 

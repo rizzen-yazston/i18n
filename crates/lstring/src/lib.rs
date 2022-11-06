@@ -1,5 +1,5 @@
-// This file is part of `i18n-lstring` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n-lstring` crate.
+// This file is part of `i18n_lstring-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lstring-rizzen-yazston` crate.
 
 //! Language string.
 //! 
@@ -7,7 +7,7 @@
 //! specific language ([`Locale`]).
 //! 
 //! The [`Locale`] type can be provided by either the [`icu_locid`] crate or the [`icu`] meta-crate. These two crates
-//! are part of the [`ICU4X`] protect developed by the [Unicode Consortium].
+//! are part of the [ICU4X] protect developed by the [Unicode Consortium].
 //! 
 //! This crate makes use of the [`Locale`] type instead of the [`LanguageIdentifier`] type due to that the [`Locale`]
 //! type supports the entire [BCP 47 Language Tag] specification, where as the [`LanguageIdentifier`] type excludes the
@@ -31,7 +31,7 @@
 //! [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
 //! [`icu_locid`]: https://crates.io/crates/icu_locid
 //! [`icu`]: https://crates.io/crates/icu
-//! [`ICU4X`]: https://github.com/unicode-org/icu4x
+//! [ICU4X]: https://github.com/unicode-org/icu4x
 //! [Unicode Consortium]: https://home.unicode.org/
 //! [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 //! [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
@@ -45,7 +45,7 @@ use std::rc::Rc;
 /// specific language ([`Locale`]).
 /// 
 /// The [`Locale`] type can be provided by either the [`icu_locid`] crate or the [`icu`] meta-crate. These two crates
-/// are part of the [`ICU4X`] protect developed by the [Unicode Consortium].
+/// are part of the [ICU4X] protect developed by the [Unicode Consortium].
 /// 
 /// This crate makes use of the [`Locale`] type instead of the [`LanguageIdentifier`] type due to that the [`Locale`]
 /// type supports the entire [BCP 47 Language Tag] specification, where as the [`LanguageIdentifier`] type excludes the
@@ -69,7 +69,7 @@ use std::rc::Rc;
 /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
 /// [`icu_locid`]: https://crates.io/crates/icu_locid
 /// [`icu`]: https://crates.io/crates/icu
-/// [`ICU4X`]: https://github.com/unicode-org/icu4x
+/// [ICU4X]: https://github.com/unicode-org/icu4x
 /// [Unicode Consortium]: https://home.unicode.org/
 /// [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
