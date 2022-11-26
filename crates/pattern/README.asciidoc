@@ -1,0 +1,28 @@
+= i18n_pattern
+Rizzen Yazston
+:BufferProvider: https://docs.rs/icu_provider/latest/icu_provider/buf/trait.BufferProvider.html
+:CLDR: https://cldr.unicode.org/
+:ICU4X: https://github.com/unicode-org/icu4x
+:Unicode_Consortium: https://home.unicode.org/
+
+== Pattern parser
+
+Copy from lib.rs
+
+== Cargo.toml
+
+```
+[dependencies]
+i18n_pattern-rizzen-yazston = "0.2.0"
+
+#[dependencies.icu_provider]
+#version = "1.0.0"
+## Needed for BufferProvider
+#features = [ "serde", "deserialize_bincode_1" ]
+```
+
+== Examples
+
+```
+// Copy from lib.rs
+```

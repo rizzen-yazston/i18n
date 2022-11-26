@@ -340,7 +340,7 @@ impl Lexer {
 }
 
 /// Various states the `Lexer` may be in.
-#[derive(PartialEq)]
+#[derive( PartialEq )]
 enum LexerStates {
     Identifier, // Ends with either white space or syntax character.
     WhiteSpace, // Ends with non-white space.
@@ -354,7 +354,7 @@ mod tests {
     use icu_testdata::buffer;
 
     #[test]
-    fn check() {
+    fn tokenise() {
         let buffer_provider = Box::new( buffer() );
         let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
         let tokens = lexer.tokenise(
