@@ -339,7 +339,9 @@ impl Lexer {
     }
 }
 
-/// Various states the `Lexer` may be in.
+// Internal structures, enums, etc.
+
+// Various states the `Lexer` may be in.
 #[derive( PartialEq )]
 enum LexerStates {
     Identifier, // Ends with either white space or syntax character.
@@ -347,6 +349,7 @@ enum LexerStates {
     Grammar, // A grammar syntax character.
     Syntax, // Any other syntax character.
 }
+
 
 #[cfg(test)]
 mod tests {
