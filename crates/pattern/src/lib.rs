@@ -52,19 +52,19 @@ Result<( Tree, HashMap<&str, usize>, HashMap<&str, usize> ), String> {
     while let Some( token ) = iterator.next() {
         match parser.state {
             ParserStates::String => {
-                //  Valid tokens: PWS, `, {, Identifier, Syntax
+                //  Valid tokens: PWS, `, #, {, Identifier, Syntax
                 match token.token_type {
                     TokenType::Identifier | TokenType::WhiteSpace | TokenType::Syntax => {
                         add_token( &mut tree, &mut parser, NodeType::Text, leaf.clone(), token.clone() );
-//                        tree = self.add_token( tree, NodeType::Text, token.clone() );
+                    },
+                    TokenType::Grammar => {
+                        match 
+
+                        parser.current = Some( 0usize );
+                        create_node( &mut tree, &mut parser, NodeType::NamedGroup, container.clone() );
+                        parser.state = ParserStates::NamedGroup;
                     },
                     /*
-                    TokenType::NumberSign => {
-                        self.current = tree.root();
-                        tree = self.create_node( tree, NodeType::NamedGroup, false );
-                        self.state = ParserStates::NamedGroup;
-                        return Err( "Invalid token found.".to_string() );
-                    },
                     TokenType::CurlyBracketLeft => {
                         let mut iterator_peeking = iterator.clone();
                         // TODO: redo with "if let else" feature as there is actually two error types.
