@@ -54,9 +54,9 @@ use std::rc::Rc;
 /// - a token type;
 /// - the starting position of token in terms of bytes, characters and graphemes;
 /// - the length of token in terms of bytes, characters and graphemes.
-pub struct Token<'a> {
+pub struct Token {
     pub token_type: TokenType, // Assigned token type.
-    pub slice: &'a str, // String slice of the original string.
+    pub string: String, // Owned string slice of the original string.
     pub position_byte: usize, // Start position in the original string in terms of bytes.
     pub position_character: usize, // Start position in the original string in terms of characters.
     pub position_grapheme: usize, // Start position in the original string in terms of graphemes.
@@ -307,7 +307,7 @@ impl Lexer {
     // Create a token for slice starting at the byte position after the previous token until current byte position.
     fn add_previous_characters<'t, 'a>(
         &mut self,
-        tokens: &mut Vec::<Rc<Token<'t>>>,
+        tokens: &mut Vec::<Rc<Token>>,
         token: TokenType,
         string: &'t str,
     ) {
@@ -323,7 +323,7 @@ impl Lexer {
             tokens.push( Rc::new(
                 Token {
                     token_type: token,
-                    slice: slice,
+                    string: slice.to_string(),
                     position_byte: start_byte,
                     position_character: start_character,
                     position_grapheme: start_grapheme,
