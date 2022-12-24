@@ -1,0 +1,24 @@
+= i18n_message
+Rizzen Yazston
+
+== Message system
+
+TODO: Get from lib.rs or other .rs files
+
+== Cargo.toml
+
+```
+[dependencies]
+i18n_message-rizzen-yazston = "0.4.0"
+
+#[dependencies.icu_provider]
+#version = "1.0.0"
+## Needed for BufferProvider
+#features = [ "serde", "deserialize_bincode_1" ]
+```
+
+== Examples
+
+```
+TODO: Get from lib.rs or other .rs files
+```
