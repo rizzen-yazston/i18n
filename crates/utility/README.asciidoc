@@ -30,7 +30,7 @@ This crate makes use of the {Locale}[`Locale`] type instead of the {LanguageIden
 ```
 [dependencies]
 icu_locid = "1.0.0"
-i18n_utility-rizzen-yazston = "0.2.0"
+i18n_utility-rizzen-yazston = "0.3.0"
 ```
 
 === Examples

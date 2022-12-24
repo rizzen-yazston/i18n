@@ -11,7 +11,8 @@ See `pattern strings.asciidoc` in `docs` of `pattern` crate for the pattern form
 
 ```
 [dependencies]
-i18n_pattern-rizzen-yazston = "0.2.0"
+i18n_pattern-rizzen-yazston = "0.3.0"
+i18n_lexer-rizzen-yazston = "0.3.0"
 
 #[dependencies.icu_provider]
 #version = "1.0.0"

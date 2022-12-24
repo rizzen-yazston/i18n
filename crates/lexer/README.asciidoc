@@ -15,7 +15,7 @@ Strings are tokenised using the method `tokenise()` taking string slice and a ve
 
 ```
 [dependencies]
-i18n_lexer-rizzen-yazston = "0.2.0"
+i18n_lexer-rizzen-yazston = "0.3.0"
 
 [dependencies.icu_provider]
 version = "1.0.0"
