@@ -1,0 +1,82 @@
+= Pattern Strings
+
+Pattern strings are text strings that contain patterns, that are replaced with actual value text at a later stage. Placeholders are represented by text enclosed within a pair of braces (`{}`), or the special number sign pattern (`#`).
+
+== Grammar
+
+This is the full grammar of pattern strings. The grammar presented here is inspired by the Rust string format modules, and the Unicode ICU's Pattern strings.
+
+```
+entire             = [ string, named_group? ]? ; string must be contain complex pattern before named_group
+named_group        = `#` , PWS* , named_string+
+named_string       = `{` , identifier , PWS+ , string , `}` , PWS*
+string             = text*, [ syntax , text* ]* ; empty strings are possible
+syntax             = literal / `#` / pattern
+literal            = backtick , [ backtick / `#` / `{` / `}` ]
+pattern            = `{` , type , `}` ; Future: may allow {} to be short hand for `{`}
+type               = literal_text / command / placeholder
+command            = `#` , identifier+ , [ PWS+ , argument ]+
+placeholder        = identifier+, [ PWS+ , simple / complex ]?
+simple             = decimal / date_time ; add other types when available in ICU, such as `currency`
+decimal            = `decimal` , [ PWS+ , decimal_keyboard ]*
+decimal_keyword    = decimal_group / decimal_sign
+decimal_group      = `group` , `#`, `never` / `always` / `min2`
+decimal_sign       = `sign` , `#` , `never` / `always` / `except_zero` / `negative`
+date_time          = `date_time`, [ PWS+ , date_time_keyboard ]*
+date_time_keyword  = date_time_length / date_time_hour / date_time_calendar ; ICU still incomplete.
+date_time_length   = `date` / `time` , `#`, `full` / `long` / `medium` / `short`
+date_time_hour     = `hour` , `#` , `24` / `23` / `12` / `11`
+date_time_calendar = `calendar` , `#` , `gregory` / `buddhist` / `japanese` / `coptic` / `indian` / `ethiopic`
+complex            = `plural` / `select` , [ PWS+ , keyword, `#`, substring ]+ 
+argument           = literal_text / identifier+
+keyword            = identifier+
+substring          = identifier+
+identifier         = . \ [ PWS / PS ]
+text               = . \ [ `{` / `}` / `#` / backtick ]
+literal_text       = backtick , [ literal_character / literal_backtick ]* , backtick ; It is possible to have empty
+                                                                                     ; literal strings
+literal_character  = . \ backtick
+literal_backtick   = backtick, backtick
+PS                 = .Pattern_Syntax ; All unicode character with property Pattern_Syntax, excludes 0x5f (low line
+                                     ; (underscore)).
+PWS                = .Pattern_White_Space ; All unicode character with property Pattern_White_Space.
+backtick           = 0x60
+```
+
+== Examples
+
+- Empty strings (`""`) are valid. Can simply mean there is no available localised version of a string, and should bypass the entire parsing process as there is nothing to do.
+
+- Most basic pattern, just a simple text string: "An example with no patterns.".
+
+- A complex pattern example: "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}"
+
+- In text sections, when a grammar syntax character is preceded by a backtick the syntax character is treated as a literal text character: `++Backtick ``, number sign `#, curly brackets `{ and `}, and combinations such as `{`#++`.
+
+== Design Ideas
+
+=== Literal characters
+
+- `++``++` is literal `++`++` in text string.
+
+- `++`{++` is literal `{` in text string.
+
+- `++`}++` is literal `}` in text string.
+
+- `++`#++` is a literal `#` in text substring.
+
+- `++`{`#++` is literal `{#` in text string. Both need to be escaped.
+
+- Future: `{}` is literal `{}` in text string as it is just an empty pattern.
+
+=== patterns
+
+- `++#++` is a pattern for the number in plural formatting substring. At outer most string `#` has no meaning.
+
+- `{++`text`++}` indicates literal constant text, usually names of people, places, and products.
+
+- `{#command [parameter]*}` indicates an user defined command (a call back function) to produce constant string, such as file paths.
+
+- `{identifier [parameter]*}` pattern for some value, may included nested strings.
+
+- After `++#++` separator of main string, `++{++identifier {text}}` is a named selection branch for complex pattern types, that branch on values. Placed at start of string.

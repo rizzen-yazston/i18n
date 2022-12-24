@@ -1,13 +1,11 @@
 = i18n_pattern
 Rizzen Yazston
-:BufferProvider: https://docs.rs/icu_provider/latest/icu_provider/buf/trait.BufferProvider.html
-:CLDR: https://cldr.unicode.org/
-:ICU4X: https://github.com/unicode-org/icu4x
-:Unicode_Consortium: https://home.unicode.org/
 
 == Pattern parser
 
-Copy from lib.rs
+Parsing of string tokens into an Abstract Syntax Tree (AST), checking the grammar of patterns is valid. The parser internally does a semantic analysis on the generated AST.
+
+See `pattern strings.asciidoc` in `docs` of `pattern` crate for the pattern formatting specification.
 
 == Cargo.toml
 
@@ -24,5 +22,62 @@ i18n_pattern-rizzen-yazston = "0.2.0"
 == Examples
 
 ```
-// Copy from lib.rs
+use icu_provider::prelude::*;
+use std::rc::Rc;
+use i18n_lexer::{Token, TokenType, Lexer};
+use icu_testdata::buffer;
+use i18n_pattern::{parse, NodeType};
+
+let buffer_provider = Box::new( buffer() );
+let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+let tokens = lexer.tokenise(
+    "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
+    vec![ '{', '}', '`', '#' ]
+);
+let ( tree, named_strings, patterns ) = match parse( tokens ) {
+    Err( error ) => {
+        println!( "Error: {}", error );
+        return;
+    },
+    Ok( result ) => result
+};
+let len = tree.len();
+let mut index = 0;
+while index < len {
+    println!( "Index: {}", index );
+    let node_type_data = tree.node_type( index ).ok().unwrap();
+    let node_type = node_type_data.downcast_ref::<NodeType>().unwrap();
+    println!( "Type: {}", node_type );
+    let mut string = String::new();
+    match tree.children( index ).ok() {
+        None => string.push_str( "None" ),
+        Some( children ) => {
+            for child in children.iter() {
+                string.push_str( &child.to_string() );
+                string.push( ' ' );
+            }
+        }
+    }
+    println!( "Children: {}", string );
+    let mut string = String::new();
+    match tree.data_ref( index ).ok() {
+        None => string.push_str( "None" ),
+        Some( tokens ) => {
+            for token_ref in tokens.iter() {
+                let token = token_ref.downcast_ref::<Rc<Token>>().unwrap();
+                string.push( '`' );
+                string.push_str( token.string.as_str() );
+                string.push_str( "`, " );
+            }
+        }
+    }
+    println!( "Tokens: {}", string );
+    index += 1;
+}
+for ( key, value ) in named_strings.iter() {
+    println!( "Named string: {key}; node: {value}" );
+}
+for ( key, value ) in patterns.iter() {
+    println!( "Pattern: {key}; node: {value}" );
+}
 ```

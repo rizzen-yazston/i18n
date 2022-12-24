@@ -284,7 +284,6 @@ impl Lexer {
 
         // Complete final token
         if !self.token_position_byte.is_none() {
-            println!( "Final token incomplete." );
             self.position_byte = string.len();
             match state {
                 LexerStates::Grammar => {

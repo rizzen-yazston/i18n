@@ -1,23 +1,79 @@
-// This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
+// This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
 
-//! TO be completed
+//! Parsing of string tokens into an Abstract Syntax Tree (AST), checking the grammar of patterns is valid.
+//! The parser internally does a semantic analysis on the generated AST.
+//! 
+//! See `pattern strings.asciidoc` in `docs` of `pattern` for the pattern formatting specification.
 //! 
 //! # Examples
 //! 
 //! ```
-//! //Construct example once all public methods and unit tests are completed.
-//! ```
+//! use icu_provider::prelude::*;
+//! use std::rc::Rc;
+//! use i18n_lexer::{Token, TokenType, Lexer};
+//! use icu_testdata::buffer;
+//! use i18n_pattern::{parse, NodeType};
 //! 
-//! [`BufferProvider`]: https://docs.rs/icu_provider/latest/icu_provider/buf/trait.BufferProvider.html
-//! [Unicode Consortium]: https://home.unicode.org/
-//! [CLDR]: https://cldr.unicode.org/
-//! [ICU4X]: https://github.com/unicode-org/icu4x
+//! let buffer_provider = Box::new( buffer() );
+//! let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+//! let tokens = lexer.tokenise(
+//!     "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
+//!     vec![ '{', '}', '`', '#' ]
+//! );
+//! let ( tree, named_strings, patterns ) = match parse( tokens ) {
+//!     Err( error ) => {
+//!         println!( "Error: {}", error );
+//!         return;
+//!     },
+//!     Ok( result ) => result
+//! };
+//! let len = tree.len();
+//! let mut index = 0;
+//! while index < len {
+//!     println!( "Index: {}", index );
+//!     let node_type_data = tree.node_type( index ).ok().unwrap();
+//!     let node_type = node_type_data.downcast_ref::<NodeType>().unwrap();
+//!     println!( "Type: {}", node_type );
+//!     let mut string = String::new();
+//!     match tree.children( index ).ok() {
+//!         None => string.push_str( "None" ),
+//!         Some( children ) => {
+//!             for child in children.iter() {
+//!                 string.push_str( &child.to_string() );
+//!                 string.push( ' ' );
+//!             }
+//!         }
+//!     }
+//!     println!( "Children: {}", string );
+//!     let mut string = String::new();
+//!     match tree.data_ref( index ).ok() {
+//!         None => string.push_str( "None" ),
+//!         Some( tokens ) => {
+//!             for token_ref in tokens.iter() {
+//!                 let token = token_ref.downcast_ref::<Rc<Token>>().unwrap();
+//!                 string.push( '`' );
+//!                 string.push_str( token.string.as_str() );
+//!                 string.push_str( "`, " );
+//!             }
+//!         }
+//!     }
+//!     println!( "Tokens: {}", string );
+//!     index += 1;
+//! }
+//! for ( key, value ) in named_strings.iter() {
+//!     println!( "Named string: {key}; node: {value}" );
+//! }
+//! for ( key, value ) in patterns.iter() {
+//!     println!( "Pattern: {key}; node: {value}" );
+//! }
+//! ```
 
 use i18n_lexer::{Token, TokenType};
 use std::rc::Rc;
 use tree::{Tree, NodeFeatures};
 use std::collections::HashMap;
+use std::fmt;
 
 /// Constructs a valid syntax tree from the supplied `Vec<Rc<Token>>`. Any grammar error that occurs will result in     
 /// an `Err()` result to be returned.
@@ -25,8 +81,34 @@ use std::collections::HashMap;
 /// Implicit syntax tokens and optional whitespace tokens are not included in syntax trees.
 /// 
 /// Future: Add pattern types as they become available in the ICU library.
-/// Current: Only “as is” strings is supported. Others such as decimal numbers, date and time will be added soon
-/// once basic functionality of parser is confirmed.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use icu_provider::prelude::*;
+/// use std::rc::Rc;
+/// use i18n_lexer::{Token, TokenType, Lexer};
+/// use icu_testdata::buffer;
+/// use i18n_pattern::{parse, NodeType};
+/// 
+/// let buffer_provider = Box::new( buffer() );
+/// let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+/// let tokens = lexer.tokenise(
+///     "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
+///     vec![ '{', '}', '`', '#' ]
+/// );
+/// let ( tree, named_strings, patterns ) = match parse( tokens ) {
+///     Err( error ) => {
+///         println!( "Error: {}", error );
+///         assert!( false );
+///         return;
+///     },
+///     Ok( result ) => result
+/// };
+/// assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
+/// assert_eq!( named_strings.len(), 2, "2 named strings." );
+/// assert_eq!( patterns.len(), 1, "1 pattern in string." );
+/// ```
 pub fn parse( tokens: Vec<Rc<Token>> ) ->
 Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
     if tokens.len() == 0 {
@@ -74,7 +156,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         create_node( &mut tree, &mut parser, NodeType::NamedGroup, CONTAINER );
                         parser.state = ParserStates::NamedGroup;
                     } else {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                 } else {
                     add_token( &mut tree, &mut parser, NodeType::Text, LEAF, token.clone() );
@@ -112,16 +194,17 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         };
                         iterator = iterator_peeking; // Skip over { and next token.
                     } else if string == "}" {
+                        move_to_container( &tree, &mut parser );
                         end_nested_state( &tree, &mut parser ); // Return to NamedString state
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 2 {
-                            return Err( "Invalid token found.".to_string() );
+                            return Err( error_invalid_token( &mut parser, token.clone() ) );
                         }
                         // Ends NamedString, and returns to NamedGroup
                         end_nested_state( &tree, &mut parser );
                     } else {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                 } else {
                     add_token( &mut tree, &mut parser, NodeType::Text, LEAF, token.clone() );
@@ -166,18 +249,18 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                     }
                     // TODO: add the other types, and also to the ParserStates
                     else {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string != "}" {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                     // None (only identifier provide with default type of preformatted string)
                     end_nested_state( &tree, &mut parser );
                 } else {
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 }
             },
             ParserStates::Decimal => {
@@ -202,38 +285,6 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                             token_next_2nd.clone(),
                             vec!( "never", "always" , "min2" ),
                         )?;
-
-                        /* --- keep until unit test produces correct expected AST.
-                        create_node( &mut tree, &mut parser, NodeType::Selector, CONTAINER );
-                        add_token( &mut tree, &mut parser, NodeType::Identifier, LEAF, token.clone() );
-                        move_to_container( &tree, &mut parser );
-                        let Some( token_next ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
-                        };
-                        if token_next.string.as_str() != "#" {
-                            return Err( "Invalid token found.".to_string() );
-                        }
-                        let Some( token_next_2nd ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
-                        };
-                        if token_next_2nd.token_type != TokenType::Identifier {
-                            return Err( "Invalid token found.".to_string() );
-                        }
-                        let string_2nd = token.string.as_str();
-                        if string_2nd == "never" || string_2nd == "always" || string_2nd == "min2" {
-                            add_token(
-                                &mut tree,
-                                &mut parser,
-                                NodeType::Identifier,
-                                LEAF,
-                                token_next_2nd.clone()
-                            );
-                            move_to_container( &tree, &mut parser );
-                            parser.current = tree.parent( parser.current.take().unwrap() ).ok();
-                        } else {
-                            return Err( "Invalid token found.".to_string() );
-                        }
-                        */
                     } else if string == "sign" {
                         let Some( token_next ) = iterator.next() else {
                             return Err( "String ended abruptly at pattern.".to_string() );
@@ -250,7 +301,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                             vec!( "never", "always" , "except_zero" , "negative" ),
                         )?;
                     } else {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else if token.token_type == TokenType::Grammar {
@@ -258,7 +309,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         end_nested_state( &tree, &mut parser );
                     }
                 } else {
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 }
             },
             ParserStates::DateTime => {
@@ -314,7 +365,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                             vec!( "gregory", "buddhist", "japanese", "coptic", "indian", "ethiopic" ),
                         )?;
                     } else {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else if token.token_type == TokenType::Grammar {
@@ -322,7 +373,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         end_nested_state( &tree, &mut parser );
                     }
                 } else {
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 }
             },
             ParserStates::Complex => {
@@ -338,13 +389,13 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         return Err( "String ended abruptly at pattern.".to_string() );
                     };
                     if token_next.string.as_str() != "#" {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                     let Some( token_next_2nd ) = iterator.next() else {
                         return Err( "String ended abruptly at pattern.".to_string() );
                     };
                     if token_next_2nd.token_type != TokenType::Identifier {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                     add_token( &mut tree, &mut parser, NodeType::Identifier, LEAF, token_next_2nd.clone() );
                     move_to_container( &tree, &mut parser );
@@ -355,7 +406,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         end_nested_state( &tree, &mut parser );
                     }
                 } else {
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 }
             },
             ParserStates::LiteralText => {
@@ -387,7 +438,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         continue;
                     }
                 }
-                return Err( "Invalid token found.".to_string() );
+                return Err( error_invalid_token( &mut parser, token.clone() ) );
             },
             ParserStates::Command => {
                 //  Valid tokens: PWS (separator - ignore), `, }, Identifier
@@ -407,7 +458,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( "Invalid token found.".to_string() );
+                            return Err( error_invalid_token( &mut parser, token.clone() ) );
                         }
                         end_nested_state( &tree, &mut parser );
                     } else if string == "`" {
@@ -425,11 +476,11 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         parser.nested_states.push( ParserStates::Command );
                         parser.state = ParserStates::LiteralText;
                     } else {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else {
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 }
             },
             ParserStates::NamedString => {
@@ -453,10 +504,12 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                             token.clone()
                         );
                         move_to_container( &tree, &mut parser );
+
                         // Check that white space separator follows identifier
                         let mut iterator_peeking = iterator.clone();
                         if let Some( token_next ) = iterator_peeking.next() {
                             if token_next.token_type == TokenType::WhiteSpace {
+                                iterator = iterator_peeking; // Skip over whitespace token separator.
                                 continue;
                             }
                         }
@@ -464,9 +517,10 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         create_node( &mut tree, &mut parser, NodeType::String, CONTAINER );
                         parser.nested_states.push( ParserStates::NamedString );
                         create_node_add_token( &mut tree, &mut parser, NodeType::Text, LEAF, token.clone() );
+                        parser.state = ParserStates::SubString;
                         continue;
                     }
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 } else if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string == "#" {
@@ -475,7 +529,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( "Invalid token found.".to_string() );
+                            return Err( error_invalid_token( &mut parser, token.clone() ) );
                         }
                         create_node( &mut tree, &mut parser, NodeType::String, CONTAINER );
                         parser.nested_states.push( ParserStates::NamedString );
@@ -492,7 +546,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( "Invalid token found.".to_string() );
+                            return Err( error_invalid_token( &mut parser, token.clone() ) );
                         }
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
@@ -508,7 +562,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( "Invalid token found.".to_string() );
+                            return Err( error_invalid_token( &mut parser, token.clone() ) );
                         }
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
@@ -525,14 +579,14 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                         );
                         iterator = iterator_peeking; // Skip over ` token.
                     } else {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                 } else if token.token_type == TokenType::Syntax {
                     // Syntax may only appear after Identifier node indicating start of SubString.
                     if tree.children(
                         *parser.current.as_ref().unwrap()
                     ).ok().as_ref().unwrap().len() != 1 {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                     create_node( &mut tree, &mut parser, NodeType::String, CONTAINER );
                     parser.nested_states.push( ParserStates::NamedString );
@@ -542,18 +596,18 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                     if tree.children(
                         *parser.current.as_ref().unwrap()
                     ).ok().as_ref().unwrap().len() != 1 {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                     // Ignore the valid WhiteSpace.
                 } else {
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 }
             },
             ParserStates::NamedGroup => {
                 //  Valid tokens: PWS (ignored - human readability), {
                 if token.token_type == TokenType::Grammar {
                     if token.string.as_str() != "{" {
-                        return Err( "Invalid token found.".to_string() );
+                        return Err( error_invalid_token( &mut parser, token.clone() ) );
                     }
                     // start of NamedString
                     create_node( &mut tree, &mut parser, NodeType::NamedString, CONTAINER );
@@ -561,7 +615,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
                     parser.state = ParserStates::NamedString;
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else {
-                    return Err( "Invalid token found.".to_string() );
+                    return Err( error_invalid_token( &mut parser, token.clone() ) );
                 }
             }
         }
@@ -572,50 +626,54 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
 
     // Final check each select and plural that the branch exists in named string group, and that the branch `other`
     // does exist.
-    for ( _, index ) in patterns.iter() {
-        // First element is placeholder identifier, remainder are selectors.
+    for ( _key, index ) in patterns.iter() {
         let mut pattern_iterator =
             tree.children( *index ).ok().as_ref().unwrap().iter().skip( 1 );
-        if let Some( selector_keyword ) = pattern_iterator.next() {
-            if let Some( keyword ) =
-                tree.children( *selector_keyword ).ok().as_ref().unwrap().first()
-            {
-                let keyword_data = tree.data_ref( *keyword ).ok().unwrap();
-                if let Some( keyword_token ) = keyword_data.first().unwrap().downcast_ref::<Token>() {
-                    let keyword_string = keyword_token.string.as_str();
-                    if keyword_string == "plural" || keyword_string == "select" {
-                        let mut other = false;
-                        while let Some( selector_branch ) = pattern_iterator.next() {
-                            if let Some( branch ) =
-                                tree.children( *selector_branch ).ok().as_ref().unwrap().first()
+        if let Some( keyword ) = pattern_iterator.next() {
+            let keyword_data = tree.data_ref( *keyword ).ok().unwrap();
+            if let Some( keyword_token ) = keyword_data.first().unwrap().downcast_ref::<Rc<Token>>() {
+                let keyword_string = keyword_token.string.as_str();
+                if keyword_string == "plural" || keyword_string == "select" {
+                    let mut other = false;
+                    while let Some( selector ) = pattern_iterator.next() {
+                        let selector_vec = tree.children( *selector ).ok();
+                        if let Some( branch ) = selector_vec.as_ref().unwrap().first() {
+                            let branch_data =
+                                tree.data_ref( *branch ).ok().unwrap();
+                            if let Some( branch_token ) =
+                                branch_data.first().unwrap().downcast_ref::<Rc<Token>>()
                             {
-                                let branch_data =
-                                    tree.data_ref( *branch ).ok().unwrap();
-                                if let Some( branch_token ) =
-                                    branch_data.first().unwrap().downcast_ref::<Token>()
-                                {
-                                    let mut found = false;
-                                    for ( identifier, _ ) in named_strings.iter() {
-                                        if branch_token.string == *identifier {
-                                            found = true;
-                                        }
-                                        if branch_token.string.as_str() == "other" {
-                                            other = true;
-                                        }
-                                    }
-                                    if !found {
-                                        return Err(
-                                            "No named string found for select/plural branch identifier.".to_string()
-                                        );
-                                    }
+                                if branch_token.string.as_str() == "other" {
+                                    other = true;
                                 }
                             }
                         }
-                        if !other {
-                            return Err( "Branch `other` for select/plural is missing.".to_string() );
+                        if let Some( named ) = selector_vec.as_ref().unwrap().last() {
+                            let named_data =
+                                tree.data_ref( *named ).ok().unwrap();
+                            if let Some( named_token ) =
+                                named_data.first().unwrap().downcast_ref::<Rc<Token>>()
+                            {
+                                let mut found = false;
+                                for ( identifier, _ ) in named_strings.iter() {
+                                    if named_token.string == *identifier {
+                                        found = true;
+                                    }
+                                }
+                                if !found {
+                                    return Err(
+                                        "No named string found for select/plural branch identifier.".to_string()
+                                    );
+                                }
+
+                            }
                         }
                     }
+                    if !other {
+                        return Err( "Branch `other` for select/plural is missing.".to_string() );
+                    }
                 }
+            
             }
         }
     }
@@ -623,18 +681,47 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
     Ok( ( tree, named_strings, patterns ) )
 }
 
+/// Enum of the node types that can exist in the generate AST.
+/// The following node types are available:
+/// * Root: [Container] The top level, which may optional contained NamedGroup container, and required String container.
+/// * NamedGroup: [Container] Container: Exists if at least 1 named substring (NamedString node) is detected.
+/// * NamedString: [Container] Contains the Identifier leaf, and its substring String container
+/// * String: [Container] represents either whole string, or a substring for a plural or select pattern.
+/// * Text: [Leaf] Just literal text, and consist of 1 or more tokens (of any type that are treated as text).
+/// * NumberSign: [Leaf] The number pattern `#` in text.
+/// * Command: [Container] Contains command pattern data.
+/// * Pattern: [Container] Usually a multilingual pattern data. 2nd node indicates pattern type.
+/// * Identifier: [Leaf] An identifier. Always 1 token.
+/// * Selector: [Container] Contains 2 Identifier nodes. Used for `plural` and `select` patterns.
 #[derive( PartialEq )]
 pub enum NodeType {
-    Root, // Container: The top level, which may optional contained NamedGroup container, and required String container.
-    NamedGroup, // Container: Exists if at least 1 named substring (NamedString node) is detected.
-    NamedString, // Container: Contains the Identifier leaf, and its substring String container
-    String, // Container: represents either whole string, or a substring for a plural or select pattern.
-    Text, // Leaf: Just literal text, and consist of 1 or more tokens (of any type that are treated as text).
-    NumberSign, // Leaf: The number pattern `#` in text. Does not contain the token as it is always a `#`.
-    Command, // Container: Contains command pattern data.
-    Pattern, // Container: Usually a multilingual pattern data. 2nd node indicates pattern type.
-    Identifier, // Leaf: An identifier. Always 1 token.
-    Selector, // Container: contains 2 Identifier nodes. Used for `plural` and `select` patterns.
+    Root,
+    NamedGroup,
+    NamedString,
+    String,
+    Text,
+    NumberSign,
+    Command,
+    Pattern,
+    Identifier,
+    Selector,
+}
+
+impl fmt::Display for NodeType {
+    fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
+        match *self {
+            NodeType::Root => write!( f, "Root" ),
+            NodeType::NamedGroup => write!( f, "NamedGroup" ),
+            NodeType::NamedString => write!( f, "NamedString" ),
+            NodeType::String => write!( f, "String" ),
+            NodeType::Text => write!( f, "Text" ),
+            NodeType::NumberSign => write!( f, "NumberSign" ),
+            NodeType::Command => write!( f, "Command" ),
+            NodeType::Pattern => write!( f, "Pattern" ),
+            NodeType::Identifier => write!( f, "Identifier" ),
+            NodeType::Selector => write!( f, "Selector" )
+       }
+    }
 }
 
 
@@ -659,9 +746,26 @@ enum ParserStates {
     DateTime, // a date_time pattern
 }
 
+impl fmt::Display for ParserStates {
+    fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
+        match *self {
+            ParserStates::Command => write!( f, "Command" ),
+            ParserStates::Complex => write!( f, "Complex" ),
+            ParserStates::DateTime => write!( f, "DateTime" ),
+            ParserStates::Decimal => write!( f, "Decimal" ),
+            ParserStates::Literal => write!( f, "Literal" ),
+            ParserStates::LiteralText => write!( f, "LiteralText" ),
+            ParserStates::NamedGroup => write!( f, "NamedGroup" ),
+            ParserStates::NamedString => write!( f, "NamedString" ),
+            ParserStates::Pattern => write!( f, "Pattern" ),
+            ParserStates::String => write!( f, "String" ),
+            ParserStates::SubString => write!( f, "SubString" )
+       }
+    }
+}
+
+// A struct for tracking the parser states.
 struct Parser {
-//    container: NodeFeatures,
-//    leaf: NodeFeatures,
     current: Option<usize>,
     state: ParserStates,
     nested_states: Vec<ParserStates>,
@@ -670,7 +774,7 @@ struct Parser {
 // Move `current` to its parent node only if `current` is a leaf node.
 // Usually this signals the leaf has all its tokens.
 fn move_to_container( tree: &Tree, parser: &mut Parser, ) {
-    let node_index = parser.current.take().unwrap();
+    let node_index = *parser.current.as_ref().unwrap();
     if !tree.features( node_index ).ok().unwrap().allow_children {
         parser.current = tree.parent( node_index ).ok(); // Root node always a container.
     }
@@ -739,9 +843,10 @@ fn end_nested_state( tree: &Tree, parser: &mut Parser ) {
     parser.current = tree.parent( parser.current.take().unwrap() ).ok();
 }
 
-/// Check if start of pattern is valid.
+// Check if start of pattern is valid.
 fn pattern_start(
-    tree: &mut Tree, parser: &mut Parser,
+    tree: &mut Tree,
+    parser: &mut Parser,
     token_next: Rc<Token>,
     patterns: &mut HashMap<String, usize>,
 ) -> Result<(), String> {
@@ -772,28 +877,37 @@ fn pattern_start(
             parser.nested_states.push( parser.state );
             parser.state = ParserStates::Command;
         } else {
-            return Err( "Invalid token found.".to_string() );
+            return Err( error_invalid_token( parser, token_next.clone() ) );
         }
     } else {
-        return Err( "Invalid token found.".to_string() );
+        return Err( error_invalid_token( parser, token_next.clone() ) );
     }
     Ok( () )
 }
 
+// Checks if an option selector already exists.
 fn pattern_option_exists( tree: &Tree, parser: &Parser, identifier: &str ) -> bool {
-    let children = *tree.children( *parser.current.as_ref().unwrap() ).ok().as_ref().unwrap();
-    let mut iterator = children.iter().skip( 2 ); // Skip over identifier and pattern type keyword.
-    while let Some( index ) = iterator.next() {
-        let data = tree.data_ref( *index ).ok().unwrap();
-        if let Some( token ) = data.first().unwrap().downcast_ref::<Token>() {
-            if token.string.as_str() == identifier {
-                return true;
+    let mut iterator =
+        tree.children( *parser.current.as_ref().unwrap() ).ok().as_ref().unwrap().iter().skip( 2 );
+    while let Some( selector ) = iterator.next() {
+        if let Some( option ) =
+            tree.children( *selector ).ok().as_ref().unwrap().first()
+        {
+            let option_data = tree.data_ref( *option ).ok().unwrap();
+            if let Some( option_token ) =
+                option_data.first().unwrap().downcast_ref::<Rc<Token>>()
+            {
+                if option_token.string.as_str() == identifier {
+                    return true;
+                }
             }
         }
     }
     false
 }
 
+// Check a selector is correctly composed and create the selector node.
+// Selector is always in format "identifier#identifier".
 fn pattern_selector(
     tree: &mut Tree,
     parser: &mut Parser,
@@ -806,12 +920,11 @@ fn pattern_selector(
     add_token( tree, parser, NodeType::Identifier, LEAF, token.clone() );
     move_to_container( &tree, parser );
     if token_next.string.as_str() != "#" {
-        return Err( "Invalid token found.".to_string() );
+        return Err( error_invalid_token( parser, token_next.clone() ) );
     }
     if token_next_2nd.token_type != TokenType::Identifier {
-        return Err( "Invalid token found.".to_string() );
+        return Err( error_invalid_token( parser, token_next_2nd.clone() ) );
     }
-//    let string_2nd = token.string.as_str();
     if keywords.contains( &token_next_2nd.string.as_str() ) {
         add_token(
             tree,
@@ -823,17 +936,77 @@ fn pattern_selector(
         move_to_container( &tree, parser );
         parser.current = tree.parent( parser.current.take().unwrap() ).ok();
     } else {
-        return Err( "Invalid token found.".to_string() );
+        return Err( error_invalid_token( parser, token_next_2nd.clone() ) );
     }
     Ok( () )
 }
 
+// Creates an error String for invalid token, providing the position in the original string.
+fn error_invalid_token( parser: &mut Parser, token: Rc<Token> ) -> String {
+    let mut string = String::new();
+    string.push_str( "Parser state [" );
+    string.push_str( parser.state.to_string().as_str() );
+    string.push_str( "] Invalid token `" );
+    string.push_str( token.string.as_str() );
+    string.push_str( "` at position " );
+    string.push_str( token.position_grapheme.to_string().as_str() );
+    string
+}
+
+// Get the node type as a string for the current node.
+// May be of use in generating future detailed error messages
+#[allow( dead_code )]
+fn node_type_to_string( tree: &Tree, parser: &mut Parser, ) -> String {
+    let current = *parser.current.as_ref().unwrap();
+    let node_type_ref = tree.node_type( current ).ok().unwrap().as_ref();
+    node_type_ref.downcast_ref::<NodeType>().unwrap().to_string()
+}
+
 #[cfg(test)]
 mod tests {
-//    use super::*;
+    use super::*;
+    use i18n_lexer::Lexer;
+    use icu_testdata::buffer;
 
     #[test]
-    fn check() {
+    fn decimal() {
+        let buffer_provider = Box::new( buffer() );
+        let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+        let tokens = lexer.tokenise(
+            "String contains a {placeholder decimal sign#negative}.", vec![ '{', '}', '`', '#' ]
+        );
+        let ( tree, named_strings, patterns ) = match parse( tokens ) {
+            Err( error ) => {
+                println!( "Error: {}", error );
+                assert!( false );
+                return;
+            },
+            Ok( result ) => result
+        };
+        assert_eq!( tree.len(), 10, "Should contain 10 nodes." );
+        assert_eq!( named_strings.len(), 0, "No named strings." );
+        assert_eq!( patterns.len(), 1, "1 pattern in string." );
+    }
+
+    #[test]
+    fn plural() {
+        let buffer_provider = Box::new( buffer() );
+        let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+        let tokens = lexer.tokenise(
+            "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
+            vec![ '{', '}', '`', '#' ]
+        );
+        let ( tree, named_strings, patterns ) = match parse( tokens ) {
+            Err( error ) => {
+                println!( "Error: {}", error );
+                assert!( false );
+                return;
+            },
+            Ok( result ) => result
+        };
+        assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
+        assert_eq!( named_strings.len(), 2, "2 named strings." );
+        assert_eq!( patterns.len(), 1, "1 pattern in string." );
     }
 }
 
