@@ -21,22 +21,22 @@
 //!     "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
 //!     vec![ '{', '}', '`', '#' ]
 //! );
-//! let ( tree, named_strings, patterns ) = match parse( tokens ) {
+//! let parse_result = match parse( tokens ) {
 //!     Err( error ) => {
 //!         println!( "Error: {}", error );
 //!         return;
 //!     },
 //!     Ok( result ) => result
 //! };
-//! let len = tree.len();
+//! let len = parse_result.tree.len();
 //! let mut index = 0;
 //! while index < len {
 //!     println!( "Index: {}", index );
-//!     let node_type_data = tree.node_type( index ).ok().unwrap();
+//!     let node_type_data = parse_result.tree.node_type( index ).ok().unwrap();
 //!     let node_type = node_type_data.downcast_ref::<NodeType>().unwrap();
 //!     println!( "Type: {}", node_type );
 //!     let mut string = String::new();
-//!     match tree.children( index ).ok() {
+//!     match parse_result.tree.children( index ).ok() {
 //!         None => string.push_str( "None" ),
 //!         Some( children ) => {
 //!             for child in children.iter() {
@@ -47,7 +47,7 @@
 //!     }
 //!     println!( "Children: {}", string );
 //!     let mut string = String::new();
-//!     match tree.data_ref( index ).ok() {
+//!     match parse_result.tree.data_ref( index ).ok() {
 //!         None => string.push_str( "None" ),
 //!         Some( tokens ) => {
 //!             for token_ref in tokens.iter() {
@@ -61,10 +61,10 @@
 //!     println!( "Tokens: {}", string );
 //!     index += 1;
 //! }
-//! for ( key, value ) in named_strings.iter() {
+//! for ( key, value ) in parse_result.named_strings.iter() {
 //!     println!( "Named string: {key}; node: {value}" );
 //! }
-//! for ( key, value ) in patterns.iter() {
+//! for ( key, value ) in parse_result.patterns.iter() {
 //!     println!( "Pattern: {key}; node: {value}" );
 //! }
 //! ```
@@ -74,6 +74,12 @@ use std::rc::Rc;
 use tree::{Tree, NodeFeatures};
 use std::collections::HashMap;
 use std::fmt;
+
+pub struct ParserResult {
+    pub tree: Tree,
+    pub named_strings: HashMap<String, usize>,
+    pub patterns: HashMap<String, usize>,
+}
 
 /// Constructs a valid syntax tree from the supplied `Vec<Rc<Token>>`. Any grammar error that occurs will result in     
 /// an `Err()` result to be returned.
@@ -97,7 +103,7 @@ use std::fmt;
 ///     "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
 ///     vec![ '{', '}', '`', '#' ]
 /// );
-/// let ( tree, named_strings, patterns ) = match parse( tokens ) {
+/// let parse_result = match parse( tokens ) {
 ///     Err( error ) => {
 ///         println!( "Error: {}", error );
 ///         assert!( false );
@@ -105,12 +111,12 @@ use std::fmt;
 ///     },
 ///     Ok( result ) => result
 /// };
-/// assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
-/// assert_eq!( named_strings.len(), 2, "2 named strings." );
-/// assert_eq!( patterns.len(), 1, "1 pattern in string." );
+/// assert_eq!( parse_result.tree.len(), 24, "Should contain 24 nodes." );
+/// assert_eq!( parse_result.named_strings.len(), 2, "2 named strings." );
+/// assert_eq!( parse_result.patterns.len(), 1, "1 pattern in string." );
 /// ```
 pub fn parse( tokens: Vec<Rc<Token>> ) ->
-Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
+Result<ParserResult, String> {
     if tokens.len() == 0 {
         return Err( "Empty token vector!".to_string() );
     }
@@ -678,7 +684,7 @@ Result<( Tree, HashMap<String, usize>, HashMap<String, usize> ), String> {
         }
     }
 
-    Ok( ( tree, named_strings, patterns ) )
+    Ok( ParserResult { tree, named_strings, patterns } )
 }
 
 /// Enum of the node types that can exist in the generate AST.
@@ -975,7 +981,7 @@ mod tests {
         let tokens = lexer.tokenise(
             "String contains a {placeholder decimal sign#negative}.", vec![ '{', '}', '`', '#' ]
         );
-        let ( tree, named_strings, patterns ) = match parse( tokens ) {
+        let parse_result = match parse( tokens ) {
             Err( error ) => {
                 println!( "Error: {}", error );
                 assert!( false );
@@ -983,9 +989,9 @@ mod tests {
             },
             Ok( result ) => result
         };
-        assert_eq!( tree.len(), 10, "Should contain 10 nodes." );
-        assert_eq!( named_strings.len(), 0, "No named strings." );
-        assert_eq!( patterns.len(), 1, "1 pattern in string." );
+        assert_eq!( parse_result.tree.len(), 10, "Should contain 10 nodes." );
+        assert_eq!( parse_result.named_strings.len(), 0, "No named strings." );
+        assert_eq!( parse_result.patterns.len(), 1, "1 pattern in string." );
     }
 
     #[test]
@@ -996,7 +1002,7 @@ mod tests {
             "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
             vec![ '{', '}', '`', '#' ]
         );
-        let ( tree, named_strings, patterns ) = match parse( tokens ) {
+        let parse_result = match parse( tokens ) {
             Err( error ) => {
                 println!( "Error: {}", error );
                 assert!( false );
@@ -1004,9 +1010,9 @@ mod tests {
             },
             Ok( result ) => result
         };
-        assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
-        assert_eq!( named_strings.len(), 2, "2 named strings." );
-        assert_eq!( patterns.len(), 1, "1 pattern in string." );
+        assert_eq!( parse_result.tree.len(), 24, "Should contain 24 nodes." );
+        assert_eq!( parse_result.named_strings.len(), 2, "2 named strings." );
+        assert_eq!( parse_result.patterns.len(), 1, "1 pattern in string." );
     }
 }
 
