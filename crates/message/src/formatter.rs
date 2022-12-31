@@ -14,7 +14,7 @@ use std::rc::Rc;
 use i18n_lstring::LString;
 use i18n_lexer::{Lexer, Token, TokenType};
 use tree::{Tree, NodeFeatures};
-use i18n_pattern::{NodeType, parse};
+use i18n_pattern::{ParserResult, NodeType};
 use std::collections::HashMap;
 //use std::fmt; this is needed if implementing Display on something
 
@@ -24,20 +24,20 @@ pub struct System {
 
 impl System {
     pub fn try_new( lexer: Lexer ) -> Result<Self, String> {
-        
+        Err( "Temporary error until implemented.".to_string() )
     }
 }
 
 pub struct Formatter {
     locale: Rc<Locale>,
-    ast: Tree,
+    parser_result: ParserResult,
 }
 
 impl Formatter {
 
-    /// Creates a Formatter for the language string.
-    pub fn try_new( string: LString ) -> Result<Self, String> {
-        Err( "Temporary error until implemented.".to_string() )
+    /// Creates a Formatter for the language string using parsing results.
+    pub fn try_new( locale: Rc<Locale>, parser_result: ParserResult ) -> Self {
+        Formatter { locale, parser_result }
     }
     
     /// Format the language string with supplied values.
