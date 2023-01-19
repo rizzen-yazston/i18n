@@ -73,6 +73,7 @@ use std::rc::Rc;
 /// [Unicode Consortium]: https://home.unicode.org/
 /// [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+#[derive( PartialEq )]
 pub struct LString {
     string: String,
     locale: Rc<Locale>,
@@ -114,11 +115,11 @@ impl LString {
     /// let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     /// let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
     /// 
-    /// assert_eq!( lang_string.locale(), locale, "Locale failed." );
+    /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// ```
     /// 
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
-    pub fn string( &self ) -> &str {
+    pub fn as_str( &self ) -> &str {
         &self.string
     }
 

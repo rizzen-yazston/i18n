@@ -32,7 +32,7 @@ use i18n_pattern::{parse, NodeType};
 let buffer_provider = Box::new( buffer() );
 let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
 let tokens = lexer.tokenise(
-    "There {dogs_number plural 1#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
+    "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
     vec![ '{', '}', '`', '#' ]
 );
 let ( tree, named_strings, patterns ) = match parse( tokens ) {

@@ -21,10 +21,9 @@
 //! use icu_testdata::buffer;
 //! 
 //! let buffer_provider = Box::new( buffer() );
-//! let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+//! let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
 //! let tokens = lexer.tokenise(
-//!     // World Map (U+1F5FA) is encoded in four bytes in UTF-8.
-//!     "String contains a {placeholder}.", vec![ '{', '}' ]
+//!     "String contains a {placeholder}.", &vec![ '{', '}' ]
 //! );
 //! let mut grammar = 0;
 //! assert_eq!( tokens.iter().count(), 10, "Supposed to be a total of 10 tokens." );
@@ -118,10 +117,10 @@ impl Lexer {
     /// use icu_testdata::buffer;
     /// 
     /// let buffer_provider = Box::new( buffer() );
-    /// let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+    /// let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
     /// let tokens = lexer.tokenise(
     ///     // World Map (U+1F5FA) is encoded in four bytes in UTF-8.
-    ///     "String contains a {placeholder}.", vec![ '{', '}' ]
+    ///     "String contains a {placeholder}.", &vec![ '{', '}' ]
     /// );
     /// let mut grammar = 0;
     /// assert_eq!( tokens.iter().count(), 10, "Supposed to be a total of 10 tokens." );
@@ -134,7 +133,7 @@ impl Lexer {
     /// ```
     /// [`Box`]: https://doc.rust-lang.org/nightly/std/boxed/struct.Box.html
     /// [`FsDataProvider`]: https://docs.rs/icu_provider_fs/latest/icu_provider_fs/struct.FsDataProvider.html
-    pub fn try_new( buffer_provider: Box<dyn BufferProvider> ) -> Result<Self, String> {
+    pub fn try_new( buffer_provider: &Box<impl BufferProvider + ?Sized> ) -> Result<Self, String> {
         let syntax = match load_pattern_syntax(
             &buffer_provider.as_deserializing()
         ) {
@@ -188,10 +187,9 @@ impl Lexer {
     /// use icu_testdata::buffer;
     /// 
     /// let buffer_provider = Box::new( buffer() );
-    /// let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+    /// let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
     /// let tokens = lexer.tokenise(
-    ///     // World Map (U+1F5FA) is encoded in four bytes in UTF-8.
-    ///     "String contains a {placeholder}.", vec![ '{', '}' ]
+    ///     "String contains a {placeholder}.", &vec![ '{', '}' ]
     /// );
     /// let mut grammar = 0;
     /// assert_eq!( tokens.iter().count(), 10, "Supposed to be a total of 10 tokens." );
@@ -207,16 +205,13 @@ impl Lexer {
     /// [`Vec`]: https://doc.rust-lang.org/nightly/std/vec/index.html
     /// [`Rc`]: https://doc.rust-lang.org/nightly/std/rc/struct.Rc.html
     /// [`char`]: https://doc.rust-lang.org/nightly/std/primitive.char.html
-    pub fn tokenise<'a>( &'a mut self, string: &'a str, grammar: Vec<char> ) -> Vec<Rc<Token>> {
+    pub fn tokenise<'a>( &'a mut self, string: &'a str, grammar: &Vec<char> ) -> Vec<Rc<Token>> {
         let mut tokens = Vec::<Rc<Token>>::new();
         if string.len() == 0 {
             return tokens;
         }
 
         // Resets the Lexer
-        self.token_position_byte = None;
-        self.token_position_character = None;
-        self.token_position_grapheme = None;
         self.position_byte = 0;
         self.position_character = 0;
         self.position_grapheme = 0;
@@ -315,7 +310,7 @@ impl Lexer {
             let start_character = self.token_position_character.unwrap();
             let start_grapheme = self.token_position_grapheme.unwrap();
             let slice = &string[ start_byte .. self.position_byte ];
-            let len_byte = self.position_character - start_character;//slice.len();
+            let len_byte = self.position_character - start_character;
             let len_character = self.position_character - start_character;
             let len_grapheme = self.grapheme_segmenter.segment_str( slice ).count() - 1;
             self.position_grapheme += len_grapheme;
@@ -358,10 +353,10 @@ mod tests {
     #[test]
     fn tokenise() {
         let buffer_provider = Box::new( buffer() );
-        let mut lexer = Lexer::try_new( buffer_provider ).expect( "Failed to initialise lexer." );
+        let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
         let tokens = lexer.tokenise(
             // World Map (U+1F5FA) is encoded in four bytes in UTF-8.
-            "String contains a {placeholder}.", vec![ '{', '}' ]
+            "String contains a {placeholder}.", &vec![ '{', '}' ]
         );
         let mut grammar = 0;
         assert_eq!( tokens.iter().count(), 10, "Supposed to be a total of 10 tokens." );
