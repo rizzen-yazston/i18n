@@ -2,7 +2,7 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
 
 //! Parsing of string tokens into an Abstract Syntax Tree (AST), checking the grammar of patterns is valid.
-//! The parser internally does a semantic analysis on the generated AST.
+//! The parser only does the syntactic analysis of the supplied Token vector.
 //! 
 //! See `pattern strings.asciidoc` in `docs` of `pattern` for the pattern formatting specification.
 //! 
@@ -21,22 +21,22 @@
 //!     "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
 //!     &vec![ '{', '}', '`', '#' ]
 //! );
-//! let parse_result = match parse( tokens ) {
+//! let tree = match parse( tokens ) {
 //!     Err( error ) => {
 //!         println!( "Error: {}", error );
 //!         return;
 //!     },
 //!     Ok( result ) => result
 //! };
-//! let len = parse_result.tree.len();
+//! let len = tree.len();
 //! let mut index = 0;
 //! while index < len {
 //!     println!( "Index: {}", index );
-//!     let node_type_data = parse_result.tree.node_type( index ).ok().unwrap();
+//!     let node_type_data = tree.node_type( index ).ok().unwrap();
 //!     let node_type = node_type_data.downcast_ref::<NodeType>().unwrap();
 //!     println!( "Type: {}", node_type );
 //!     let mut string = String::new();
-//!     match parse_result.tree.children( index ).ok() {
+//!     match tree.children( index ).ok() {
 //!         None => string.push_str( "None" ),
 //!         Some( children ) => {
 //!             for child in children.iter() {
@@ -47,7 +47,7 @@
 //!     }
 //!     println!( "Children: {}", string );
 //!     let mut string = String::new();
-//!     match parse_result.tree.data_ref( index ).ok() {
+//!     match tree.data_ref( index ).ok() {
 //!         None => string.push_str( "None" ),
 //!         Some( tokens ) => {
 //!             for token_ref in tokens.iter() {
@@ -60,12 +60,6 @@
 //!     }
 //!     println!( "Tokens: {}", string );
 //!     index += 1;
-//! }
-//! for ( key, value ) in parse_result.named_strings.iter() {
-//!     println!( "Named string: {key}; node: {value}" );
-//! }
-//! for ( key, value ) in parse_result.patterns.iter() {
-//!     println!( "Pattern: {key}; node: {value}" );
 //! }
 //! ```
 
@@ -98,7 +92,7 @@ use std::fmt;
 ///     "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
 ///     &vec![ '{', '}', '`', '#' ]
 /// );
-/// let parse_result = match parse( tokens ) {
+/// let tree = match parse( tokens ) {
 ///     Err( error ) => {
 ///         println!( "Error: {}", error );
 ///         assert!( false );
@@ -106,16 +100,13 @@ use std::fmt;
 ///     },
 ///     Ok( result ) => result
 /// };
-/// assert_eq!( parse_result.tree.len(), 24, "Should contain 24 nodes." );
-/// assert_eq!( parse_result.named_strings.len(), 2, "2 named strings." );
-/// assert_eq!( parse_result.patterns.len(), 1, "1 pattern in string." );
+/// assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
 /// ```
-pub fn parse( tokens: Vec<Rc<Token>> ) ->
-Result<ParserResult, String> {
-    if tokens.len() == 0 {
-        return Err( "Empty token vector!".to_string() );
-    }
+pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
     let mut tree = Tree::new();
+    if tokens.len() == 0 {
+        return Ok( tree );
+    }
     tree.insert( 0, CONTAINER, Box::new( NodeType::Root ) ).ok();
     let mut parser = Parser {
         current: tree.insert(
@@ -525,7 +516,6 @@ Result<ParserResult, String> {
                 } else if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string == "#" {
-                        // IDEA: may capture the positions of these # to speed up substitutions
                         // # may only appear after Identifier node indicating start of SubString.
                         if tree.children(
                             *parser.current.as_ref().unwrap()
@@ -624,59 +614,7 @@ Result<ParserResult, String> {
     if parser.nested_states.len() > 0 {
         return Err( "String ended abruptly.".to_string() );
     }
-
-    // Final check each select and plural that the branch exists in named string group, and that the branch `other`
-    // does exist.
-    for ( _key, index ) in patterns.iter() {
-        let mut pattern_iterator =
-            tree.children( *index ).ok().as_ref().unwrap().iter().skip( 1 );
-        if let Some( keyword ) = pattern_iterator.next() {
-            let keyword_data = tree.data_ref( *keyword ).ok().unwrap();
-            if let Some( keyword_token ) = keyword_data.first().unwrap().downcast_ref::<Rc<Token>>() {
-                let keyword_string = keyword_token.string.as_str();
-                if keyword_string == "plural" || keyword_string == "select" {
-                    let mut other = false;
-                    while let Some( selector ) = pattern_iterator.next() {
-                        let selector_vec = tree.children( *selector ).ok();
-                        if let Some( branch ) = selector_vec.as_ref().unwrap().first() {
-                            let branch_data =
-                                tree.data_ref( *branch ).ok().unwrap();
-                            if let Some( branch_token ) =
-                                branch_data.first().unwrap().downcast_ref::<Rc<Token>>()
-                            {
-                                if branch_token.string.as_str() == "other" {
-                                    other = true;
-                                }
-                            }
-                        }
-                        if let Some( named ) = selector_vec.as_ref().unwrap().last() {
-                            let named_data =
-                                tree.data_ref( *named ).ok().unwrap();
-                            if let Some( named_token ) =
-                                named_data.first().unwrap().downcast_ref::<Rc<Token>>()
-                            {
-                                let mut found = false;
-                                for ( identifier, _ ) in named_strings.iter() {
-                                    if named_token.string == *identifier {
-                                        found = true;
-                                    }
-                                }
-                                if !found {
-                                    return Err(
-                                        "No named string found for select/plural branch identifier.".to_string()
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    if !other {
-                        return Err( "Branch `other` for select/plural is missing.".to_string() );
-                    }
-                }
-            }
-        }
-    }
-    Ok( ParserResult { tree, named_strings, patterns } )
+    Ok( tree )
 }
 
 
@@ -930,7 +868,7 @@ mod tests {
         let tokens = lexer.tokenise(
             "String contains a {placeholder decimal sign#negative}.", &vec![ '{', '}', '`', '#' ]
         );
-        let parse_result = match parse( tokens ) {
+        let tree = match parse( tokens ) {
             Err( error ) => {
                 println!( "Error: {}", error );
                 assert!( false );
@@ -938,9 +876,7 @@ mod tests {
             },
             Ok( result ) => result
         };
-        assert_eq!( parse_result.tree.len(), 10, "Should contain 10 nodes." );
-        assert_eq!( parse_result.named_strings.len(), 0, "No named strings." );
-        assert_eq!( parse_result.patterns.len(), 1, "1 pattern in string." );
+        assert_eq!( tree.len(), 10, "Should contain 10 nodes." );
     }
 
     #[test]
@@ -951,7 +887,7 @@ mod tests {
             "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
             &vec![ '{', '}', '`', '#' ]
         );
-        let parse_result = match parse( tokens ) {
+        let tree = match parse( tokens ) {
             Err( error ) => {
                 println!( "Error: {}", error );
                 assert!( false );
@@ -959,9 +895,7 @@ mod tests {
             },
             Ok( result ) => result
         };
-        assert_eq!( parse_result.tree.len(), 24, "Should contain 24 nodes." );
-        assert_eq!( parse_result.named_strings.len(), 2, "2 named strings." );
-        assert_eq!( parse_result.patterns.len(), 1, "1 pattern in string." );
+        assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
     }
 }
 

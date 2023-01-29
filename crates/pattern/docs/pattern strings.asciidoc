@@ -1,6 +1,6 @@
 = Pattern Strings
 
-Pattern strings are text strings that contain patterns, that are replaced with actual value text at a later stage. Placeholders are represented by text enclosed within a pair of braces (`{}`), or the special number sign pattern (`#`).
+Pattern strings are text strings that contain placeholder patterns, that are replaced with actual value text at a later stage. Placeholders are represented by text enclosed within a pair of braces (`{}`), or the special number sign pattern (`#`).
 
 == Grammar
 
@@ -29,7 +29,7 @@ date_time          = `date_time` , [ PWS+ , date_time_keyboard ]*
 date_time_keyword  = date_time_length / date_time_hour / date_time_calendar
 date_time_length   = `date` / `time` , `#` , `full` / `long` / `medium` / `short`
 date_time_hour     = `hour` , `#` , `24` / `23` / `12` / `11`
-date_time_calendar = `calendar` , `#` , `gregory` / `buddhist` / `japanese` / `coptic` / `indian` / `ethiopic`
+date_time_calendar = `calendar` , `#` , `gregory` / `buddhist` / `japanese` / `coptic` / `indian` / `ethiopic` / 'iso'
 complex            = plural / select
 plural             = `ordinal` / `plural` , [ PWS+ , plural_category, `#` , branch ]+
 plural_category    = `zero` / `one` / `two` / `few` / `many` / `other`
@@ -52,8 +52,6 @@ Additional conditions that can't be represented in the grammar above:
 
 * for `plural`, `ordinal` and `select`: the selector `other` must be present in the pattern.
 
-* for `ordinal` and `plural`: only positive integers are allowed for values, that are translated to plural_category using ICU4X's PluralRules.
-
 * for `decimal`: both `group` and `sign` are optional and when not present the default value is `auto`. Included `auto` for those whom want to indicate the option explicitly.
 
 * for `date_time`: both `date` and `time` are optional, and when not present the default value is `medium`. Included `medium` for those whom want to indicate the option explicitly.
@@ -64,6 +62,8 @@ Additional conditions that can't be represented in the grammar above:
 
 * `calendar` option does not change date-time to the calendar, rather just checks that locale is for the calendar.
 
+* for `ordinal` and `plural`: only positive integers are allowed for values, that are translated to plural_category using ICU4X's PluralRules.
+
 == Examples
 
 - Empty strings are valid. Can simply mean there is no available localised version of a string, and should bypass the entire parsing process as there is nothing to do.
@@ -72,7 +72,7 @@ Additional conditions that can't be represented in the grammar above:
 
 - A complex pattern example: "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}"
 
-- In text sections, when a grammar syntax character is preceded by a backtick the syntax character is treated as a literal text character: `++Backtick ``, number sign `#, curly brackets `{ and `}, and combinations such as `{`#++`.
+- In text sections, when a grammar syntax character is preceded by a backtick the syntax character is treated as a literal text character: backtick `++``++`, number sign `++`#++`, curly brackets `++`{++` and `++`}++`, and combinations such as `++`{`#++`.
 
 == Design Ideas
 
@@ -92,12 +92,13 @@ Additional conditions that can't be represented in the grammar above:
 
 === patterns
 
-- `++#++` is a pattern for the number in plural formatting substring. At outer most string `#` has no meaning.
+- After `++#++` separator of main string, `++{++identifier {text}}` is a named selection branch for complex pattern types, that branch on values. Placed at end of string.
+
+- `++#++` is a pattern for the number in plural formatting substring.
 
 - `{++`text`++}` indicates literal constant text, usually names of people, places, and products.
 
 - `{#command [parameter]*}` indicates an user defined command (a call back function) to produce constant string, such as file paths.
 
-- `{identifier [parameter]*}` pattern for some value, may included nested strings.
+- `{identifier [parameter]*}` pattern for some value.
 
-- After `++#++` separator of main string, `++{++identifier {text}}` is a named selection branch for complex pattern types, that branch on values. Placed at end of string.

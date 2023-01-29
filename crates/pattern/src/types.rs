@@ -1,19 +1,11 @@
 // This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
 
-//! TODO: Complete crate description
-//! 
-//! # Examples
-//! 
-//! ```
-//! // TODO: crate example
-//! ```
+//! Collection of types used by parser and formatter.
 
 use i18n_lstring::LString;
 use fixed_decimal::FixedDecimal;
 use icu_calendar::{AnyCalendar, Date, DateTime, types::Time };
-use tree::Tree;
-use std::collections::HashMap;
 use core::any::Any;
 use std::fmt;
 
@@ -60,14 +52,7 @@ impl fmt::Display for NodeType {
     }
 }
 
-pub struct ParserResult {
-    pub tree: Tree,
-    pub named_strings: HashMap<String, usize>,
-    pub patterns: HashMap<String, usize>,
-}
-
 // --- placeholder value types ---
-// Once the complex `FixedDecimal` from ICU4X is complete it will be added as a type
 
 pub trait PlaceholderValue {
     fn get_type( &self ) -> &str;
@@ -199,20 +184,3 @@ impl PlaceholderValue for PlaceholderTime {
         self
     }
 }
-
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use icu_testdata::buffer;
-
-    #[test]
-    fn test1() {
-    }
-
-    #[test]
-    fn test2() {
-    }
-}
-*/
