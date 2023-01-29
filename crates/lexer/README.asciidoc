@@ -15,12 +15,22 @@ Strings are tokenised using the method `tokenise()` taking string slice and a ve
 
 ```
 [dependencies]
-i18n_lexer-rizzen-yazston = "0.3.0"
+i18n_lexer-rizzen-yazston = "0.3.1"
 
 [dependencies.icu_provider]
-version = "1.0.0"
+version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde", "deserialize_bincode_1" ]
+
+[dependencies.icu_properties]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.icu_segmenter]
+version = "0.8.0"
+# Needed for BufferProvider
+features = [ "serde" ]
 ```
 
 == Examples

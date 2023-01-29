@@ -4,11 +4,11 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_pattern-rizzen-yazston"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Rizzen Yazston"]
 edition = "2021"
-rust-version = "1.65.0"
-description = "The `i18n-pattern` crate of the Internationalisation project."
+rust-version = "1.67.0"
+description = "The `i18n_pattern` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
 # false prevents publishing while developing, else string of repository identfier
@@ -27,46 +27,45 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-icu_locid = "1.0.0"
-#writeable = "0.5.0"
-i18n_lstring-rizzen-yazston = { version = "0.3.0", path = "../lstring" }
-i18n_lexer-rizzen-yazston = { version = "0.3.0", path = "../lexer" } # Needed for Token, TokenType
+icu_locid = "1.1.0"
+i18n_lstring-rizzen-yazston = { version = "0.3.1", path = "../lstring" }
+i18n_lexer-rizzen-yazston = { version = "0.3.1", path = "../lexer" } # Needed for Token, TokenType
 tree-rizzen-yazston = { version = "0.3.0", path = "../../../tree" }
 
 [dependencies.icu_provider]
-version = "1.0.0"
+version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde", "deserialize_bincode_1" ]
 
 [dependencies.icu_plurals]
-version = "1.0.0"
+version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dependencies.fixed_decimal]
-version = "0.5.1"
+version = "0.5.2"
 # Needed for BufferProvider
 features = [ "ryu" ]
 
 [dependencies.icu_decimal]
-version = "1.0.0"
+version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dependencies.icu_calendar]
-version = "1.0.0"
+version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dependencies.icu_datetime]
-version = "1.0.0"
+version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies]
 
 [dev-dependencies.icu_testdata]
-version = "1.0.0"
+version = "1.1.0"
 # Needed for BufferProvider and icu_segmenter used in i18n_lexer.
 features = [ "buffer", "icu_segmenter" ]
 

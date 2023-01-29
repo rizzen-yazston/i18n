@@ -13,13 +13,40 @@ See `pattern strings.asciidoc` in `docs` of `pattern` crate for the pattern form
 
 ```
 [dependencies]
-i18n_pattern-rizzen-yazston = "0.3.0"
-i18n_lexer-rizzen-yazston = "0.3.0"
+icu_locid = "1.1.0"
+i18n_lstring-rizzen-yazston = "0.3.1"
+i18n_lexer-rizzen-yazston = "0.3.1" # Needed for Token, TokenType
+tree-rizzen-yazston = "0.3.0"
 
-#[dependencies.icu_provider]
-#version = "1.0.0"
-## Needed for BufferProvider
-#features = [ "serde", "deserialize_bincode_1" ]
+[dependencies.icu_provider]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde", "deserialize_bincode_1" ]
+
+[dependencies.icu_plurals]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.fixed_decimal]
+version = "0.5.2"
+# Needed for BufferProvider
+features = [ "ryu" ]
+
+[dependencies.icu_decimal]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.icu_calendar]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.icu_datetime]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
 ```
 
 == Examples

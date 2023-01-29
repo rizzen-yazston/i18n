@@ -4,11 +4,11 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_utility-rizzen-yazston"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Rizzen Yazston"]
 edition = "2021"
-rust-version = "1.64.0"
-description = "The `i18n-utility` crate of the Internationalisation project."
+rust-version = "1.67.0"
+description = "The `i18n_utility` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
 # false prevents publishing while developing, else string of repository identfier
@@ -27,7 +27,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-icu_locid = "1.0.0"
+icu_locid = "1.1.0"
 
 [lib]
 name = "i18n_utility"

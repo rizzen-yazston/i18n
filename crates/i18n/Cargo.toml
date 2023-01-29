@@ -4,10 +4,10 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n-rizzen-yazston"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Rizzen Yazston"]
 edition = "2021"
-rust-version = "1.64.0"
+rust-version = "1.67.0"
 description = "The `i18n` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
@@ -30,9 +30,10 @@ publish = false
 # Always exclude these crates:
 # - i18n_utility-rizzen-yazston
 
-i18n_lstring-rizzen-yazston = { version = "0.3.0", path = "../lstring" }
-i18n_lexer-rizzen-yazston = { version = "0.3.0", path = "../lexer" }
-i18n_pattern-rizzen-yazston = { version = "0.3.0", path = "../pattern" }
+i18n_lstring-rizzen-yazston = { version = "0.3.1", path = "../lstring" }
+i18n_lexer-rizzen-yazston = { version = "0.3.1", path = "../lexer" }
+i18n_pattern-rizzen-yazston = { version = "0.3.1", path = "../pattern" }
+#i18n_provider-rizzen-yazston = { version = "0.0.0", path = "../provider" }
 #i18n_message-rizzen-yazston = { version = "0.0.0", path = "../message" }
 
 [lib]

@@ -43,7 +43,7 @@
 use icu_provider::prelude::*;
 use icu_provider::serde::AsDeserializingBufferProvider;
 use icu_properties::sets::{load_pattern_white_space, load_pattern_syntax, CodePointSetData};
-use icu_segmenter::GraphemeClusterBreakSegmenter;
+use icu_segmenter::GraphemeClusterSegmenter;
 use std::rc::Rc;
 
 /// String lexer and token types.
@@ -92,7 +92,7 @@ pub enum TokenType {
 pub struct Lexer {
     pattern_syntax: CodePointSetData,
     pattern_white_space: CodePointSetData,
-    grapheme_segmenter: GraphemeClusterBreakSegmenter,
+    grapheme_segmenter: GraphemeClusterSegmenter,
     token_position_byte: Option<usize>,
     token_position_character: Option<usize>,
     token_position_grapheme: Option<usize>,
@@ -146,7 +146,7 @@ impl Lexer {
             Err( _ ) => return Err( "Failed to load Pattern_White_Space.".to_string() ),
             Ok( response ) => response
         };
-        let grapheme_segmenter = match GraphemeClusterBreakSegmenter::try_new_unstable(
+        let grapheme_segmenter = match GraphemeClusterSegmenter::try_new_unstable(
             &buffer_provider.as_deserializing()
         ) {
             Err(_) => return Err( "Failed to get grapheme segmenter.".to_string() ),

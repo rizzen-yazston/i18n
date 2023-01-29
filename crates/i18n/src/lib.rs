@@ -7,6 +7,10 @@
 //! 
 //! * i18n_lstring-rizzen-yazston
 //! 
+//! * i18n_lexer-rizzen-yazston
+//! 
+//! * i18n_pattern-rizzen-yazston
+//! 
 //! # Usage
 //! 
 //! For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficient to use the multilingual message
@@ -17,7 +21,7 @@
 //! ```
 //! [dependencies]
 //! icu_locid = "1.0.0"
-//! i18n-rizzen-yazston = "0.2.0"
+//! i18n-rizzen-yazston = "0.3.1"
 //! ```
 //! 
 //! ## Examples
@@ -25,5 +29,6 @@
 //! See the various component crates for usage examples.
 
 pub use i18n_lstring-rizzen-yazston as lstring;
-//pub use pattern-rizzen-yazston as pattern;
-//pub use message-rizzen-yazston as message;
+pub use i18n_lexer-rizzen-yazston as lexer;
+pub use i18n_pattern-rizzen-yazston as pattern;
+//pub use i18n_message-rizzen-yazston as message;
