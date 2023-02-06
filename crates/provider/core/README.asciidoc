@@ -1,0 +1,23 @@
+= i18n_provider
+Rizzen Yazston
+:BufferProvider: https://docs.rs/icu_provider/latest/icu_provider/buf/trait.BufferProvider.html
+:CLDR: https://cldr.unicode.org/
+:ICU4X: https://github.com/unicode-org/icu4x
+:Unicode_Consortium: https://home.unicode.org/
+
+Pattern string provider.
+
+Get from provider source.
+
+== Cargo.toml
+
+```
+[dependencies]
+i18n_provider-rizzen-yazston = "0.3.1"
+```
+
+== Examples
+
+```
+// TODO: get from source
+```
