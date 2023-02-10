@@ -34,7 +34,8 @@ use i18n_lstring::LString;
 
 let string = "This is a test string.";
 let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+let lang_string = LString::new( string, &locale );
 
-assert_eq!( lang_string.locale(), locale, "Locale failed." );
+assert_eq!( lang_string.as_str(), string, "String failed." );
+assert_eq!( lang_string.locale(), &locale, "Locale failed." );
 ```

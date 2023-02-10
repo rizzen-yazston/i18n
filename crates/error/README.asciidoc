@@ -1,21 +1,12 @@
 = i18n_error
 Rizzen Yazston
-:Locale: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
-:icu_locid: https://crates.io/crates/icu_locid
-:icu: https://crates.io/crates/icu
-:ICU4X: https://github.com/unicode-org/icu4x
-:Unicode Consortium: https://home.unicode.org/
-:LanguageIdentifier: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
-:BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
-
-The `i18n_error` crate contains the `Error` struct for various functions returning errors in the Internationalisation project.
+The `i18n_error` crate contains the `ErrorMessage` struct for various functions returning errors in the Internationalisation (`i18n`) project. Also contains the `PlaceholderValue` enum of the various supported placeholder values required when formatting for the specified locale.
 
 == Cargo.toml
 
 ```
 [dependencies]
-icu_locid = "1.0.0"
 i18n_error-rizzen-yazston = "0.3.1"
 ```
 

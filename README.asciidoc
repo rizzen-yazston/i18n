@@ -9,17 +9,19 @@ Welcome to the Internationalisation (`i18n`) project.
 
 The repository contains the following crates:
 
-- `lstring`: Binding a `Locale` to a `String`,
+- `i18n_lstring`: Binding a `Locale` to a `String`,
 
-- `lexer`: A simple lexer to tokenise a string,
+- `i18n_error`: Contains the `ErrorMessage` struct, and `PlaceholderValue` enum for supported data types for multilingual messages.
 
-- `pattern`: Similar to the `icu_pattern` crate of `ICU4X` with added macro functionality,
+- `i18n_lexer`: A simple lexer to tokenise a string,
 
-- `message`: The multilingual messaging system,
+- `i18n_pattern`: Similar to the `icu_pattern` crate of `ICU4X` with the added support of macro functionality,
+
+- `i18n_message`: The multilingual messaging system,
 
 - `i18n`: The convenience meta crate that contains selected available crates,
 
-- `utility`: Contains various useful components.
+- `i18n_utility`: Contains various useful components.
 
 Note:: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from other internationalisation creates by other authors.
 
@@ -32,8 +34,8 @@ For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficie
 ```
 [dependencies]
 icu_locid = "1.0.0"
-i18n-rizzen-yazston = "0.2.0"
-i18n_utility-rizzen-yazston = "0.2.0"
+i18n-rizzen-yazston = "0.3.1"
+i18n_utility-rizzen-yazston = "0.3.1"
 ```
 
 === Examples

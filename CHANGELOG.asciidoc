@@ -1,6 +1,16 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.?.? (2023-??-??)
+
+* Added the `i18n_error` crate:
+
+** Added `ErrorMessage` and `PlaceholderValue`.
+
+* Updated the `i18n_lstring`:
+
+** Changed `new()` to take `&str` instead of `String`.
+
 == i18n 0.3.1 (2023-01-29)
 
 * Updated the `i18n_pattern` crate:

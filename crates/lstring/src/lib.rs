@@ -22,9 +22,10 @@
 //! 
 //! let string = "This is a test string.";
 //! let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-//! let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+//! let lang_string = LString::new( string, &locale );
 //! 
-//! assert_eq!( lang_string.locale(), locale, "Locale failed." );
+//! assert_eq!( lang_string.as_str(), string, "String failed." );
+//! assert_eq!( lang_string.locale(), &locale, "Locale failed." );
 //! ```
 //! 
 //! [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
@@ -60,9 +61,10 @@ use std::rc::Rc;
 /// 
 /// let string = "This is a test string.";
 /// let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-/// let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+/// let lang_string = LString::new( string, &locale );
 /// 
-/// assert_eq!( lang_string.locale(), locale, "Locale failed." );
+/// assert_eq!( lang_string.as_str(), string, "String failed." );
+/// assert_eq!( lang_string.locale(), &locale, "Locale failed." );
 /// ```
 /// 
 /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
@@ -73,14 +75,14 @@ use std::rc::Rc;
 /// [Unicode Consortium]: https://home.unicode.org/
 /// [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-#[derive( PartialEq )]
+#[derive( PartialEq, Debug )]
 pub struct LString {
     string: String,
     locale: Rc<Locale>,
 }
 
 impl LString {
-    /// Creates a `LString` object from a [`String`] and a reference counter [`Locale`].
+    /// Creates a `LString` object from a reference to a string slice [`str`] and a reference counted [`Locale`].
     /// 
     /// # Examples
     /// 
@@ -91,15 +93,16 @@ impl LString {
     /// 
     /// let string = "This is a test string.";
     /// let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-    /// let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+    /// let lang_string = LString::new( string, &locale );
     /// 
-    /// assert_eq!( lang_string.locale(), locale, "Locale failed." );
+    /// assert_eq!( lang_string.as_str(), string, "String failed." );
+    /// assert_eq!( lang_string.locale(), &locale, "Locale failed." );
     /// ```
     /// 
-    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`str`]: https://doc.rust-lang.org/nightly/core/primitive.str.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
-    pub fn new( string: String, locale: Rc<Locale> ) -> Self {
-        LString { string, locale }
+    pub fn new( string: &str, locale: &Rc<Locale> ) -> Self {
+        LString { string: String::from( string ), locale: Rc::clone( locale ) }
     }
 
     /// Returns a reference to the internal [`String`].
@@ -113,7 +116,7 @@ impl LString {
     /// 
     /// let string = "This is a test string.";
     /// let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-    /// let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+    /// let lang_string = LString::new( string, &locale );
     /// 
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// ```
@@ -123,7 +126,7 @@ impl LString {
         &self.string
     }
 
-    /// Returns a reference counter for [`Locale`].
+    /// Returns a reference counted for [`Locale`].
     /// 
     /// # Examples
     /// 
@@ -132,16 +135,15 @@ impl LString {
     /// use std::rc::Rc;
     /// use i18n_lstring::LString;
     /// 
-    /// let string = "This is a test string.";
     /// let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-    /// let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+    /// let lang_string = LString::new( "This is a test string.", &locale );
     /// 
-    /// assert_eq!( lang_string.locale(), locale, "Locale failed." );
+    /// assert_eq!( lang_string.locale(), &locale, "Locale failed." );
     /// ```
     /// 
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
-    pub fn locale( &self ) -> Rc<Locale> {
-        Rc::clone( &self.locale )
+    pub fn locale( &self ) -> &Rc<Locale> {
+        &self.locale
     }
 }
 
@@ -150,11 +152,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn check() {
+    fn locale_and_string() {
         let string = "This is a test string.";
         let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-        let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
+        let lang_string = LString::new( string, &locale );
     
-        assert_eq!( lang_string.locale(), locale, "Locale failed." );
+        assert_eq!( lang_string.locale(), &locale, "Locale failed." );
+        assert_eq!( lang_string.as_str(), string, "String failed." );
     }
 }
