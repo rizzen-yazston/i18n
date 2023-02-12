@@ -2,28 +2,29 @@
 Rizzen Yazston
 :url-unicode: https://unicode.org/
 :icu4x: https://github.com/unicode-org/icu4x
+:BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
-Welcome to the Internationalisation (`i18n`) project.
+Welcome to the Internationalisation (I18n) project.
 
-`i18n` provides alternative components for the {icu4x}[ICU4X] project (maintained by the {url-unicode}[*Unicode Consortium*]), yet still depends on many core components of `ICU4X` for internal functionality, thus can also be seen as an extension library to ICU4X. The `i18n` project consists of an alternative messaging system, and adding macro functionality to pattern.
+The *Internationalisation* project provides alternative components for the {icu4x}[*ICU4X*] project (maintained by the {url-unicode}[*Unicode Consortium*]), yet still depends on many core components of ICU4X for internal functionality, thus can also be seen as an extension library to ICU4X. The Internationalisation project consists of an alternative messaging system, and adding macro functionality to patterns when formatting strings for locales.
 
 The repository contains the following crates:
 
-- `i18n_lstring`: Binding a `Locale` to a `String`,
+- `i18n`: The convenience meta crate that contains selected available crates,
+
+- `i18n_lstring`: Associating a {BCP_47_Language_Tag}[_BCP 47 Language Tag_] to a `String`,
 
 - `i18n_error`: Contains the `ErrorMessage` struct, and `PlaceholderValue` enum for supported data types for multilingual messages.
 
 - `i18n_lexer`: A simple lexer to tokenise a string,
 
-- `i18n_pattern`: Similar to the `icu_pattern` crate of `ICU4X` with the added support of macro functionality,
+- `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
 
 - `i18n_message`: The multilingual messaging system,
 
-- `i18n`: The convenience meta crate that contains selected available crates,
-
 - `i18n_utility`: Contains various useful components.
 
-Note:: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from other internationalisation creates by other authors.
+Note:: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from internationalisation crates created by other authors.
 
 == Usage
 

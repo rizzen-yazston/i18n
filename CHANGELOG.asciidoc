@@ -1,15 +1,27 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.?.? (2023-??-??)
+== i18n 0.4.0 (2023-??-??)
+
+Warning: This update has many API breaking changes for all existing `i18n` crates.
+
+* Updated the `i18n_lstring` crate:
+
+** To facilitate the usage of `ErrorMessage`, it is required that the error messages should almost have no crate dependencies, especially at times when the message system will not be used to localise the error message. Thus replaced `Rc<Locale>` with `Rc<String>`, where `String` represents a BCP 47 Language Tag. This affects the `LString` struct, and methods: `new`, and `locale` replaced with `language_tag`.
+
+** Additional change to `new()` parameter `string` to `Into<String>` instead of `String` as there are types that do have methods for type conversions.
+
+** Updated unit tests, examples and documentation to reflect the changes.
 
 * Added the `i18n_error` crate:
 
 ** Added `ErrorMessage` and `PlaceholderValue`.
 
-* Updated the `i18n_lstring`:
+* Updated the `i18n_utility` crate:
 
-** Changed `new()` to take `&str` instead of `String`.
+** Changed `get()` to return `ErrorMessage` upon locale parsing error.
+
+** Changed `get()` to take `&str` instead of `String`.
 
 == i18n 0.3.1 (2023-01-29)
 
