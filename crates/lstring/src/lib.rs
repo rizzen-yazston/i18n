@@ -3,8 +3,8 @@
 
 //! Language string.
 //! 
-//! This crate contains the `LString` type (aka LanguageString), for associating a text string (`[String]`) to a
-//! specific language (`[Rc]<String>`).
+//! This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
+//! specific language ([`Rc`]`<String>`).
 //! 
 //! The specified language is expected to be a [BCP 47 Language Tag] string, though any identifier could be used.
 //! 
@@ -25,16 +25,16 @@
 //! assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 //! ```
 //! 
-//! [String]: https://doc.rust-lang.org/std/string/struct.String.html
-//! [Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+//! [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+//! [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
 //! [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
 use std::rc::Rc;
 
 /// Language string.
 /// 
-/// This crate contains the `LString` type (aka LanguageString), for associating a text string (`[String]`) to a
-/// specific language (`[Rc]<String>`).
+/// This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
+/// specific language ([`Rc`]`<String>`).
 /// 
 /// The specified language is expected to be a [BCP 47 Language Tag] string, though any identifier could be used.
 /// 
@@ -55,8 +55,8 @@ use std::rc::Rc;
 /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 /// ```
 /// 
-/// [String]: https://doc.rust-lang.org/std/string/struct.String.html
-/// [Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+/// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+/// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 #[derive( PartialEq, Debug )]
 pub struct LString {
@@ -65,7 +65,7 @@ pub struct LString {
 }
 
 impl LString {
-    /// Creates a `LString` from string slice `[str]` and a language tag as `&[Rc]<[String]>`.
+    /// Creates a `LString` from string slice [`str`] and a language tag as `&`[`Rc`]`<`[`String`]`>`.
     /// 
     /// *WARNING:* No checks are done on the supplied language tag to see if it conforms to the [BCP 47 Language Tag]
     /// specification in terms of:
@@ -76,7 +76,7 @@ impl LString {
     /// 
     /// * _canonical_ - valid and no deprecated codes or structure.
     /// 
-    /// If required the `[Locale]::canonicalize()` function of `[icu_locid]` crate can be used to perform the
+    /// If required the [`Locale`]`::canonicalize()` function of [`icu_locid`] crate can be used to perform the
     /// conformance checks.
     /// 
     /// # Examples
@@ -96,17 +96,17 @@ impl LString {
     /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
     /// ```
     /// 
-    /// [str]: https://doc.rust-lang.org/core/primitive.str.html
-    /// [Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-    /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`str`]: https://doc.rust-lang.org/core/primitive.str.html
+    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    /// [Locale]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
-    /// [icu_locid]: https://crates.io/crates/icu_locid
+    /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
+    /// [`icu_locid`]: https://crates.io/crates/icu_locid
     pub fn new<T: Into<String>>( string: T, language_tag: &Rc<String> ) -> Self {
         LString { string: string.into(), language_tag: Rc::clone( language_tag ) }
     }
 
-    /// Returns a reference `&[str]` to the internal `[String]`.
+    /// Returns a reference (`&`[`str`]) to the internal [`String`].
     /// 
     /// # Examples
     /// 
@@ -123,13 +123,13 @@ impl LString {
     /// 
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// ```
-    /// [str]: https://doc.rust-lang.org/core/primitive.str.html
-    /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`str`]: https://doc.rust-lang.org/core/primitive.str.html
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     pub fn as_str( &self ) -> &str {
         &self.string
     }
 
-    /// Returns a reference to the language tag `[Rc]<[String]>`.
+    /// Returns a reference to the language tag [`Rc`]`<`[`String`]`>`.
     /// 
     /// # Examples
     /// 
@@ -145,8 +145,8 @@ impl LString {
     /// 
     /// assert_eq!( lang_string.language_tag(), &tag, "Locale failed." );
     /// ```
-    /// [Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-    /// [String]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     pub fn language_tag( &self ) -> &Rc<String> {
         &self.language_tag
     }

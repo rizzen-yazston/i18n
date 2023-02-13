@@ -7,16 +7,16 @@
 //! 
 //! # Registry for holding [`ICU4X`] [`Locale`] types.
 //! 
-//! This module contains the `LocaleRegistry` type, to provide a simple container that contains [`Locale`] types for
-//! provided language tags. The purpose of the registry is to reduce the need of parsing language tags repeatedly, by
-//! storing the result [`Locale`] for provided language tag in the registry, and uses the existing [`Locale`] for the 
-//! language tag when requested.
+//! This module contains the `LanguageTagRegistry` type, to provide a simple container that contains the
+//! [BCP 47 Language Tag] string and the [`Locale`] type for querying language tags. The purpose of the registry is to
+//! reduce the need of parsing language tags repeatedly, by storing the result `Locale` for querying language tag in
+//! the registry, and uses the existing `Locale` for the querying language tag when requested.
 //! 
-//! The [`Locale`] type can be provided by either the [`icu_locid`] crate or the [`icu`] meta-crate. These two crates
+//! The `Locale` type can be provided by either the [`icu_locid`] crate or the [`icu`] meta-crate. These two crates
 //! are part of the [`ICU4X`] protect developed by the [Unicode Consortium].
 //! 
-//! This crate makes use of the [`Locale`] type instead of the [`LanguageIdentifier`] type due to that the [`Locale`]
-//! type supports the entire [BCP 47 Language Tag] specification, where as the [`LanguageIdentifier`] type excludes the
+//! This crate makes use of the `Locale` type instead of the [`LanguageIdentifier`] type due to that the `Locale`
+//! type supports the entire BCP 47 Language Tag specification, where as the `LanguageIdentifier` type excludes the
 //! **extension** subtags of the BCP 47 Language Tag specification.
 //! 
 //! ## Examples
@@ -24,13 +24,13 @@
 //! ```
 //! use icu_locid::Locale;
 //! use std::rc::Rc;
-//! use i18n_utility::locale::LocaleRegistry;
+//! use i18n_utility::locale::LanguageTagRegistry;
 //! 
-//! let mut registry = LocaleRegistry::new();
-//! let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
+//! let mut registry = LanguageTagRegistry::new();
+//! let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
 //! let tags = registry.list().iter().count();
 //! 
-//! assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+//! assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
 //! assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
 //! ```
 //! 
@@ -42,6 +42,7 @@
 //! [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 //! [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
+use i18n_error::{ ErrorMessage, PlaceholderValue };
 use icu_locid::Locale;
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -49,16 +50,16 @@ use std::iter::FromIterator;
 
 /// Registry for holding [`ICU4X`] [`Locale`] types.
 /// 
-/// This module contains the `LocaleRegistry` type, to provide a simple container that contains [`Locale`] types for
-/// provided language tags. The purpose of the registry is to reduce the need of parsing language tags repeatedly, by
-/// storing the result [`Locale`] for provided language tag in the registry, and uses the existing [`Locale`] for the 
-/// language tag when requested.
+/// This module contains the `LanguageTagRegistry` type, to provide a simple container that contains the
+/// [BCP 47 Language Tag] string and the [`Locale`] type for querying language tags. The purpose of the registry is to
+/// reduce the need of parsing language tags repeatedly, by storing the result `Locale` for querying language tag in
+/// the registry, and uses the existing `Locale` for the querying language tag when requested.
 /// 
-/// The [`Locale`] type can be provided by either the [`icu_locid`] crate or the [`icu`] meta-crate. These two crates
+/// The `Locale` type can be provided by either the [`icu_locid`] crate or the [`icu`] meta-crate. These two crates
 /// are part of the [`ICU4X`] protect developed by the [Unicode Consortium].
 /// 
-/// This crate makes use of the [`Locale`] type instead of the [`LanguageIdentifier`] type due to that the [`Locale`]
-/// type supports the entire [BCP 47 Language Tag] specification, where as the [`LanguageIdentifier`] type excludes the
+/// This crate makes use of the `Locale` type instead of the [`LanguageIdentifier`] type due to that the `Locale`
+/// type supports the entire BCP 47 Language Tag specification, where as the `LanguageIdentifier` type excludes the
 /// **extension** subtags of the BCP 47 Language Tag specification.
 /// 
 /// # Examples
@@ -66,13 +67,13 @@ use std::iter::FromIterator;
 /// ```
 /// use icu_locid::Locale;
 /// use std::rc::Rc;
-/// use i18n_utility::locale::LocaleRegistry;
+/// use i18n_utility::locale::LanguageTagRegistry;
 /// 
-/// let mut registry = LocaleRegistry::new();
-/// let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
+/// let mut registry = LanguageTagRegistry::new();
+/// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
 /// let tags = registry.list().iter().count();
 /// 
-/// assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+/// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
 /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
 /// ```
 /// 
@@ -83,12 +84,14 @@ use std::iter::FromIterator;
 /// [Unicode Consortium]: https://home.unicode.org/
 /// [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-pub struct LocaleRegistry {
-    bcp47: HashMap<String, Rc<Locale>>,
-    icu: HashMap<String, Rc<Locale>>,
+pub struct LanguageTagRegistry {
+    bcp47: HashMap<String, ( Rc<String>, Rc<Locale> )>,
+    // Well-formed, but with: deprecated subtag(s), incorrect case used for subtag(s), and/or underscore (_) used
+    // instead of hyphen (-).
+    deprecated: HashMap<String, ( Rc<String>, Rc<Locale> )>,
 }
 
-impl LocaleRegistry {
+impl LanguageTagRegistry {
     /// Creates an empty registry.
     /// 
     /// # Examples
@@ -96,79 +99,157 @@ impl LocaleRegistry {
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::locale::LocaleRegistry;
+    /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LocaleRegistry::new();
-    /// let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
+    /// let mut registry = LanguageTagRegistry::new();
+    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
-    /// assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
     /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
     /// ```
     pub fn new() -> Self {
-        LocaleRegistry { bcp47: HashMap::<String, Rc<Locale>>::new(), icu: HashMap::<String, Rc<Locale>>::new() }
+        LanguageTagRegistry {
+            bcp47: HashMap::<String, ( Rc<String>, Rc<Locale> )>::new(),
+            deprecated: HashMap::<String, ( Rc<String>, Rc<Locale> )>::new()
+        }
     }
 
-    /// Obtain a [`Locale`] reference for the specified language tag. The language tag may use either the
-    /// [BCP 47 Language Tag] specification or the [ICU Locale] specification, though the resultant [`Locale`] will
-    /// always formats the string according to the BCP 47 Language Tag specification.
+    /// Obtain a tuple pair of referenced counted language tag and ICU4X locale
+    /// `( `[`Rc`]`<`[`String`]`>, Rc<`[`Locale`]`> )`.
     /// 
-    /// An error is returned if the language tag is malformed.
+    /// An error will be returned if the querying tag is malformed, that is does not conform to the
+    /// [BCP 47 Language Tag] specification for being _Well-formed_. 
     /// 
-    /// Note: If the language tag is of the ICU Locale specification (that is containing underscores (_)), then both the
-    /// ICU Locale] specification language tag and the resultant BCP 47 Language Tag will be added to the registry using
-    /// the resultant [`Locale`].
+    /// However deprecated tags (containing deprecated subtag(s) and/or the deprecated underscore (_)) may still
+    /// produce a valid BCP 47 Language Tag during the ICU4X locale canonicalise process of the querying tag. Thus will
+    /// be stored in the registry with both the querying tag and the resultant BCP 47 Language Tag, for the ICU4X
+    /// [`Locale`] value.
     /// 
     /// # Examples
     /// 
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::locale::LocaleRegistry;
+    /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LocaleRegistry::new();
-    /// let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
+    /// let mut registry = LanguageTagRegistry::new();
+    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// let tags = registry.list().iter().count();
+    /// 
+    /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
+    /// ```
+    /// 
+    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
+    /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+    pub fn get( &mut self, language_tag: &str ) -> Result<( Rc<String>, Rc<Locale> ), ErrorMessage> {
+        if let Some( result ) = self.bcp47.get( language_tag ) {
+            return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
+        }
+        if let Some( result ) = self.deprecated.get_mut( language_tag ) {
+            return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
+        }
+        let Ok( new_locale ) = Locale::try_from_bytes( language_tag.as_bytes() ) else {
+            return Err( ErrorMessage {
+                string: String::from( "Invalid language tag." ),
+                identifier: String::from( "i18n_utility/invalid_language_tag" ),
+                values: HashMap::<String, PlaceholderValue>::new(),
+            } );
+        };
+        let new_tag = new_locale.to_string();
+        {
+            if let Some( result ) = self.bcp47.get( &new_tag ) {
+                self.deprecated.insert(
+                    language_tag.to_string(),
+                    ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) )
+                );
+                return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
+            }
+        }
+        let rc_new_locale = Rc::new( new_locale );
+        let rc_new_tag = Rc::new( new_tag );
+        if language_tag != rc_new_tag.as_str() {
+            self.deprecated.insert(
+                language_tag.to_string(),
+                ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) )
+            );
+        }
+        self.bcp47.insert(
+            rc_new_tag.as_str().to_string(),
+            ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) )
+        );
+        return Ok( ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) ) );
+    }
+
+    /// Obtain a referenced counted language tag [`Rc`]`<`[`String`]`>`.
+    /// 
+    /// An error will be returned if the querying tag is malformed, that is does not conform to the
+    /// [BCP 47 Language Tag] specification for being _Well-formed_. 
+    /// 
+    /// However deprecated tags (containing deprecated subtag(s) and/or the deprecated underscore (_)) may still
+    /// produce a valid BCP 47 Language Tag during the ICU4X locale canonicalise process of the querying tag. Thus will
+    /// be stored in the registry with both the querying tag and the resultant BCP 47 Language Tag, for the ICU4X
+    /// [`Locale`] value.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use icu_locid::Locale;
+    /// use std::rc::Rc;
+    /// use i18n_utility::locale::LanguageTagRegistry;
+    /// 
+    /// let mut registry = LanguageTagRegistry::new();
+    /// let tag = registry.get_language_tag( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// let tags = registry.list().iter().count();
+    /// 
+    /// assert_eq!( tag.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
+    /// ```
+    /// 
+    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
+    /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+    pub fn get_language_tag( &mut self, language_tag: &str ) -> Result<Rc<String>, ErrorMessage> {
+        let result = self.get( language_tag )?;
+        Ok( result.0 )
+    }
+
+    /// Obtain a ICU4X locale [`Rc`]`<`[`Locale`]`>`.
+    /// 
+    /// An error will be returned if the querying tag is malformed, that is does not conform to the
+    /// [BCP 47 Language Tag] specification for being _Well-formed_. 
+    /// 
+    /// However deprecated tags (containing deprecated subtag(s) and/or the deprecated underscore (_)) may still
+    /// produce a valid BCP 47 Language Tag during the ICU4X locale canonicalise process of the querying tag. Thus will
+    /// be stored in the registry with both the querying tag and the resultant BCP 47 Language Tag, for the ICU4X
+    /// [`Locale`] value.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use icu_locid::Locale;
+    /// use std::rc::Rc;
+    /// use i18n_utility::locale::LanguageTagRegistry;
+    /// 
+    /// let mut registry = LanguageTagRegistry::new();
+    /// let locale = registry.get_locale( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
     /// assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
     /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
     /// ```
     /// 
+    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    /// [ICU Locale]: https://unicode-org.github.io/icu/userguide/locale/
-    pub fn get( &mut self, language_tag: String ) -> Result<Rc<Locale>, String> {
-        if let Some( locale ) = self.bcp47.get( &language_tag ) {
-            return Ok( Rc::clone( locale ) );
-        }
-        if let Some( locale ) = self.icu.get( &language_tag ) {
-            return Ok( Rc::clone( locale ) );
-        }
-        match Locale::try_from_bytes( language_tag.as_bytes() ) {
-            Err( _error ) => return Err( "Invalid language tag.".to_string() ),
-            Ok( locale_new ) => {
-                let tag = locale_new.to_string();
-                let mut locale: Option<Rc<Locale>> = None;
-                {
-                    if let Some( _locale ) = self.bcp47.get( &tag ) {
-                        locale = Some( Rc::clone( _locale ) );
-                    }
-                }
-                {
-                    if !locale.is_none() {
-                        let locale2 = locale.unwrap();
-                        self.icu.insert( language_tag, Rc::clone( &locale2 ) );
-                        return Ok( Rc::clone( &locale2 ) );
-                    }
-                }
-                let rc_locale_new = Rc::new( locale_new );
-                if language_tag != tag {
-                    self.icu.insert( language_tag, Rc::clone( &rc_locale_new ) );
-                }
-                self.bcp47.insert( tag, Rc::clone( &rc_locale_new ) );
-                return Ok( Rc::clone( &rc_locale_new ) );
-            }
-        }
+    pub fn get_locale( &mut self, language_tag: &str ) -> Result<Rc<Locale>, ErrorMessage> {
+        let result = self.get( language_tag )?;
+        Ok( result.1 )
     }
 
     /// Returns a vector list of all the registered language tags of the [BCP 47 Language Tag] specification.
@@ -178,71 +259,66 @@ impl LocaleRegistry {
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::locale::LocaleRegistry;
+    /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LocaleRegistry::new();
-    /// let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
+    /// let mut registry = LanguageTagRegistry::new();
+    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
     /// let tags = registry.list().iter().count();
     /// 
-    /// assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
     /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
     /// ```
     /// 
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    /// [ICU Locale]: https://unicode-org.github.io/icu/userguide/locale/
     pub fn list( &self ) -> Vec<&String> {
         Vec::from_iter( self.bcp47.keys() )
     }
 
-    /// Returns a vector list of all the registered language tags of the [ICU Locale] specification.
+    /// Returns a vector list of all the registered language tags of deprecated specification.
     /// 
     /// # Examples
     /// 
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::locale::LocaleRegistry;
+    /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LocaleRegistry::new();
-    /// let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
-    /// let icu_tags = registry.list_icu().iter().count();
+    /// let mut registry = LanguageTagRegistry::new();
+    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
+    /// let deprecated_tags = registry.list_deprecated().iter().count();
     /// 
-    /// assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
-    /// assert_eq!( icu_tags, 1, "Supposed to be 2 entries: en_ZA." )
+    /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    /// assert_eq!( deprecated_tags, 1, "Supposed to be 2 entries: en_ZA." )
     /// ```
-    /// 
-    /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    /// [ICU Locale]: https://unicode-org.github.io/icu/userguide/locale/
-    pub fn list_icu( &self ) -> Vec<&String> {
-        Vec::from_iter( self.icu.keys() )
+    pub fn list_deprecated( &self ) -> Vec<&String> {
+        Vec::from_iter( self.deprecated.keys() )
     }
 
     /// Returns a vector list of all the registered language tags.
     /// 
-    /// Note: Each language tag included in the list can be either the [BCP 47 Language Tag] specification or the
-    /// [ICU Locale] specification.
+    /// Note: Each language tag included in the list can either be conforming [BCP 47 Language Tag] specification or
+    /// deprecated specification.
     /// 
     /// # Examples
     /// 
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::locale::LocaleRegistry;
+    /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LocaleRegistry::new();
-    /// let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
+    /// let mut registry = LanguageTagRegistry::new();
+    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
     /// let all_tags = registry.list_all().iter().count();
     /// 
-    /// assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
     /// assert_eq!( all_tags, 2, "Supposed to be 2 entries: en_ZA and en-ZA." )
     /// ```
     /// 
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    /// [ICU Locale]: https://unicode-org.github.io/icu/userguide/locale/
     pub fn list_all( &self ) -> Vec<&String> {
         let mut list = Vec::from_iter( self.bcp47.keys() );
-        let mut icu = Vec::from_iter( self.icu.keys() );
-        list.append( &mut icu );
+        let mut deprecated = Vec::from_iter( self.deprecated.keys() );
+        list.append( &mut deprecated );
         list
     }
 }
@@ -252,16 +328,59 @@ mod tests {
     use super::*;
 
     #[test]
-    fn check() {
-        let mut registry = LocaleRegistry::new();
-        let locale = registry.get( "en_ZA".to_string() ).expect( "Failed to parse language tag." );
-        let pcb47 = registry.list().iter().count();
-        let icu = registry.list_icu().iter().count();
-        let all = registry.list_all().iter().count();
+    fn get() {
+        let mut registry = LanguageTagRegistry::new();
+        let result = registry.get( "en_ZA" )
+            .expect( "Failed to parse language tag." );
+    
+        assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    }
+
+    #[test]
+    fn get_language_tag() {
+        let mut registry = LanguageTagRegistry::new();
+        let tag = registry.get_language_tag( "en_ZA" )
+            .expect( "Failed to parse language tag." );
+
+        assert_eq!( tag.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    }
+
+    #[test]
+    fn get_locale() {
+        let mut registry = LanguageTagRegistry::new();
+        let locale = registry.get_locale( "en_ZA" )
+            .expect( "Failed to parse language tag." );
     
         assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+    }
+
+    #[test]
+    fn list() {
+        let mut registry = LanguageTagRegistry::new();
+        registry.get( "en_ZA" )
+            .expect( "Failed to parse language tag." );
+        let pcb47 = registry.list().iter().count();
+    
         assert_eq!( pcb47, 1, "Supposed to be 1 entries: en-ZA." );
-        assert_eq!( icu, 1, "Supposed to be 1 entries: en_ZA." );
+    }
+
+    #[test]
+    fn list_all() {
+        let mut registry = LanguageTagRegistry::new();
+        registry.get( "en_ZA" )
+            .expect( "Failed to parse language tag." );
+        let all = registry.list_all().iter().count();
+    
         assert_eq!( all, 2, "Supposed to be 2 entries: en_ZA and en-ZA." );
+    }
+
+    #[test]
+    fn list_deprecated() {
+        let mut registry = LanguageTagRegistry::new();
+        registry.get( "en_ZA" )
+            .expect( "Failed to parse language tag." );
+        let deprecated = registry.list_deprecated().iter().count();
+    
+        assert_eq!( deprecated, 1, "Supposed to be 1 entries: en_ZA." );
     }
 }

@@ -29,20 +29,5 @@ publish = false
 [dependencies]
 i18n_lstring-rizzen-yazston = { version = "0.3.1", path = "../lstring" }
 
-[dependencies.fixed_decimal]
-version = "0.5.2"
-# Needed for BufferProvider
-features = [ "ryu" ]
-
-[dependencies.icu_calendar]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde" ]
-
-[dependencies.icu_datetime]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde" ]
-
 [lib]
 name = "i18n_error"

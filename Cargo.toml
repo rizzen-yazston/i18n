@@ -5,11 +5,11 @@
 resolver = "2"
 members = [
     "crates/lstring",
+    "crates/error",
 #    "crates/lexer",
 #    "crates/pattern",
 #    "crates/message",
-#    "crates/error",
-#    "crates/utility",
+    "crates/utility",
 ]
 
 exclude = [
