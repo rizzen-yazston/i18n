@@ -21,7 +21,13 @@
 //! use icu_testdata::buffer;
 //! 
 //! let buffer_provider = Box::new( buffer() );
-//! let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+//! let mut lexer = match Lexer::try_new( &buffer_provider ) {
+//!     Err( err ) => {
+//!         println!( "{:#?}", err );
+//!         std::process::exit( 1 )
+//!     },
+//!     Ok( result ) => result
+//! };
 //! let tokens = lexer.tokenise(
 //!     "String contains a {placeholder}.", &vec![ '{', '}' ]
 //! );
@@ -40,11 +46,13 @@
 //! [CLDR]: https://cldr.unicode.org/
 //! [ICU4X]: https://github.com/unicode-org/icu4x
 
+use i18n_error::{ ErrorMessage, PlaceholderValue };
 use icu_provider::prelude::*;
 use icu_provider::serde::AsDeserializingBufferProvider;
-use icu_properties::sets::{load_pattern_white_space, load_pattern_syntax, CodePointSetData};
+use icu_properties::sets::{ load_pattern_white_space, load_pattern_syntax, CodePointSetData };
 use icu_segmenter::GraphemeClusterSegmenter;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 /// String lexer and token types.
 /// 
@@ -117,9 +125,14 @@ impl Lexer {
     /// use icu_testdata::buffer;
     /// 
     /// let buffer_provider = Box::new( buffer() );
-    /// let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+    /// let mut lexer = match Lexer::try_new( &buffer_provider ) {
+    ///     Err( err ) => {
+    ///         println!( "{:#?}", err );
+    ///         std::process::exit( 1 )
+    ///     },
+    ///     Ok( result ) => result
+    /// };
     /// let tokens = lexer.tokenise(
-    ///     // World Map (U+1F5FA) is encoded in four bytes in UTF-8.
     ///     "String contains a {placeholder}.", &vec![ '{', '}' ]
     /// );
     /// let mut grammar = 0;
@@ -131,25 +144,37 @@ impl Lexer {
     /// }
     /// assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
     /// ```
-    /// [`Box`]: https://doc.rust-lang.org/nightly/std/boxed/struct.Box.html
+    /// [`Box`]: https://doc.rust-lang.org/std/boxed/index.html
     /// [`FsDataProvider`]: https://docs.rs/icu_provider_fs/latest/icu_provider_fs/struct.FsDataProvider.html
-    pub fn try_new( buffer_provider: &Box<impl BufferProvider + ?Sized> ) -> Result<Self, String> {
+    pub fn try_new( buffer_provider: &Box<impl BufferProvider + ?Sized> ) -> Result<Self, ErrorMessage> {
         let syntax = match load_pattern_syntax(
             &buffer_provider.as_deserializing()
         ) {
-            Err( _ ) => return Err( "Failed to load Pattern_Syntax.".to_string() ),
+            Err( _ ) => return Err( ErrorMessage {
+                string: String::from( "Failed to load Pattern_Syntax." ),
+                identifier: String::from( "i18n_lexer/load_pattern_syntax" ),
+                values: HashMap::<String, PlaceholderValue>::new(),
+            } ),
             Ok( response ) => response
         };
         let white_space = match load_pattern_white_space(
             &buffer_provider.as_deserializing()
         ) {
-            Err( _ ) => return Err( "Failed to load Pattern_White_Space.".to_string() ),
+            Err( _ ) => return Err( ErrorMessage {
+                string: String::from( "Failed to load Pattern_White_Space." ),
+                identifier: String::from( "i18n_lexer/load_pattern_white_space" ),
+                values: HashMap::<String, PlaceholderValue>::new(),
+            } ),
             Ok( response ) => response
         };
         let grapheme_segmenter = match GraphemeClusterSegmenter::try_new_unstable(
             &buffer_provider.as_deserializing()
         ) {
-            Err(_) => return Err( "Failed to get grapheme segmenter.".to_string() ),
+            Err(_) => return Err( ErrorMessage {
+                string: String::from( "Failed to get grapheme segmenter." ),
+                identifier: String::from( "i18n_lexer/load_grapheme_segmenter" ),
+                values: HashMap::<String, PlaceholderValue>::new(),
+            } ),
             Ok( segmenter ) => segmenter
         };
         Ok( Lexer {
@@ -187,7 +212,13 @@ impl Lexer {
     /// use icu_testdata::buffer;
     /// 
     /// let buffer_provider = Box::new( buffer() );
-    /// let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+    /// let mut lexer = match Lexer::try_new( &buffer_provider ) {
+    ///     Err( err ) => {
+    ///         println!( "{:#?}", err );
+    ///         std::process::exit( 1 )
+    ///     },
+    ///     Ok( result ) => result
+    /// };
     /// let tokens = lexer.tokenise(
     ///     "String contains a {placeholder}.", &vec![ '{', '}' ]
     /// );
@@ -201,13 +232,13 @@ impl Lexer {
     /// assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
     /// ```
     /// 
-    /// [`&str`]: https://doc.rust-lang.org/nightly/std/primitive.str.html
-    /// [`Vec`]: https://doc.rust-lang.org/nightly/std/vec/index.html
-    /// [`Rc`]: https://doc.rust-lang.org/nightly/std/rc/struct.Rc.html
-    /// [`char`]: https://doc.rust-lang.org/nightly/std/primitive.char.html
-    pub fn tokenise<'a>( &'a mut self, string: &'a str, grammar: &Vec<char> ) -> Vec<Rc<Token>> {
+    /// [`&str`]: https://doc.rust-lang.org/core/primitive.str.html
+    /// [`Vec`]: https://doc.rust-lang.org/std/vec/index.html
+    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+    /// [`char`]: https://doc.rust-lang.org/core/primitive.char.html
+    pub fn tokenise<T: AsRef<str>>( &mut self, string: T, grammar: &Vec<char> ) -> Vec<Rc<Token>> {
         let mut tokens = Vec::<Rc<Token>>::new();
-        if string.len() == 0 {
+        if string.as_ref().len() == 0 {
             return tokens;
         }
 
@@ -221,19 +252,19 @@ impl Lexer {
 
         let mut state = LexerStates::Identifier;
 
-        let mut iterator = string.char_indices();
+        let mut iterator = string.as_ref().char_indices();
 
         while let Some( ( position, character ) ) = iterator.next() {
             self.position_byte = position;
             if self.pattern_white_space.as_borrowed().contains( character ) {
                 if state == LexerStates::Identifier {
-                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
                 }
                 else if state == LexerStates::Grammar {
-                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
                 }
                 else if state == LexerStates::Syntax {
-                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
                 }
                 state = LexerStates::WhiteSpace;
             }
@@ -246,31 +277,31 @@ impl Lexer {
                     state = LexerStates::Syntax;
                 }
                 if state_previous == LexerStates::Identifier {
-                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
                 }
                 else if state_previous == LexerStates::WhiteSpace {
-                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string );
+                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string.as_ref() );
                 }
                 else {
                     if state_previous == LexerStates::Grammar {
-                        self.add_previous_characters( &mut tokens, TokenType::Grammar, string );
+                        self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
                     }
                     else {
                         if state == LexerStates::Grammar {
-                            self.add_previous_characters( &mut tokens, TokenType::Syntax, string );
+                            self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
                         }
                     }
                 }
             }
             else {
                 if state == LexerStates::WhiteSpace {
-                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string );
+                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string.as_ref() );
                 }
                 else if state == LexerStates::Grammar {
-                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
                 }
                 else if state == LexerStates::Syntax {
-                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
                 }
                 state = LexerStates::Identifier;
             }
@@ -279,19 +310,19 @@ impl Lexer {
 
         // Complete final token
         if !self.token_position_byte.is_none() {
-            self.position_byte = string.len();
+            self.position_byte = string.as_ref().len();
             match state {
                 LexerStates::Grammar => {
-                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
                 },
                 LexerStates::Syntax => {
-                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
                 },
                 LexerStates::Identifier => {
-                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string );
+                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
                 },
                 LexerStates::WhiteSpace => {
-                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string );
+                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string.as_ref() );
                 }
             }
         }
@@ -299,17 +330,17 @@ impl Lexer {
     }
 
     // Create a token for slice starting at the byte position after the previous token until current byte position.
-    fn add_previous_characters<'t, 'a>(
+    fn add_previous_characters<T: AsRef<str>>(
         &mut self,
         tokens: &mut Vec::<Rc<Token>>,
         token: TokenType,
-        string: &'t str,
+        string: T,
     ) {
         if self.token_position_byte != Some( self.position_byte ) {
             let start_byte = self.token_position_byte.unwrap();
             let start_character = self.token_position_character.unwrap();
             let start_grapheme = self.token_position_grapheme.unwrap();
-            let slice = &string[ start_byte .. self.position_byte ];
+            let slice = &string.as_ref()[ start_byte .. self.position_byte ];
             let len_byte = self.position_character - start_character;
             let len_character = self.position_character - start_character;
             let len_grapheme = self.grapheme_segmenter.segment_str( slice ).count() - 1;
@@ -344,7 +375,6 @@ enum LexerStates {
     Syntax, // Any other syntax character.
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -353,9 +383,14 @@ mod tests {
     #[test]
     fn tokenise() {
         let buffer_provider = Box::new( buffer() );
-        let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+        let mut lexer = match Lexer::try_new( &buffer_provider ) {
+            Err( err ) => {
+                println!( "{:#?}", err );
+                std::process::exit( 1 )
+            },
+            Ok( result ) => result
+        };
         let tokens = lexer.tokenise(
-            // World Map (U+1F5FA) is encoded in four bytes in UTF-8.
             "String contains a {placeholder}.", &vec![ '{', '}' ]
         );
         let mut grammar = 0;

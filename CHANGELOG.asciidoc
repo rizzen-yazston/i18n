@@ -5,6 +5,8 @@ Rizzen Yazston
 
 Warning: This update has many API breaking changes for all existing `i18n` crates.
 
+Main feature of this update is the adding of the `i18n_error` crate to provide the `ErrorMessage` to replace all the `String` used for the `Err()` results.
+
 * Updated the `i18n_lstring` crate:
 
 ** To facilitate the usage of `ErrorMessage`, it is required that the error messages should almost have no crate dependencies, especially at times when the message system will not be used to localise the error message. Thus replaced `Rc<Locale>` with `Rc<String>`, where `String` represents a BCP 47 Language Tag. This affects the `LString` struct, and methods: `new`, and `locale` replaced with `language_tag`.
@@ -19,9 +21,29 @@ Warning: This update has many API breaking changes for all existing `i18n` crate
 
 * Updated the `i18n_utility` crate:
 
-** Changed `get()` to return `ErrorMessage` upon locale parsing error.
+** Changed `get()`:
 
-** Changed `get()` to take `&str` instead of `String`.
+*** To return `ErrorMessage` upon locale parsing error,
+
+*** To use `AsRef<str>` instead of `String` for greater ease of use.
+
+*** To return a tuple pair of language tag (`Rc<String>`) and locale (`Rc<Locale>`).
+
+** Added `get_language_tag()` to get only language tag.
+
+** Added `get_locale()` to get only the locale.
+
+** Updated unit tests, examples and documentation to reflect the changes.
+
+* Updated the `i18n_lexer` crate:
+
+** To make use of `ErrorMessage` for errors.
+
+** Change inputs of `&str` to `AsRef<str>` for greater ease of use.
+
+* Updated the `i18n_pattern` crate:
+
+** TODO
 
 == i18n 0.3.1 (2023-01-29)
 

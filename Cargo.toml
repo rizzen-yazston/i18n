@@ -6,7 +6,7 @@ resolver = "2"
 members = [
     "crates/lstring",
     "crates/error",
-#    "crates/lexer",
+    "crates/lexer",
 #    "crates/pattern",
 #    "crates/message",
     "crates/utility",

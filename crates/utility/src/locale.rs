@@ -145,14 +145,14 @@ impl LanguageTagRegistry {
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get( &mut self, language_tag: &str ) -> Result<( Rc<String>, Rc<Locale> ), ErrorMessage> {
-        if let Some( result ) = self.bcp47.get( language_tag ) {
+    pub fn get<T: AsRef<str>>( &mut self, language_tag: T ) -> Result<( Rc<String>, Rc<Locale> ), ErrorMessage> {
+        if let Some( result ) = self.bcp47.get( language_tag.as_ref() ) {
             return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
         }
-        if let Some( result ) = self.deprecated.get_mut( language_tag ) {
+        if let Some( result ) = self.deprecated.get_mut( language_tag.as_ref() ) {
             return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
         }
-        let Ok( new_locale ) = Locale::try_from_bytes( language_tag.as_bytes() ) else {
+        let Ok( new_locale ) = Locale::try_from_bytes( language_tag.as_ref().as_bytes() ) else {
             return Err( ErrorMessage {
                 string: String::from( "Invalid language tag." ),
                 identifier: String::from( "i18n_utility/invalid_language_tag" ),
@@ -163,7 +163,7 @@ impl LanguageTagRegistry {
         {
             if let Some( result ) = self.bcp47.get( &new_tag ) {
                 self.deprecated.insert(
-                    language_tag.to_string(),
+                    language_tag.as_ref().to_string(),
                     ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) )
                 );
                 return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
@@ -171,9 +171,9 @@ impl LanguageTagRegistry {
         }
         let rc_new_locale = Rc::new( new_locale );
         let rc_new_tag = Rc::new( new_tag );
-        if language_tag != rc_new_tag.as_str() {
+        if language_tag.as_ref() != rc_new_tag.as_str() {
             self.deprecated.insert(
-                language_tag.to_string(),
+                language_tag.as_ref().to_string(),
                 ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) )
             );
         }
@@ -213,8 +213,8 @@ impl LanguageTagRegistry {
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_language_tag( &mut self, language_tag: &str ) -> Result<Rc<String>, ErrorMessage> {
-        let result = self.get( language_tag )?;
+    pub fn get_language_tag<T: AsRef<str>>( &mut self, language_tag: T ) -> Result<Rc<String>, ErrorMessage> {
+        let result = self.get( language_tag.as_ref() )?;
         Ok( result.0 )
     }
 
@@ -247,8 +247,8 @@ impl LanguageTagRegistry {
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_locale( &mut self, language_tag: &str ) -> Result<Rc<Locale>, ErrorMessage> {
-        let result = self.get( language_tag )?;
+    pub fn get_locale<T: AsRef<str>>( &mut self, language_tag: T ) -> Result<Rc<Locale>, ErrorMessage> {
+        let result = self.get( language_tag.as_ref() )?;
         Ok( result.1 )
     }
 
