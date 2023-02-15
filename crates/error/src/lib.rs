@@ -2,7 +2,7 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_error-rizzen-yazston` crate.
 
 //! The `i18n_error` crate contains the `ErrorMessage` struct for various functions returning errors in the
-//! Internationalisation (`i18n`) project. Also contains the `PlaceholderValue` enum of the various supported
+//! Internationalisation (`i18n`) project. Also contains the `ErrorPlaceholderValue` enum of the various supported
 //! placeholder values required when formatting for the specified language tag.
 //!
 //! # Examples
@@ -17,7 +17,7 @@ use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
 
 /// An enum consists of a selection of Rust primitives for error messages.
 #[derive( Debug )]
-pub enum PlaceholderValue {
+pub enum ErrorPlaceholderValue {
     String( String ), // Can also be used for date (ISO format), time (ISO format), fixed decimal.
     Integer( i128 ),
     Unsigned( u128 ),
@@ -29,7 +29,7 @@ pub enum PlaceholderValue {
 pub struct ErrorMessage {
     pub string: String, // Preformatted string for a particular locale.
     pub identifier: String, // Message identifier.
-    pub values: HashMap<String, PlaceholderValue>, // Values for formatting message for another locale.
+    pub values: HashMap<String, ErrorPlaceholderValue>, // Values for formatting message for another locale.
 }
 
 impl Display for ErrorMessage {

@@ -22,8 +22,8 @@
 //! 
 //! let buffer_provider = Box::new( buffer() );
 //! let mut lexer = match Lexer::try_new( &buffer_provider ) {
-//!     Err( err ) => {
-//!         println!( "{:#?}", err );
+//!     Err( error ) => {
+//!         println!( "{}", error );
 //!         std::process::exit( 1 )
 //!     },
 //!     Ok( result ) => result
@@ -46,7 +46,7 @@
 //! [CLDR]: https://cldr.unicode.org/
 //! [ICU4X]: https://github.com/unicode-org/icu4x
 
-use i18n_error::{ ErrorMessage, PlaceholderValue };
+use i18n_error::{ ErrorMessage, ErrorPlaceholderValue };
 use icu_provider::prelude::*;
 use icu_provider::serde::AsDeserializingBufferProvider;
 use icu_properties::sets::{ load_pattern_white_space, load_pattern_syntax, CodePointSetData };
@@ -126,8 +126,8 @@ impl Lexer {
     /// 
     /// let buffer_provider = Box::new( buffer() );
     /// let mut lexer = match Lexer::try_new( &buffer_provider ) {
-    ///     Err( err ) => {
-    ///         println!( "{:#?}", err );
+    ///     Err( error ) => {
+    ///         println!( "{}", error );
     ///         std::process::exit( 1 )
     ///     },
     ///     Ok( result ) => result
@@ -153,7 +153,7 @@ impl Lexer {
             Err( _ ) => return Err( ErrorMessage {
                 string: String::from( "Failed to load Pattern_Syntax." ),
                 identifier: String::from( "i18n_lexer/load_pattern_syntax" ),
-                values: HashMap::<String, PlaceholderValue>::new(),
+                values: HashMap::<String, ErrorPlaceholderValue>::new(),
             } ),
             Ok( response ) => response
         };
@@ -163,7 +163,7 @@ impl Lexer {
             Err( _ ) => return Err( ErrorMessage {
                 string: String::from( "Failed to load Pattern_White_Space." ),
                 identifier: String::from( "i18n_lexer/load_pattern_white_space" ),
-                values: HashMap::<String, PlaceholderValue>::new(),
+                values: HashMap::<String, ErrorPlaceholderValue>::new(),
             } ),
             Ok( response ) => response
         };
@@ -173,7 +173,7 @@ impl Lexer {
             Err(_) => return Err( ErrorMessage {
                 string: String::from( "Failed to get grapheme segmenter." ),
                 identifier: String::from( "i18n_lexer/load_grapheme_segmenter" ),
-                values: HashMap::<String, PlaceholderValue>::new(),
+                values: HashMap::<String, ErrorPlaceholderValue>::new(),
             } ),
             Ok( segmenter ) => segmenter
         };
@@ -213,8 +213,8 @@ impl Lexer {
     /// 
     /// let buffer_provider = Box::new( buffer() );
     /// let mut lexer = match Lexer::try_new( &buffer_provider ) {
-    ///     Err( err ) => {
-    ///         println!( "{:#?}", err );
+    ///     Err( error ) => {
+    ///         println!( "{}", error );
     ///         std::process::exit( 1 )
     ///     },
     ///     Ok( result ) => result

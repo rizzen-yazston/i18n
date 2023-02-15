@@ -42,7 +42,7 @@
 //! [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 //! [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
-use i18n_error::{ ErrorMessage, PlaceholderValue };
+use i18n_error::{ ErrorMessage, ErrorPlaceholderValue };
 use icu_locid::Locale;
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -156,7 +156,7 @@ impl LanguageTagRegistry {
             return Err( ErrorMessage {
                 string: String::from( "Invalid language tag." ),
                 identifier: String::from( "i18n_utility/invalid_language_tag" ),
-                values: HashMap::<String, PlaceholderValue>::new(),
+                values: HashMap::<String, ErrorPlaceholderValue>::new(),
             } );
         };
         let new_tag = new_locale.to_string();

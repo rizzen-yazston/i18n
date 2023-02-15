@@ -16,6 +16,7 @@ See `pattern strings.asciidoc` in `docs` of `pattern` crate for the pattern form
 icu_locid = "1.1.0"
 i18n_lstring-rizzen-yazston = "0.3.1"
 i18n_lexer-rizzen-yazston = "0.3.1" # Needed for Token, TokenType
+i18n_error-rizzen-yazston = "0.3.1"
 tree-rizzen-yazston = "0.3.0"
 
 [dependencies.icu_provider]
@@ -59,9 +60,9 @@ use icu_testdata::buffer;
 use i18n_pattern::{parse, NodeType, Formatter, PlaceholderValue, PlaceholderUnsigned};
 use std::collections::HashMap;
 
-fn format_string() -> Result<(), String> {
+fn format_string() -> Result<(), dyn Error> {
     let buffer_provider = Box::new( buffer() );
-    let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+    let mut lexer = match Lexer::try_new( &buffer_provider )?;
     let tokens = lexer.tokenise(
         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
         &vec![ '{', '}', '`', '#' ]

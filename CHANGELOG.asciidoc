@@ -17,7 +17,7 @@ Main feature of this update is the adding of the `i18n_error` crate to provide t
 
 * Added the `i18n_error` crate:
 
-** Added `ErrorMessage` and `PlaceholderValue`.
+** Added `ErrorMessage` and `ErrorPlaceholderValue`.
 
 * Updated the `i18n_utility` crate:
 
@@ -43,7 +43,11 @@ Main feature of this update is the adding of the `i18n_error` crate to provide t
 
 * Updated the `i18n_pattern` crate:
 
-** TODO
+** Updated the `parser` module:
+
+*** To make use of `ErrorMessage` for errors.
+
+** 
 
 == i18n 0.3.1 (2023-01-29)
 

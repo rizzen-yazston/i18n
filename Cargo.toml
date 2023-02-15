@@ -7,7 +7,7 @@ members = [
     "crates/lstring",
     "crates/error",
     "crates/lexer",
-#    "crates/pattern",
+    "crates/pattern",
 #    "crates/message",
     "crates/utility",
 ]

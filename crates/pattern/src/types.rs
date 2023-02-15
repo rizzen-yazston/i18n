@@ -7,7 +7,7 @@ use i18n_lstring::LString;
 use fixed_decimal::FixedDecimal;
 use icu_calendar::{AnyCalendar, Date, DateTime, types::Time };
 use core::any::Any;
-use std::fmt;
+use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
 
 /// Enum of the node types that can exist in the generate AST.
 /// The following node types are available:
@@ -35,8 +35,8 @@ pub enum NodeType {
     Selector,
 }
 
-impl fmt::Display for NodeType {
-    fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
+impl Display for NodeType {
+    fn fmt( &self, f: &mut Formatter ) -> FmtResult {
         match *self {
             NodeType::Root => write!( f, "Root" ),
             NodeType::NamedGroup => write!( f, "NamedGroup" ),
@@ -53,6 +53,8 @@ impl fmt::Display for NodeType {
 }
 
 // --- placeholder value types ---
+
+/*
 
 pub trait PlaceholderValue {
     fn get_type( &self ) -> &str;
@@ -184,3 +186,4 @@ impl PlaceholderValue for PlaceholderTime {
         self
     }
 }
+*/

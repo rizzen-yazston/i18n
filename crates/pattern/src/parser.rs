@@ -11,9 +11,9 @@
 //! ```
 //! use icu_provider::prelude::*;
 //! use std::rc::Rc;
-//! use i18n_lexer::{Token, TokenType, Lexer};
+//! use i18n_lexer::{ Token, TokenType, Lexer };
 //! use icu_testdata::buffer;
-//! use i18n_pattern::{parse, NodeType};
+//! use i18n_pattern::{ parse, NodeType };
 //! 
 //! let buffer_provider = Box::new( buffer() );
 //! let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
@@ -24,7 +24,7 @@
 //! let tree = match parse( tokens ) {
 //!     Err( error ) => {
 //!         println!( "Error: {}", error );
-//!         return;
+//!         std::process::exit( 1 )
 //!     },
 //!     Ok( result ) => result
 //! };
@@ -63,12 +63,14 @@
 //! }
 //! ```
 
+use i18n_error::{ ErrorMessage, ErrorPlaceholderValue };
 use crate::types::*;
-use i18n_lexer::{Token, TokenType};
+use i18n_lexer::{ Token, TokenType };
+use tree::{ Tree, NodeFeatures };
+use std::error::Error; // Experimental in `core` crate.
 use std::rc::Rc;
-use tree::{Tree, NodeFeatures};
 use std::collections::HashMap;
-use std::fmt;
+use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
 
 /// Constructs a valid syntax tree from the supplied `Vec<Rc<Token>>`. Any grammar error that occurs will result in     
 /// an `Err()` result to be returned.
@@ -87,7 +89,13 @@ use std::fmt;
 /// use i18n_pattern::{parse, NodeType};
 /// 
 /// let buffer_provider = Box::new( buffer() );
-/// let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+/// let mut lexer = match Lexer::try_new( &buffer_provider ) {
+///     Err( error ) => {
+///         println!( "{}", error );
+///         std::process::exit( 1 )
+///     },
+///     Ok( result ) => result
+/// };
 /// let tokens = lexer.tokenise(
 ///     "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
 ///     &vec![ '{', '}', '`', '#' ]
@@ -96,13 +104,13 @@ use std::fmt;
 ///     Err( error ) => {
 ///         println!( "Error: {}", error );
 ///         assert!( false );
-///         return;
+///         std::process::exit( 1 )
 ///     },
 ///     Ok( result ) => result
 /// };
 /// assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
 /// ```
-pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
+pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
     let mut tree = Tree::new();
     if tokens.len() == 0 {
         return Ok( tree );
@@ -129,29 +137,56 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                     if string == "`" {
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at literal marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly at literal marker." ),
+                                identifier: String::from( "i18n_pattern/incomplete_literal." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
-                        add_token( &mut tree, &mut parser, NodeType::Text, LEAF, Rc::clone( &token_next ) );
+                        add_token(
+                            &mut tree,
+                            &mut parser,
+                            NodeType::Text,
+                            LEAF,
+                            Rc::clone( &token_next )
+                        );
                         iterator = iterator_peeking; // Skip over ` token.
                     } else if string == "{" {
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at pattern marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly at pattern marker." ),
+                                identifier: String::from( "i18n_pattern/incomplete_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
-                        match pattern_start( &mut tree, &mut parser, Rc::clone( &token_next ), &mut patterns ) {
-                            Ok( _ ) => {},
-                            Err( error ) => return Err( error )
-                        };
+                        pattern_start(
+                            &mut tree,
+                            &mut parser,
+                            Rc::clone( &token_next ),
+                            &mut patterns
+                        )?;
                         iterator = iterator_peeking; // Skip over { and next token.
                     } else if string == "#" {
                         parser.current = Some( 0 ); // Move to root.
                         create_node( &mut tree, &mut parser, NodeType::NamedGroup, CONTAINER );
                         parser.state = ParserStates::NamedGroup;
                     } else {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                 } else {
-                    add_token( &mut tree, &mut parser, NodeType::Text, LEAF, Rc::clone( &token ) );
+                    add_token(
+                        &mut tree,
+                        &mut parser,
+                        NodeType::Text,
+                        LEAF,
+                        Rc::clone( &token )
+                    );
                 }
             },
             ParserStates::SubString => {
@@ -171,14 +206,22 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                     } else if string == "`" {
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at literal marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly at literal marker." ),
+                                identifier: String::from( "i18n_pattern/incomplete_literal." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         add_token( &mut tree, &mut parser, NodeType::Text, LEAF, Rc::clone( &token_next ) );
                         iterator = iterator_peeking; // Skip over ` token.
                     } else if string == "{" {
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at pattern marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly at pattern marker." ),
+                                identifier: String::from( "i18n_pattern/incomplete_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         match pattern_start( &mut tree, &mut parser, Rc::clone( &token_next ), &mut patterns ) {
                             Ok( _ ) => {},
@@ -191,12 +234,22 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 2 {
-                            return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                            // Fix values with values.
+                            return Err( ParserError::InvalidToken( ErrorMessage {
+                                string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                                identifier: String::from( "i18n_pattern/invalid_token." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         }
                         // Ends NamedString, and returns to NamedGroup
                         end_nested_state( &tree, &mut parser );
                     } else {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                 } else {
                     add_token( &mut tree, &mut parser, NodeType::Text, LEAF, Rc::clone( &token ) );
@@ -241,33 +294,60 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                     }
                     // TODO: add the other types, and also to the ParserStates
                     else {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string != "}" {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     // None (only identifier provide with default type of preformatted string)
                     end_nested_state( &tree, &mut parser );
                 } else {
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 }
             },
             ParserStates::Decimal => {
                 //  Valid tokens: PWS (separator - ignore), }, Identifier
                 if token.token_type == TokenType::Identifier {
                     if pattern_option_exists( &tree, &parser, token.string.as_str() ) {
-                        return Err( "Branch value already exists.".to_string() );
+                        return Err( ParserError::BranchExists( ErrorMessage {
+                            string: String::from( "Branch value already exists." ),
+                            identifier: String::from( "i18n_pattern/branch_exists." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     let string = token.string.as_str();
                     if string == "group" {
                         let Some( token_next ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         let Some( token_next_2nd ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         pattern_selector(
                             &mut tree,
@@ -279,10 +359,18 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         )?;
                     } else if string == "sign" {
                         let Some( token_next ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         let Some( token_next_2nd ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         pattern_selector(
                             &mut tree,
@@ -293,7 +381,12 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                             vec!( "never", "always" , "except_zero" , "negative" ),
                         )?;
                     } else {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else if token.token_type == TokenType::Grammar {
@@ -301,22 +394,39 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         end_nested_state( &tree, &mut parser );
                     }
                 } else {
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 }
             },
             ParserStates::DateTime => {
                 //  Valid tokens: PWS (separator - ignore), }, Identifier
                 if token.token_type == TokenType::Identifier {
                     if pattern_option_exists( &tree, &parser, token.string.as_str() ) {
-                        return Err( "Branch value already exists.".to_string() );
+                        return Err( ParserError::BranchExists( ErrorMessage {
+                            string: String::from( "Branch value already exists." ),
+                            identifier: String::from( "i18n_pattern/branch_exists." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     let string = token.string.as_str();
                     if string == "date" || string == "time" {
                         let Some( token_next ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         let Some( token_next_2nd ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         pattern_selector(
                             &mut tree,
@@ -328,10 +438,18 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         )?;
                     } else if string == "hour" {
                         let Some( token_next ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         let Some( token_next_2nd ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         pattern_selector(
                             &mut tree,
@@ -343,10 +461,18 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         )?;
                     } else if string == "calendar" {
                         let Some( token_next ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         let Some( token_next_2nd ) = iterator.next() else {
-                            return Err( "String ended abruptly at pattern.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         pattern_selector(
                             &mut tree,
@@ -357,7 +483,12 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                             vec!( "gregory", "buddhist", "japanese", "coptic", "indian", "ethiopic" ),
                         )?;
                     } else {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else if token.token_type == TokenType::Grammar {
@@ -365,29 +496,56 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         end_nested_state( &tree, &mut parser );
                     }
                 } else {
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 }
             },
             ParserStates::Complex => {
                 //  Valid tokens: PWS (separator - ignore), }, Identifier
                 if token.token_type == TokenType::Identifier {
                     if pattern_option_exists( &tree, &parser, token.string.as_str() ) {
-                        return Err( "Branch value already exists.".to_string() );
+                        return Err( ParserError::BranchExists( ErrorMessage {
+                            string: String::from( "Branch value already exists." ),
+                            identifier: String::from( "i18n_pattern/branch_exists." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     create_node( &mut tree, &mut parser, NodeType::Selector, CONTAINER );
                     add_token( &mut tree, &mut parser, NodeType::Identifier, LEAF, Rc::clone( &token ) );
                     move_to_container( &tree, &mut parser );
                     let Some( token_next ) = iterator.next() else {
-                        return Err( "String ended abruptly at pattern.".to_string() );
-                    };
+                        return Err( ParserError::Incomplete( ErrorMessage {
+                            string: String::from( "String ended abruptly within pattern." ),
+                            identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
+                };
                     if token_next.string.as_str() != "#" {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     let Some( token_next_2nd ) = iterator.next() else {
-                        return Err( "String ended abruptly at pattern.".to_string() );
-                    };
+                        return Err( ParserError::Incomplete( ErrorMessage {
+                            string: String::from( "String ended abruptly within pattern." ),
+                            identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
+                };
                     if token_next_2nd.token_type != TokenType::Identifier {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     add_token( &mut tree, &mut parser, NodeType::Identifier, LEAF, Rc::clone( &token_next_2nd ) );
                     move_to_container( &tree, &mut parser );
@@ -398,7 +556,12 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         end_nested_state( &tree, &mut parser );
                     }
                 } else {
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 }
             },
             ParserStates::LiteralText => {
@@ -407,7 +570,11 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                     if token.string.as_str() == "`" {
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at literal marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly at literal marker." ),
+                                identifier: String::from( "i18n_pattern/incomplete_literal." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         if token_next.string.as_str() == "`" {
                                 // Literal ` found.
@@ -430,7 +597,12 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         continue;
                     }
                 }
-                return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                // Fix values with values.
+                return Err( ParserError::InvalidToken( ErrorMessage {
+                    string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                    identifier: String::from( "i18n_pattern/invalid_token." ),
+                    values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                } ) );
             },
             ParserStates::Command => {
                 //  Valid tokens: PWS (separator - ignore), `, }, Identifier
@@ -450,13 +622,22 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                            // Fix values with values.
+                            return Err( ParserError::InvalidToken( ErrorMessage {
+                                string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                                identifier: String::from( "i18n_pattern/invalid_token." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         }
                         end_nested_state( &tree, &mut parser );
                     } else if string == "`" {
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at literal marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly at literal marker." ),
+                                identifier: String::from( "i18n_pattern/incomplete_literal." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         create_node_add_token(
                             &mut tree,&mut parser,
@@ -468,11 +649,21 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         parser.nested_states.push( ParserStates::Command );
                         parser.state = ParserStates::LiteralText;
                     } else {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else {
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 }
             },
             ParserStates::NamedString => {
@@ -483,9 +674,11 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                     if len == 0 {
                         let string = token.string.as_str().to_string();
                         if named_strings.contains_key( &string ) {
-                            return Err(
-                                "Named substrings must have unique identifiers.".to_string()
-                            );
+                            return Err( ParserError::Unique( ErrorMessage {
+                                string: String::from( "Named substrings must have unique identifiers." ),
+                                identifier: String::from( "i18n_pattern/unique_named." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         }
                         named_strings.insert( string, current );
                         create_node_add_token(
@@ -512,7 +705,12 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         parser.state = ParserStates::SubString;
                         continue;
                     }
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 } else if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string == "#" {
@@ -520,7 +718,12 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                            // Fix values with values.
+                            return Err( ParserError::InvalidToken( ErrorMessage {
+                                string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                                identifier: String::from( "i18n_pattern/invalid_token." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         }
                         create_node( &mut tree, &mut parser, NodeType::String, CONTAINER );
                         parser.nested_states.push( ParserStates::NamedString );
@@ -537,11 +740,20 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                            // Fix values with values.
+                            return Err( ParserError::InvalidToken( ErrorMessage {
+                                string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                                identifier: String::from( "i18n_pattern/invalid_token." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         }
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at pattern marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly within pattern." ),
+                                identifier: String::from( "i18n_pattern/incomplete_with_pattern." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         match pattern_start( &mut tree, &mut parser, Rc::clone( &token_next ), &mut patterns ) {
                             Ok( _ ) => {},
@@ -553,11 +765,20 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         if tree.children(
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
-                            return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                            // Fix values with values.
+                            return Err( ParserError::InvalidToken( ErrorMessage {
+                                string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                                identifier: String::from( "i18n_pattern/invalid_token." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         }
                         let mut iterator_peeking = iterator.clone();
                         let Some( token_next ) = iterator_peeking.next() else {
-                            return Err( "String ended abruptly at literal marker.".to_string() );
+                            return Err( ParserError::Incomplete( ErrorMessage {
+                                string: String::from( "String ended abruptly at literal marker." ),
+                                identifier: String::from( "i18n_pattern/incomplete_literal." ),
+                                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                            } ) );
                         };
                         create_node( &mut tree, &mut parser, NodeType::String, CONTAINER );
                         parser.nested_states.push( ParserStates::NamedString );
@@ -570,14 +791,24 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                         );
                         iterator = iterator_peeking; // Skip over ` token.
                     } else {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                 } else if token.token_type == TokenType::Syntax {
                     // Syntax may only appear after Identifier node indicating start of SubString.
                     if tree.children(
                         *parser.current.as_ref().unwrap()
                     ).ok().as_ref().unwrap().len() != 1 {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     create_node( &mut tree, &mut parser, NodeType::String, CONTAINER );
                     parser.nested_states.push( ParserStates::NamedString );
@@ -587,18 +818,33 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                     if tree.children(
                         *parser.current.as_ref().unwrap()
                     ).ok().as_ref().unwrap().len() != 1 {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     // Ignore the valid WhiteSpace.
                 } else {
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 }
             },
             ParserStates::NamedGroup => {
                 //  Valid tokens: PWS (ignored - human readability), {
                 if token.token_type == TokenType::Grammar {
                     if token.string.as_str() != "{" {
-                        return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                        // Fix values with values.
+                        return Err( ParserError::InvalidToken( ErrorMessage {
+                            string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                            identifier: String::from( "i18n_pattern/invalid_token." ),
+                            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                        } ) );
                     }
                     // start of NamedString
                     create_node( &mut tree, &mut parser, NodeType::NamedString, CONTAINER );
@@ -606,17 +852,48 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, String> {
                     parser.state = ParserStates::NamedString;
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else {
-                    return Err( error_invalid_token( &mut parser, Rc::clone( &token ) ) );
+                    // Fix values with values.
+                    return Err( ParserError::InvalidToken( ErrorMessage {
+                        string: error_invalid_token( &mut parser, Rc::clone( &token ) ),
+                        identifier: String::from( "i18n_pattern/invalid_token." ),
+                        values: HashMap::<String, ErrorPlaceholderValue>::new(),
+                    } ) );
                 }
             }
         }
     }
     if parser.nested_states.len() > 0 {
-        return Err( "String ended abruptly.".to_string() );
+        return Err( ParserError::Incomplete( ErrorMessage {
+            string: String::from( "String ended abruptly." ),
+            identifier: String::from( "i18n_pattern/incomplete_string." ),
+            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+        } ) );
     }
     Ok( tree )
 }
 
+#[derive( Debug )]
+pub enum ParserError {
+    Incomplete( ErrorMessage ),
+    Unique( ErrorMessage ),
+    InvalidToken( ErrorMessage ),
+    BranchExists( ErrorMessage ),
+}
+
+impl Error for ParserError {}
+
+impl Display for ParserError {
+
+    /// Write to the formatter the default preformatted error message.
+    fn fmt( &self, formatter: &mut Formatter ) -> FmtResult {
+        match self {
+            ParserError::Incomplete( error ) => formatter.write_str( error.string.as_str() ),
+            ParserError::Unique( error) => formatter.write_str( error.string.as_str() ),
+            ParserError::InvalidToken( error ) => formatter.write_str( error.string.as_str() ),
+            ParserError::BranchExists( error ) => formatter.write_str( error.string.as_str() ),
+        }
+    }
+}
 
 // Internal structures, enums, etc.
 
@@ -639,8 +916,8 @@ enum ParserStates {
     DateTime, // a date_time pattern
 }
 
-impl fmt::Display for ParserStates {
-    fn fmt( &self, f: &mut fmt::Formatter ) -> fmt::Result {
+impl Display for ParserStates {
+    fn fmt( &self, f: &mut Formatter ) -> FmtResult {
         match *self {
             ParserStates::Command => write!( f, "Command" ),
             ParserStates::Complex => write!( f, "Complex" ),
@@ -742,14 +1019,16 @@ fn pattern_start(
     parser: &mut Parser,
     token_next: Rc<Token>,
     patterns: &mut HashMap<String, usize>,
-) -> Result<(), String> {
+) -> Result<(), ParserError> {
     if token_next.token_type == TokenType::Identifier {
         // Multilingual pattern
         create_node( tree, parser, NodeType::Pattern, CONTAINER );
         if patterns.contains_key( &token_next.string ) {
-            return Err(
-                "Pattern identifiers must have unique.".to_string()
-            );
+            return Err( ParserError::Unique( ErrorMessage {
+                string: String::from( "Pattern identifiers must have unique." ),
+                identifier: String::from( "i18n_pattern/unique_identifiers." ),
+                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+            } ) );
         }
         patterns.insert( token_next.string.as_str().to_string(), *parser.current.as_ref().unwrap() );
         create_node_add_token( tree, parser, NodeType::Identifier, LEAF, token_next );
@@ -770,10 +1049,20 @@ fn pattern_start(
             parser.nested_states.push( parser.state );
             parser.state = ParserStates::Command;
         } else {
-            return Err( error_invalid_token( parser, Rc::clone( &token_next ) ) );
+            // Fix values with values.
+            return Err( ParserError::InvalidToken( ErrorMessage {
+                string: error_invalid_token( parser, Rc::clone( &token_next ) ),
+                identifier: String::from( "i18n_pattern/invalid_token." ),
+                values: HashMap::<String, ErrorPlaceholderValue>::new(),
+            } ) );
         }
     } else {
-        return Err( error_invalid_token( parser, Rc::clone( &token_next ) ) );
+        // Fix values with values.
+        return Err( ParserError::InvalidToken( ErrorMessage {
+            string: error_invalid_token( parser, Rc::clone( &token_next ) ),
+            identifier: String::from( "i18n_pattern/invalid_token." ),
+            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+        } ) );
     }
     Ok( () )
 }
@@ -808,15 +1097,25 @@ fn pattern_selector(
     token_next: Rc<Token>,
     token_next_2nd: Rc<Token>,
     keywords: Vec<&str>,
-) -> Result<(), String> {
+) -> Result<(), ParserError> {
     create_node( tree, parser, NodeType::Selector, CONTAINER );
     add_token( tree, parser, NodeType::Identifier, LEAF, Rc::clone( &token ) );
     move_to_container( &tree, parser );
     if token_next.string.as_str() != "#" {
-        return Err( error_invalid_token( parser, Rc::clone( &token_next ) ) );
+        // Fix values with values.
+        return Err( ParserError::InvalidToken( ErrorMessage {
+            string: error_invalid_token( parser, Rc::clone( &token_next ) ),
+            identifier: String::from( "i18n_pattern/invalid_token." ),
+            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+        } ) );
     }
     if token_next_2nd.token_type != TokenType::Identifier {
-        return Err( error_invalid_token( parser, Rc::clone( &token_next_2nd ) ) );
+        // Fix values with values.
+        return Err( ParserError::InvalidToken( ErrorMessage {
+            string: error_invalid_token( parser, Rc::clone( &token_next_2nd ) ),
+            identifier: String::from( "i18n_pattern/invalid_token." ),
+            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+        } ) );
     }
     if keywords.contains( &token_next_2nd.string.as_str() ) {
         add_token(
@@ -829,7 +1128,12 @@ fn pattern_selector(
         move_to_container( &tree, parser );
         parser.current = tree.parent( parser.current.take().unwrap() ).ok();
     } else {
-        return Err( error_invalid_token( parser, Rc::clone( &token_next_2nd ) ) );
+        // Fix values with values.
+        return Err( ParserError::InvalidToken( ErrorMessage {
+            string: error_invalid_token( parser, Rc::clone( &token_next_2nd ) ),
+            identifier: String::from( "i18n_pattern/invalid_token." ),
+            values: HashMap::<String, ErrorPlaceholderValue>::new(),
+        } ) );
     }
     Ok( () )
 }
@@ -864,7 +1168,13 @@ mod tests {
     #[test]
     fn decimal() {
         let buffer_provider = Box::new( buffer() );
-        let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+        let mut lexer = match Lexer::try_new( &buffer_provider ) {
+            Err( error ) => {
+                println!( "{}", error );
+                std::process::exit( 1 )
+            },
+            Ok( result ) => result
+        };
         let tokens = lexer.tokenise(
             "String contains a {placeholder decimal sign#negative}.", &vec![ '{', '}', '`', '#' ]
         );
@@ -872,7 +1182,7 @@ mod tests {
             Err( error ) => {
                 println!( "Error: {}", error );
                 assert!( false );
-                return;
+                std::process::exit( 1 )
             },
             Ok( result ) => result
         };
@@ -882,7 +1192,13 @@ mod tests {
     #[test]
     fn plural() {
         let buffer_provider = Box::new( buffer() );
-        let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+        let mut lexer = match Lexer::try_new( &buffer_provider ) {
+            Err( error ) => {
+                println!( "{}", error );
+                std::process::exit( 1 )
+            },
+            Ok( result ) => result
+        };
         let tokens = lexer.tokenise(
             "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
             &vec![ '{', '}', '`', '#' ]
@@ -891,7 +1207,7 @@ mod tests {
             Err( error ) => {
                 println!( "Error: {}", error );
                 assert!( false );
-                return;
+                std::process::exit( 1 )
             },
             Ok( result ) => result
         };
