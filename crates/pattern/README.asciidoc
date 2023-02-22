@@ -55,25 +55,26 @@ features = [ "serde" ]
 ```
 use icu_provider::prelude::*;
 use std::rc::Rc;
-use i18n_lexer::{Token, TokenType, Lexer};
+use i18n_lexer::{ Token, TokenType, Lexer };
 use icu_testdata::buffer;
-use i18n_pattern::{parse, NodeType, Formatter, PlaceholderValue, PlaceholderUnsigned};
+use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue };
 use std::collections::HashMap;
 
-fn format_string() -> Result<(), dyn Error> {
+fn format_string() -> Result<(), FormatterError> {
     let buffer_provider = Box::new( buffer() );
     let mut lexer = match Lexer::try_new( &buffer_provider )?;
     let tokens = lexer.tokenise(
         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
         &vec![ '{', '}', '`', '#' ]
     );
-    let tree = parse( tokens )?;
-    let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-    let mut formatter = Formatter::try_new( &locale, &tree )?;
-    let mut values = HashMap::<String, Box::<dyn PlaceholderValue>>::new();
+    let tree = parse( tokens ).expect( "Failed to parse tokens." );
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
+    let language_tag = Rc::new( locale.to_string() );
+    let mut formatter = Formatter::try_new( &language_tag, &locale, &tree )?;
+    let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "dogs_number".to_string(),
-        Box::new( PlaceholderUnsigned { number: 3 } )
+        PlaceholderValue::Unsigned( 3 )
     );
     let result = formatter.format( &buffer_provider, &values )?;
     assert_eq!(

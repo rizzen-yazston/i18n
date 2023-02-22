@@ -1,12 +1,11 @@
 // This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
 
-//! Collection of types used by parser and formatter.
+//! Collection of types used by `parser` and `formatter` modules.
 
 use i18n_lstring::LString;
 use fixed_decimal::FixedDecimal;
-use icu_calendar::{AnyCalendar, Date, DateTime, types::Time };
-use core::any::Any;
+use icu_calendar::{Iso, Date, DateTime, types::Time };
 use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
 
 /// Enum of the node types that can exist in the generate AST.
@@ -17,9 +16,9 @@ use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
 /// * String: [Container] represents either whole string, or a substring for a plural or select pattern.
 /// * Text: [Leaf] Just literal text, and consist of 1 or more tokens (of any type that are treated as text).
 /// * NumberSign: [Leaf] The number pattern `#` in text.
-/// * Command: [Container] Contains command pattern data.
+/// * Command: [Container] Contains command data.
 /// * Pattern: [Container] Usually a multilingual pattern data. 2nd node indicates pattern type.
-/// * Identifier: [Leaf] An identifier. Always 1 token.
+/// * Identifier: [Leaf] Always 1 identifier token.
 /// * Selector: [Container] Contains 2 Identifier nodes. Used for `plural` and `select` patterns.
 #[derive( PartialEq )]
 pub enum NodeType {
@@ -54,136 +53,16 @@ impl Display for NodeType {
 
 // --- placeholder value types ---
 
-/*
-
-pub trait PlaceholderValue {
-    fn get_type( &self ) -> &str;
-    fn as_any( &self ) -> &dyn Any;
+/// An enum consists of a selection of Rust primitives, ICU4X types, and `LString` for messages.
+#[derive( Debug )]
+pub enum PlaceholderValue {
+    String( String ), // Can also be used for date (ISO format), time (ISO format), fixed decimal.
+    Integer( i128 ),
+    Unsigned( u128 ),
+    Float( f64 ),
+    LString( LString ),
+    FixedDecimal( FixedDecimal ),
+    DateTime( DateTime<Iso> ),
+    Date( Date<Iso> ),
+    Time( Time ),
 }
-
-pub struct PlaceholderString {
-    pub string: String,
-}
-
-impl PlaceholderValue for PlaceholderString {
-    fn get_type( &self ) -> &str {
-        "PlaceholderString"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderLString {
-    pub string: LString,
-}
-
-impl PlaceholderValue for PlaceholderLString {
-    fn get_type( &self ) -> &str {
-        "PlaceholderLString"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderInteger {
-    pub number: i128,
-}
-
-impl PlaceholderValue for PlaceholderInteger {
-    fn get_type( &self ) -> &str {
-        "PlaceholderInteger"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderUnsigned {
-    pub number: u128,
-}
-
-impl PlaceholderValue for PlaceholderUnsigned {
-    fn get_type( &self ) -> &str {
-        "PlaceholderUnsigned"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderFloat {
-    pub number: f64,
-}
-
-impl PlaceholderValue for PlaceholderFloat {
-    fn get_type( &self ) -> &str {
-        "PlaceholderFloat"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderFixedDecimal {
-    pub number: FixedDecimal,
-}
-
-impl PlaceholderValue for PlaceholderFixedDecimal {
-    fn get_type( &self ) -> &str {
-        "PlaceholderFixedDecimal"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderDateTime {
-    pub date_time: DateTime<AnyCalendar>,
-}
-
-impl PlaceholderValue for PlaceholderDateTime {
-    fn get_type( &self ) -> &str {
-        "PlaceholderDateTime"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderDate {
-    pub date: Date<AnyCalendar>,
-}
-
-impl PlaceholderValue for PlaceholderDate {
-    fn get_type( &self ) -> &str {
-        "PlaceholderDate"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-
-pub struct PlaceholderTime {
-    pub time: Time,
-}
-
-impl PlaceholderValue for PlaceholderTime {
-    fn get_type( &self ) -> &str {
-        "PlaceholderTime"
-    }
-
-    fn as_any( &self ) -> &dyn Any {
-        self
-    }
-}
-*/
