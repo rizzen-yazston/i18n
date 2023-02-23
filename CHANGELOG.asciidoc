@@ -3,9 +3,13 @@ Rizzen Yazston
 
 == i18n 0.4.0 (2023-??-??)
 
-Warning: This update has many API breaking changes for all existing `i18n` crates.
+WARNING: This update has many API breaking changes for all existing `i18n` crates.
 
 Main feature of this update is the adding of the `i18n_error` crate to provide the `ErrorMessage` to replace all the `String` used for the `Err()` results.
+
+* Added the `i18n_error` crate:
+
+** Added `ErrorMessage` and `ErrorPlaceholderValue`.
 
 * Updated the `i18n_lstring` crate:
 
@@ -14,10 +18,6 @@ Main feature of this update is the adding of the `i18n_error` crate to provide t
 ** Additional change to `new()` parameter `string` to `Into<String>` instead of `String` as there are types that do have methods for type conversions.
 
 ** Updated unit tests, examples and documentation to reflect the changes.
-
-* Added the `i18n_error` crate:
-
-** Added `ErrorMessage` and `ErrorPlaceholderValue`.
 
 * Updated the `i18n_utility` crate:
 
@@ -41,13 +41,28 @@ Main feature of this update is the adding of the `i18n_error` crate to provide t
 
 ** Change inputs of `&str` to `AsRef<str>` for greater ease of use.
 
+** Updated unit tests, examples and documentation to reflect the changes.
+
 * Updated the `i18n_pattern` crate:
 
 ** Updated the `parser` module:
 
 *** To make use of `ErrorMessage` for errors.
 
-** 
+*** Removed redundant semantic analysis code as `formatter` does include the semantic analysis.
+
+** Updated the `types` module:
+
+*** Changed `PlaceholderValue` to be an enum.
+
+** Updated the `formatter` module:
+
+*** To make use of `ErrorMessage` for errors.
+
+*** Change the pattern part structs to `PatternPart` enum.
+
+** Updated unit tests, examples and documentation to reflect the changes.
+
 
 == i18n 0.3.1 (2023-01-29)
 
