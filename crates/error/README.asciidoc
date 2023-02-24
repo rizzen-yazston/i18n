@@ -7,11 +7,11 @@ The `i18n_error` crate contains the `ErrorMessage` struct for various functions 
 
 ```
 [dependencies]
-i18n_error-rizzen-yazston = "0.3.1"
+i18n_error-rizzen-yazston = "0.4.0"
 ```
 
 == Examples
 
 ```
-// copy from src
+// See other `i18n` crates examples.
 ```

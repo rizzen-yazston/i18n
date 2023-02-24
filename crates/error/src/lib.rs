@@ -8,7 +8,7 @@
 //! # Examples
 //!
 //! ```
-//! //TODO: perhaps use unit test.
+//! // See other `i18n` crates examples.
 //! ```
 
 use std::collections::HashMap;
@@ -48,14 +48,3 @@ impl Display for ErrorMessage {
 /// Does not support inner errors, thus `source()` returns `None`.
 impl Error for ErrorMessage {}
 
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn check() {
-
-    }
-}
-*/

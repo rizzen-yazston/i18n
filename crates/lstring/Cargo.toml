@@ -4,7 +4,7 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_lstring-rizzen-yazston"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.67.0"

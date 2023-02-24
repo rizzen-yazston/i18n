@@ -1,7 +1,7 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.4.0 (2023-??-??)
+== i18n 0.4.0 (2023-02-24)
 
 WARNING: This update has many API breaking changes for all existing `i18n` crates.
 

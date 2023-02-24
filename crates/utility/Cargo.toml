@@ -4,7 +4,7 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_utility-rizzen-yazston"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.67.0"
@@ -27,7 +27,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-i18n_error-rizzen-yazston = { version = "0.3.1", path = "../error" }
+i18n_error-rizzen-yazston = { version = "0.4.0", path = "../error" }
 icu_locid = "1.1.0"
 
 [lib]

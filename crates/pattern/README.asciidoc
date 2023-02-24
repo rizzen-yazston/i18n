@@ -14,9 +14,9 @@ See `pattern strings.asciidoc` in `docs` of `pattern` crate for the pattern form
 ```
 [dependencies]
 icu_locid = "1.1.0"
-i18n_lstring-rizzen-yazston = "0.3.1"
-i18n_lexer-rizzen-yazston = "0.3.1" # Needed for Token, TokenType
-i18n_error-rizzen-yazston = "0.3.1"
+i18n_lstring-rizzen-yazston = "0.4.0"
+i18n_lexer-rizzen-yazston = "0.4.0" # Needed for Token, TokenType
+i18n_error-rizzen-yazston = "0.4.0"
 tree-rizzen-yazston = "0.3.0"
 
 [dependencies.icu_provider]
