@@ -14,9 +14,9 @@ Get from provider source.
 ```
 [dependencies]
 icu_locid = "1.1.0"
-i18n_lstring-rizzen-yazston = "0.3.1"
-i18n_provider-rizzen-yazston = "0.3.1"
-i18n_provider_sqlite3-rizzen-yazston = "0.3.1"
+i18n_lstring-rizzen-yazston = "0.4.0"
+i18n_provider-rizzen-yazston = "0.4.0"
+i18n_provider_sqlite3-rizzen-yazston = "0.4.0"
 ```
 
 == Examples

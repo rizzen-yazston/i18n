@@ -3,50 +3,41 @@
 
 //! LString provider.
 //! 
-//! Provides `LString`.
+//! A trait for providing language strings in the form of a `LString` vector, and obtaining the default language tag
+//! used for the crate's messages.
 //! 
-//! # Examples
-//! 
-//! ```
-//! // TODO
-//! ```
-//! 
+//! For an implementation example, see the `i18n_provider_sqlite3-rizzen-yazston` crate, which uses Sqlite3 for its
+//! data store.
 
+use i18n_error::ErrorMessage;
 use i18n_lstring::LString;
-use icu_locid::Locale;
 use std::rc::Rc;
 
 
-/// LString provider.
+/// A trait for providing language strings in the form of a `LString` vector, and obtaining the default language tag
+/// used for the crate's messages.
 /// 
-/// TODO:
-/// 
-/// # Examples
-/// 
-/// ```
-/// // TODO
-/// ```
-/// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
-/// [`icu_locid`]: https://crates.io/crates/icu_locid
-
+/// For an implementation example, see the `i18n_provider_sqlite3-rizzen-yazston` crate, which uses Sqlite3 for its
+/// data store.
 pub trait LStringProvider {
-    fn get( &self, identifier: &str, locale: &Rc<Locale> ) -> Result<LString, String>;    
-}
 
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
+    /// Ideally a single exact match should be returned, yet may not be for the requested language tag. If no strings
+    /// is found for the requested tag, the right most subtag is removed sequentially until either at least 1 `LString`
+    /// is found, or `None returned when there are no more subtags to be removed. Multiple `LString` may be returned
+    /// when there are multiple entries of language tags having additional subtags than the requested language tag. 
+    /// 
+    /// Return of `None` indicates no strings was found matching the requested language tag, or its more general form.
+    /// 
+    /// Return of `ErrorMessage` indicates there was a Sqlite3 error.
+    fn get<T: AsRef<str>>(
+        &self, identifier: T,
+        language_tag: &Rc<String>
+    ) -> Result<Option<Vec<LString>>, ErrorMessage>;
 
-    #[test]
-    fn check() {
-        /*
-        let string = "This is a test string.";
-        let locale = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-        let lang_string = LString::new( String::from( string ), Rc::clone( &locale ) );
-    
-        assert_eq!( lang_string.locale(), locale, "Locale failed." );
-        */
-    }
+    /// Retrieve the default language tag of the crate's data store.
+    /// 
+    /// Return of `None` indicates no default language tag was found with in the provider's data store.
+    /// 
+    /// Return of `ErrorMessage` indicates there was an error to retrieve the string from the provider's data store.
+    fn default_language_tag<T: AsRef<str>>( &self, identifier: T ) -> Result<Option<String>, ErrorMessage>;
 }
-*/

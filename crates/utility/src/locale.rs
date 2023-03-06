@@ -44,6 +44,7 @@
 
 use i18n_error::{ ErrorMessage, ErrorPlaceholderValue };
 use icu_locid::Locale;
+use std::cell::{ RefCell };
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::iter::FromIterator;
@@ -69,7 +70,7 @@ use std::iter::FromIterator;
 /// use std::rc::Rc;
 /// use i18n_utility::locale::LanguageTagRegistry;
 /// 
-/// let mut registry = LanguageTagRegistry::new();
+/// let registry = LanguageTagRegistry::new();
 /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
 /// let tags = registry.list().iter().count();
 /// 
@@ -85,10 +86,11 @@ use std::iter::FromIterator;
 /// [`LanguageIdentifier`]: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 pub struct LanguageTagRegistry {
-    bcp47: HashMap<String, ( Rc<String>, Rc<Locale> )>,
+    bcp47: RefCell<HashMap<String, ( Rc<String>, Rc<Locale> )>>,
+    
     // Well-formed, but with: deprecated subtag(s), incorrect case used for subtag(s), and/or underscore (_) used
     // instead of hyphen (-).
-    deprecated: HashMap<String, ( Rc<String>, Rc<Locale> )>,
+    deprecated: RefCell<HashMap<String, ( Rc<String>, Rc<Locale> )>>,
 }
 
 impl LanguageTagRegistry {
@@ -101,7 +103,7 @@ impl LanguageTagRegistry {
     /// use std::rc::Rc;
     /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LanguageTagRegistry::new();
+    /// let registry = LanguageTagRegistry::new();
     /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
@@ -110,8 +112,8 @@ impl LanguageTagRegistry {
     /// ```
     pub fn new() -> Self {
         LanguageTagRegistry {
-            bcp47: HashMap::<String, ( Rc<String>, Rc<Locale> )>::new(),
-            deprecated: HashMap::<String, ( Rc<String>, Rc<Locale> )>::new()
+            bcp47: RefCell::new( HashMap::<String, ( Rc<String>, Rc<Locale> )>::new() ),
+            deprecated: RefCell::new( HashMap::<String, ( Rc<String>, Rc<Locale> )>::new() )
         }
     }
 
@@ -133,7 +135,7 @@ impl LanguageTagRegistry {
     /// use std::rc::Rc;
     /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LanguageTagRegistry::new();
+    /// let registry = LanguageTagRegistry::new();
     /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
@@ -145,11 +147,11 @@ impl LanguageTagRegistry {
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get<T: AsRef<str>>( &mut self, language_tag: T ) -> Result<( Rc<String>, Rc<Locale> ), ErrorMessage> {
-        if let Some( result ) = self.bcp47.get( language_tag.as_ref() ) {
+    pub fn get<T: AsRef<str>>( &self, language_tag: T ) -> Result<( Rc<String>, Rc<Locale> ), ErrorMessage> {
+        if let Some( result ) = self.bcp47.borrow().get( language_tag.as_ref() ) {
             return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
         }
-        if let Some( result ) = self.deprecated.get_mut( language_tag.as_ref() ) {
+        if let Some( result ) = self.deprecated.borrow().get( language_tag.as_ref() ) {
             return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
         }
         let Ok( new_locale ) = Locale::try_from_bytes( language_tag.as_ref().as_bytes() ) else {
@@ -161,8 +163,8 @@ impl LanguageTagRegistry {
         };
         let new_tag = new_locale.to_string();
         {
-            if let Some( result ) = self.bcp47.get( &new_tag ) {
-                self.deprecated.insert(
+            if let Some( result ) = self.bcp47.borrow().get( &new_tag ) {
+                self.deprecated.borrow_mut().insert(
                     language_tag.as_ref().to_string(),
                     ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) )
                 );
@@ -172,12 +174,12 @@ impl LanguageTagRegistry {
         let rc_new_locale = Rc::new( new_locale );
         let rc_new_tag = Rc::new( new_tag );
         if language_tag.as_ref() != rc_new_tag.as_str() {
-            self.deprecated.insert(
+            self.deprecated.borrow_mut().insert(
                 language_tag.as_ref().to_string(),
                 ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) )
             );
         }
-        self.bcp47.insert(
+        self.bcp47.borrow_mut().insert(
             rc_new_tag.as_str().to_string(),
             ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) )
         );
@@ -201,7 +203,7 @@ impl LanguageTagRegistry {
     /// use std::rc::Rc;
     /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LanguageTagRegistry::new();
+    /// let registry = LanguageTagRegistry::new();
     /// let tag = registry.get_language_tag( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
@@ -213,7 +215,7 @@ impl LanguageTagRegistry {
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_language_tag<T: AsRef<str>>( &mut self, language_tag: T ) -> Result<Rc<String>, ErrorMessage> {
+    pub fn get_language_tag<T: AsRef<str>>( &self, language_tag: T ) -> Result<Rc<String>, ErrorMessage> {
         let result = self.get( language_tag.as_ref() )?;
         Ok( result.0 )
     }
@@ -235,7 +237,7 @@ impl LanguageTagRegistry {
     /// use std::rc::Rc;
     /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LanguageTagRegistry::new();
+    /// let registry = LanguageTagRegistry::new();
     /// let locale = registry.get_locale( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
@@ -247,7 +249,7 @@ impl LanguageTagRegistry {
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
     /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_locale<T: AsRef<str>>( &mut self, language_tag: T ) -> Result<Rc<Locale>, ErrorMessage> {
+    pub fn get_locale<T: AsRef<str>>( &self, language_tag: T ) -> Result<Rc<Locale>, ErrorMessage> {
         let result = self.get( language_tag.as_ref() )?;
         Ok( result.1 )
     }
@@ -261,7 +263,7 @@ impl LanguageTagRegistry {
     /// use std::rc::Rc;
     /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LanguageTagRegistry::new();
+    /// let registry = LanguageTagRegistry::new();
     /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
     /// let tags = registry.list().iter().count();
     /// 
@@ -270,8 +272,8 @@ impl LanguageTagRegistry {
     /// ```
     /// 
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn list( &self ) -> Vec<&String> {
-        Vec::from_iter( self.bcp47.keys() )
+    pub fn list( &self ) -> Vec<String> {
+        Vec::from_iter( self.bcp47.borrow().keys().map( |x| x.to_string() ) )
     }
 
     /// Returns a vector list of all the registered language tags of deprecated specification.
@@ -283,15 +285,15 @@ impl LanguageTagRegistry {
     /// use std::rc::Rc;
     /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LanguageTagRegistry::new();
+    /// let registry = LanguageTagRegistry::new();
     /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
     /// let deprecated_tags = registry.list_deprecated().iter().count();
     /// 
     /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
     /// assert_eq!( deprecated_tags, 1, "Supposed to be 2 entries: en_ZA." )
     /// ```
-    pub fn list_deprecated( &self ) -> Vec<&String> {
-        Vec::from_iter( self.deprecated.keys() )
+    pub fn list_deprecated( &self ) -> Vec<String> {
+        Vec::from_iter( self.deprecated.borrow().keys().map( |x| x.to_string() ) )
     }
 
     /// Returns a vector list of all the registered language tags.
@@ -306,7 +308,7 @@ impl LanguageTagRegistry {
     /// use std::rc::Rc;
     /// use i18n_utility::locale::LanguageTagRegistry;
     /// 
-    /// let mut registry = LanguageTagRegistry::new();
+    /// let registry = LanguageTagRegistry::new();
     /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
     /// let all_tags = registry.list_all().iter().count();
     /// 
@@ -315,9 +317,11 @@ impl LanguageTagRegistry {
     /// ```
     /// 
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn list_all( &self ) -> Vec<&String> {
-        let mut list = Vec::from_iter( self.bcp47.keys() );
-        let mut deprecated = Vec::from_iter( self.deprecated.keys() );
+    pub fn list_all( &self ) -> Vec<String> {
+        let mut list = Vec::from_iter( self.bcp47.borrow().keys().map( |x| x.to_string() ) );
+        let mut deprecated = Vec::from_iter(
+            self.deprecated.borrow().keys().map( |x| x.to_string() )
+        );
         list.append( &mut deprecated );
         list
     }
@@ -329,7 +333,7 @@ mod tests {
 
     #[test]
     fn get() {
-        let mut registry = LanguageTagRegistry::new();
+        let registry = LanguageTagRegistry::new();
         let result = registry.get( "en_ZA" )
             .expect( "Failed to parse language tag." );
     
@@ -338,7 +342,7 @@ mod tests {
 
     #[test]
     fn get_language_tag() {
-        let mut registry = LanguageTagRegistry::new();
+        let registry = LanguageTagRegistry::new();
         let tag = registry.get_language_tag( "en_ZA" )
             .expect( "Failed to parse language tag." );
 
@@ -347,7 +351,7 @@ mod tests {
 
     #[test]
     fn get_locale() {
-        let mut registry = LanguageTagRegistry::new();
+        let registry = LanguageTagRegistry::new();
         let locale = registry.get_locale( "en_ZA" )
             .expect( "Failed to parse language tag." );
     
@@ -356,7 +360,7 @@ mod tests {
 
     #[test]
     fn list() {
-        let mut registry = LanguageTagRegistry::new();
+        let registry = LanguageTagRegistry::new();
         registry.get( "en_ZA" )
             .expect( "Failed to parse language tag." );
         let pcb47 = registry.list().iter().count();
@@ -366,7 +370,7 @@ mod tests {
 
     #[test]
     fn list_all() {
-        let mut registry = LanguageTagRegistry::new();
+        let registry = LanguageTagRegistry::new();
         registry.get( "en_ZA" )
             .expect( "Failed to parse language tag." );
         let all = registry.list_all().iter().count();
@@ -376,7 +380,7 @@ mod tests {
 
     #[test]
     fn list_deprecated() {
-        let mut registry = LanguageTagRegistry::new();
+        let registry = LanguageTagRegistry::new();
         registry.get( "en_ZA" )
             .expect( "Failed to parse language tag." );
         let deprecated = registry.list_deprecated().iter().count();

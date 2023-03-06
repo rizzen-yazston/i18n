@@ -8,6 +8,8 @@ members = [
     "crates/error",
     "crates/lexer",
     "crates/pattern",
+    "crates/provider/core",
+    "crates/provider/sqlite3",
 #    "crates/message",
     "crates/utility",
 ]

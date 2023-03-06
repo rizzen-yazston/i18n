@@ -4,7 +4,7 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_provider_sqlite3-rizzen-yazston"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.67.0"
@@ -28,9 +28,10 @@ publish = false
 
 [dependencies]
 icu_locid = "1.1.0"
-i18n_utility-rizzen-yazston = { version = "0.3.1", path = "../../utility" }
-i18n_lstring-rizzen-yazston = { version = "0.3.1", path = "../../lstring" }
-i18n_provider-rizzen-yazston = { version = "0.3.1", path = "../core" }
+i18n_error-rizzen-yazston = { version = "0.4.0", path = "../../error" }
+i18n_utility-rizzen-yazston = { version = "0.4.0", path = "../../utility" }
+i18n_lstring-rizzen-yazston = { version = "0.4.0", path = "../../lstring" }
+i18n_provider-rizzen-yazston = { version = "0.4.0", path = "../core" }
 rusqlite = "0.28.0"
 
 [dev-dependencies]
