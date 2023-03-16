@@ -16,7 +16,6 @@ See `pattern strings.asciidoc` in `docs` of `pattern` crate for the pattern form
 icu_locid = "1.1.0"
 i18n_lstring-rizzen-yazston = "0.4.0"
 i18n_lexer-rizzen-yazston = "0.4.0" # Needed for Token, TokenType
-i18n_error-rizzen-yazston = "0.4.0"
 tree-rizzen-yazston = "0.3.0"
 
 [dependencies.icu_provider]
@@ -54,15 +53,17 @@ features = [ "serde" ]
 
 ```
 use icu_provider::prelude::*;
+use icu_locid::Locale;
 use std::rc::Rc;
 use i18n_lexer::{ Token, TokenType, Lexer };
 use icu_testdata::buffer;
 use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue };
 use std::collections::HashMap;
+use std::error::Error;
 
-fn format_string() -> Result<(), FormatterError> {
+fn pattern_plural() -> Result<(), Box<dyn Error>> {
     let buffer_provider = Box::new( buffer() );
-    let mut lexer = match Lexer::try_new( &buffer_provider )?;
+    let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
     let tokens = lexer.tokenise(
         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
         &vec![ '{', '}', '`', '#' ]
@@ -77,19 +78,7 @@ fn format_string() -> Result<(), FormatterError> {
         PlaceholderValue::Unsigned( 3 )
     );
     let result = formatter.format( &buffer_provider, &values )?;
-    assert_eq!(
-        result.as_str(),
-        "There are 3 dogs in the park.",
-        "Strings must be the same."
-    );
+    assert_eq!( result.as_str(), "There are 3 dogs in the park.", "Strings must be the same." );
     Ok( () )
 }
-match format_string() {
-    Err( error ) => {
-        println!( "Error: {}", error );
-        assert!( false );
-        return;
-    },
-    Ok( _ ) => {}
-};
 ```

@@ -5,7 +5,7 @@
 
 use i18n_provider::LStringProvider;
 use i18n_provider_sqlite3::ProviderSqlite3;
-use i18n_utility::LanguageTagRegistry;
+use i18n_registry::LanguageTagRegistry;
 use std::{ rc::Rc, cell::RefCell, error::Error };
 
 #[test]
@@ -20,7 +20,7 @@ fn get_for_en() -> Result<(), Box<dyn Error>> {
     let strings = provider.get(
         "i18n_provider_sqlite3/invalid_path",
         &tag
-    )?.expect( "No string found for language tag." );
+    )?;
     assert_eq!( strings.len(), 1, "There should be 1 string." );
     assert_eq!( strings[ 0 ].as_str(), "Invalid path provided.", "Not correct string." );
     Ok( () )
@@ -38,7 +38,7 @@ fn get_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
     let strings = provider.get(
         "i18n_provider_sqlite3/invalid_path",
         &tag
-    )?.expect( "No string found for language tag." );
+    )?;
     assert_eq!( strings.len(), 1, "There should be 1 string." );
     assert_eq!( strings[ 0 ].as_str(), "Invalid path provided.", "Not correct string." );
     Ok( () )

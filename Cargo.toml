@@ -5,13 +5,12 @@
 resolver = "2"
 members = [
     "crates/lstring",
-    "crates/error",
     "crates/lexer",
-    "crates/pattern",
+    "crates/registry",
     "crates/provider/core",
     "crates/provider/sqlite3",
+    "crates/pattern",
 #    "crates/message",
-    "crates/utility",
 ]
 
 exclude = [

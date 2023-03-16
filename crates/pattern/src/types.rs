@@ -20,7 +20,7 @@ use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
 /// * Pattern: [Container] Usually a multilingual pattern data. 2nd node indicates pattern type.
 /// * Identifier: [Leaf] Always 1 identifier token.
 /// * Selector: [Container] Contains 2 Identifier nodes. Used for `plural` and `select` patterns.
-#[derive( PartialEq )]
+#[derive( Debug, PartialEq )]
 pub enum NodeType {
     Root,
     NamedGroup,

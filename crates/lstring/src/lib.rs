@@ -20,7 +20,6 @@
 //!     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
 //! );
 //! let lang_string = LString::new( string, &tag );
-//! 
 //! assert_eq!( lang_string.as_str(), string, "String failed." );
 //! assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 //! ```
@@ -50,7 +49,6 @@ use std::rc::Rc;
 ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
 /// );
 /// let lang_string = LString::new( string, &tag );
-/// 
 /// assert_eq!( lang_string.as_str(), string, "String failed." );
 /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 /// ```
@@ -91,7 +89,6 @@ impl LString {
     ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
     /// );
     /// let lang_string = LString::new( string, &tag );
-    /// 
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
     /// ```
@@ -120,7 +117,6 @@ impl LString {
     ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
     /// );
     /// let lang_string = LString::new( string, &tag );
-    /// 
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// ```
     /// [`str`]: https://doc.rust-lang.org/core/primitive.str.html
@@ -142,7 +138,6 @@ impl LString {
     ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
     /// );
     /// let lang_string = LString::new( "This is a test string.", &tag );
-    /// 
     /// assert_eq!( lang_string.language_tag(), &tag, "Locale failed." );
     /// ```
     /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
@@ -154,18 +149,13 @@ impl LString {
 
 #[cfg(test)]
 mod tests {
-    use icu_locid::Locale;
-
     use super::*;
 
     #[test]
     fn string_with_language_tag() {
         let string = "This is a test string.";
-        let tag = Rc::new(
-            Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
-        );
+        let tag = Rc::new( "en-ZA".to_string() );
         let lang_string = LString::new( string, &tag );
-    
         assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
         assert_eq!( lang_string.as_str(), string, "String failed." );
     }

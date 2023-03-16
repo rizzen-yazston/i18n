@@ -16,7 +16,6 @@ Strings are tokenised using the method `tokenise()` taking string slice and a ve
 ```
 [dependencies]
 i18n_lexer-rizzen-yazston = "0.4.0"
-i18n_error-rizzen-yazston = "0.4.0"
 
 [dependencies.icu_provider]
 version = "1.1.0"
@@ -39,7 +38,7 @@ features = [ "serde" ]
 ```
 use icu_provider::prelude::*;
 use std::rc::Rc;
-use i18n_lexer::{Token, TokenType, Lexer};
+use i18n_lexer::{ Token, TokenType, Lexer };
 use icu_testdata::buffer;
 
 let buffer_provider = Box::new( buffer() );
@@ -51,7 +50,6 @@ let mut lexer = match Lexer::try_new( &buffer_provider ) {
     Ok( result ) => result
 };
 let tokens = lexer.tokenise(
-    // World Map (U+1F5FA) is encoded in four bytes in UTF-8.
     "String contains a {placeholder}.", vec![ '{', '}' ]
 );
 let mut grammar = 0;

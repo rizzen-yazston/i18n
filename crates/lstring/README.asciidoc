@@ -29,7 +29,6 @@ let tag = Rc::new(
     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
 );
 let lang_string = LString::new( string, &tag );
-
 assert_eq!( lang_string.as_str(), string, "String failed." );
 assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 ```

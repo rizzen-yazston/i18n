@@ -1,14 +1,14 @@
-# This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
-# called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
+# This file is part of `i18n_registry-rizzen-yazston` crate. For the terms of use, please see the file
+# called `LICENSE-BSD-3-Clause` at the top level of the `i18n_registry-rizzen-yazston` crate.
 
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
-name = "i18n_utility-rizzen-yazston"
+name = "i18n_registry-rizzen-yazston"
 version = "0.4.0"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.67.0"
-description = "The `i18n_utility` crate of the Internationalisation project."
+description = "The `i18n_registry` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
 # false prevents publishing while developing, else string of repository identfier
@@ -27,8 +27,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-i18n_error-rizzen-yazston = { version = "0.4.0", path = "../error" }
 icu_locid = "1.1.0"
 
 [lib]
-name = "i18n_utility"
+name = "i18n_registry"

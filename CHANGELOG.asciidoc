@@ -1,6 +1,93 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.5.0 (2023-03-??)
+
+WARNING: This update has many API breaking changes for all existing `i18n` crates.
+
+Breaking change is the result of changing the implementation of handling error after reading Andrew Gallant's blog post 14 May 2015.
+
+* Added the `i18n_provider` crate:
+
+** Added `LStringProvider`
+
+* Added the `i18n_provider_sqlite3` crate:
+
+** Added implementation of `LStringProvider` using Sqlite3 backend.
+
+* Updated the `i18n_utility` crate:
+
+** Renamed crate `i18n_utility` to `i18n_registry`.
+
+** Renamed `locale.rs` to `registry.rs`, and updated to use `RegistryError` for error.
+
+** Added `error.rs` file containing `RegistryError` enum.
+
+** Updated `lib.rs` to include `error.rs` file.
+
+** Updated `Cargo.toml` and documentation.
+
+* Updated the `i18n_lstring` crate:
+
+** Minor documentation corrections, and made unit test independent of `icu_locid` crate, though left example using `icu_locid` crate.
+
+* Updated the `i18n_lexer` crate:
+
+** Renamed `lib.rs` to `lexer.rs`:
+
+*** Updated to use `LexerError` for error.
+
+*** Moved the test `tokenise` to its own file `tokenise.rs` in `tests` directory.
+
+** Added `error.rs` file containing `LexerError` enum.
+
+** Added new `lib.rs` to include both `lexer.rs` and `error.rs`.
+
+** Updated `Cargo.toml` and documentation.
+
+** Added Sqlite3 file for supported error language strings.
+
+* Added `i18n_provider` crate:
+
+** Added `provider.rs` file containing `LStringProvider` trait.
+
+** Added `error.rs` file containing `ProviderError` struct.
+
+** Added `lib.rs` to include both `provider.rs` and `error.rs`.
+
+** Updated `Cargo.toml` and documentation.
+
+* Added `i18n_provider_sqlite3` crate:
+
+** Added `provider.rs` file containing `ProviderSqlite3` struct implementing `LStringProvider` trait.
+
+** Added `error.rs` file containing `Sqlite3Error` struct.
+
+** Added `lib.rs` to include both `provider.rs` and `error.rs`.
+
+** Updated `Cargo.toml` and documentation.
+
+* Updated `i18n_pattern` crate:
+
+** Updated `Cargo.toml` and documentation.
+
+** Updated `parser.rs`, `formatter.rs`, and `types.rs`:
+
+*** Updated to use `ParserError` and `FormatterError` for the errors.
+
+*** Moved all tests to their own files `parser.rs` and `formatter.rs` in `tests` directory.
+
+** Added `error.rs` file containing `ParserError` and `FormatterError` enums.
+
+** Updated `lib.rs` to include `error.rs` file.
+
+** Updated `Cargo.toml` and documentation.
+
+** Added Sqlite3 file for supported error language strings.
+
+* Removed `i18n_error` crate as it is no longer needed after update of error handling.
+
+
 == i18n 0.4.0 (2023-02-24)
 
 WARNING: This update has many API breaking changes for all existing `i18n` crates.

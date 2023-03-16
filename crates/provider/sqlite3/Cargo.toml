@@ -28,8 +28,7 @@ publish = false
 
 [dependencies]
 icu_locid = "1.1.0"
-i18n_error-rizzen-yazston = { version = "0.4.0", path = "../../error" }
-i18n_utility-rizzen-yazston = { version = "0.4.0", path = "../../utility" }
+i18n_registry-rizzen-yazston = { version = "0.4.0", path = "../../registry" }
 i18n_lstring-rizzen-yazston = { version = "0.4.0", path = "../../lstring" }
 i18n_provider-rizzen-yazston = { version = "0.4.0", path = "../core" }
 rusqlite = "0.28.0"
