@@ -14,15 +14,17 @@ The repository contains the following crates:
 
 - `i18n_lstring`: Associating a {BCP_47_Language_Tag}[_BCP 47 Language Tag_] to a `String`,
 
-- `i18n_error`: Contains the `ErrorMessage` struct, and `PlaceholderValue` enum for supported data types for multilingual messages.
-
 - `i18n_lexer`: A simple lexer to tokenise a string,
-
-- `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
 
 - `i18n_message`: The multilingual messaging system,
 
-- `i18n_utility`: Contains various useful components.
+- `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
+
+- `i18n_provider`: Trait for providing language strings, and error struct,
+
+- `i18n_provider_sqlite3`: Implementation of `i18n_provider` using Sqlite3 as its data store,
+
+- `i18n_registry`: Language tag registry, that caches language tag strings and their `Locale` objects.
 
 Note:: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from internationalisation crates created by other authors.
 
@@ -34,8 +36,7 @@ For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficie
 
 ```
 [dependencies]
-icu_locid = "1.0.0"
-i18n-rizzen-yazston = "0.4.0"
+i18n-rizzen-yazston = "0.5.0"
 ```
 
 === Examples

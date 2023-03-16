@@ -13,9 +13,9 @@ This crate implements `LStringProvider` using Sqlite3 as the data store for lang
 
 ```
 [dependencies]
-i18n_lstring-rizzen-yazston = "0.4.0"
-i18n_provider-rizzen-yazston = "0.4.0"
-i18n_provider_sqlite3-rizzen-yazston = "0.4.0"
+i18n_lstring-rizzen-yazston = "0.5.0"
+i18n_provider-rizzen-yazston = "0.5.0"
+i18n_provider_sqlite3-rizzen-yazston = "0.5.0"
 ```
 
 == Examples
