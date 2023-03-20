@@ -1,14 +1,14 @@
-# This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
-# called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
+# This file is part of `i18n_icu-rizzen-yazston` crate. For the terms of use, please see the file
+# called `LICENSE-BSD-3-Clause` at the top level of the `i18n_icu-rizzen-yazston` crate.
 
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
-name = "i18n_lexer-rizzen-yazston"
+name = "i18n_icu-rizzen-yazston"
 version = "0.5.0"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.67.0"
-description = "The `i18n_lexer` crate of the Internationalisation project."
+description = "The `i18n_icu` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
 # false prevents publishing while developing, else string of repository identfier
@@ -27,11 +27,10 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-i18n_icu-rizzen-yazston = { version = "0.5.0", path = "../icu" }
 
 [dependencies.icu_provider]
 version = "1.1.0"
-# Needed for BufferProvider
+# Needed for BufferProvider used in i18n_lexer.
 features = [ "serde", "deserialize_bincode_1" ]
 
 [dependencies.icu_properties]
@@ -44,12 +43,5 @@ version = "0.8.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
-[dev-dependencies]
-
-[dev-dependencies.icu_testdata]
-version = "1.1.0"
-# Needed for BufferProvider and icu_segmenter
-features = [ "buffer", "icu_segmenter" ]
-
 [lib]
-name = "i18n_lexer"
+name = "i18n_icu"

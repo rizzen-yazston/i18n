@@ -5,13 +5,19 @@
 //! 
 //! This convenience meta crate contains selected available crates:
 //! 
-//! * i18n_lstring-rizzen-yazston
-//! 
 //! * i18n_lexer-rizzen-yazston
+//! 
+//! * i18n_lstring-rizzen-yazston
 //! 
 //! * i18n_pattern-rizzen-yazston
 //! 
 //! * i18n_message-rizzen-yazston
+//! 
+//! * i18n_provider-rizzen-yazston
+//! 
+//! * i18n_provider_sqlite3-rizzen-yazston
+//! 
+//! * i18n_registry-rizzen-yazston
 //! 
 //! # Usage
 //! 
@@ -22,15 +28,17 @@
 //! 
 //! ```
 //! [dependencies]
-//! icu_locid = "1.0.0"
-//! i18n-rizzen-yazston = "0.4.0"
+//! i18n-rizzen-yazston = "0.5.0"
 //! ```
 //! 
 //! ## Examples
 //! 
 //! See the various component crates for usage examples.
 
+pub use i18n_lexer-rizzen-yazston as lexer;
 pub use i18n_lstring-rizzen-yazston as lstring;
-pub use i18n_lexer-rizzen-yazston as pattern;
-pub use i18n_pattern-rizzen-yazston as pattern;
 pub use i18n_message-rizzen-yazston as message;
+pub use i18n_pattern-rizzen-yazston as pattern;
+pub use i18n_provider-rizzen-yazston as provider;
+pub use i18n_provider_sqlite3-rizzen-yazston as provider_sqlite3;
+pub use i18n_registry-rizzen-yazston as registry;

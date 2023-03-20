@@ -5,13 +5,21 @@ Rizzen Yazston
 
 This convenience meta crate contains selected available crates:
 
-- i18n_lstring-rizzen-yazston
+- i18n_icu-rizzen-yazston
 
 - i18n_lexer-rizzen-yazston
 
-- i18n_pattern-rizzen-yazston
+- i18n_lstring-rizzen-yazston
 
 - i18n_message-rizzen-yazston
+
+- i18n_pattern-rizzen-yazston
+
+- i18n_provider-rizzen-yazston
+
+- i18n_provider_sqlite3-rizzen-yazston
+
+- i18n_registry-rizzen-yazston
 
 == Usage
 
@@ -21,8 +29,7 @@ For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficie
 
 ```
 [dependencies]
-icu_locid = "1.0.0"
-i18n-rizzen-yazston = "0.4.0"
+i18n-rizzen-yazston = "0.5.0"
 ```
 
 === Examples

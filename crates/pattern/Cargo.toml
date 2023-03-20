@@ -28,6 +28,7 @@ publish = false
 
 [dependencies]
 icu_locid = "1.1.0"
+i18n_icu-rizzen-yazston = { version = "0.5.0", path = "../icu" }
 i18n_lstring-rizzen-yazston = { version = "0.5.0", path = "../lstring" }
 i18n_lexer-rizzen-yazston = { version = "0.5.0", path = "../lexer" } # Needed for Token, TokenType
 tree-rizzen-yazston = { version = "0.3.0", path = "../../../tree" }

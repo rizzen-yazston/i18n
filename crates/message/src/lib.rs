@@ -3,9 +3,15 @@
 
 //! The `i18n_message` crate contains the messaging system.
 //!
-//! Contains the follow modules:
-//!
-//! * `formatter`: Takes an AST with supplied values to create a language string of the specified `Locale`.
+//! TODO: Complete crate description
+//! 
+//! # Examples
+//! 
+//! ```
+//! // TODO: crate example
+//! ```
 
-pub mod formatter;
-pub use formatter::*;
+pub mod error;
+pub use error::*;
+pub mod message;
+pub use message::*;

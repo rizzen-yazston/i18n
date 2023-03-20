@@ -1,0 +1,26 @@
+= i18n_icu
+Rizzen Yazston
+:Locale: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
+:icu_locid: https://crates.io/crates/icu_locid
+:icu: https://crates.io/crates/icu
+:ICU4X: https://github.com/unicode-org/icu4x
+:Unicode Consortium: https://home.unicode.org/
+:LanguageIdentifier: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
+:BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+
+ ICU4X data provider helper.
+ 
+ The `IcuDataProvider` type contains a member `data_provider` holding the `DataProvider`, which is a deserialised  `BufferProvider`.
+ 
+ The `IcuDataProvider` type also contains non-locale based data used within the `i18n_lexer` crate.
+
+== Cargo.toml
+
+```
+[dependencies]
+i18n_icu-rizzen-yazston = "0.5.0"
+```
+
+== Examples
+
+See various examples of `i18n_lexer`, `i18n_pattern`, and `i18n_message` crates.

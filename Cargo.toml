@@ -4,13 +4,14 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/icu",
     "crates/lstring",
     "crates/lexer",
     "crates/registry",
     "crates/provider/core",
     "crates/provider/sqlite3",
     "crates/pattern",
-#    "crates/message",
+    "crates/message",
 ]
 
 exclude = [

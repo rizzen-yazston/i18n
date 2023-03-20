@@ -4,8 +4,8 @@
 // Outstanding: Command (to be done during or after `message` crate), experimental ICU4X components and options.
 // Feature option: language tag wrapping
 
-//use i18n_error::{ ErrorMessage, ErrorPlaceholderValue };
 use crate::{ NodeType, FormatterError, PlaceholderValue };
+use i18n_icu::IcuDataProvider;
 use i18n_lexer::Token;
 use i18n_lstring::LString;
 use tree::Tree;
@@ -26,7 +26,11 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
 
-pub struct Formatter {
+pub struct Formatter<'a, P>
+where
+    P: ?Sized + BufferProvider,
+{
+    data_provider: Rc<IcuDataProvider<'a, P>>,
     language_tag: Rc<String>,
     locale: Rc<Locale>,
     patterns: HashMap<String, Vec<PatternPart>>,
@@ -34,38 +38,43 @@ pub struct Formatter {
     selectors: Vec<HashMap<String, String>>,
 }
 
-impl Formatter {
+impl<'a, P: BufferProvider> Formatter<'a, P> {
     /// Creates a Formatter for a language string using parsing results.
     /// During the creation of the formatter for the supplied Tree, the semantic analyse is done.
     ///
     /// # Examples
     ///
     /// ```
-    /// use icu_provider::prelude::*;
-    /// use std::rc::Rc;
-    /// use icu_locid::Locale;
+    /// use i18n_icu::IcuDataProvider;
     /// use i18n_lexer::{Token, TokenType, Lexer};
-    /// use icu_testdata::buffer;
     /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue};
+    /// use icu_testdata::buffer;
+    /// use icu_provider::serde::AsDeserializingBufferProvider;
+    /// use icu_locid::Locale;
     /// use std::collections::HashMap;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
     /// 
-    /// fn format_string() -> Result<(), FormatterError> {
-    ///     let buffer_provider = Box::new( buffer() );
-    ///     let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+    /// fn format_string() -> Result<(), Box<dyn Error>> {
+    ///     let buffer_provider = buffer();
+    ///     let data_provider = buffer_provider.as_deserializing();
+    ///     let icu_data_provider =
+    ///         Rc::new( IcuDataProvider::try_new( data_provider )? );
+    ///     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     ///     let tokens = lexer.tokenise(
     ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
     ///         &vec![ '{', '}', '`', '#' ]
     ///     );
-    ///     let tree = parse( tokens ).expect( "Failed to parse tokens." );
+    ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     ///     let language_tag = Rc::new( locale.to_string() );
-    ///     let mut formatter = Formatter::try_new( &language_tag, &locale, &tree )?;
+    ///     let mut formatter = Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
     ///         "dogs_number".to_string(),
     ///         PlaceholderValue::Unsigned( 3 )
     ///     );
-    ///     let result = formatter.format( &buffer_provider, &values )?;
+    ///     let result = formatter.format( &values )?;
     ///     assert_eq!(
     ///         result.as_str(),
     ///         "There are 3 dogs in the park.",
@@ -73,26 +82,20 @@ impl Formatter {
     ///     );
     ///     Ok( () )
     /// }
-    /// match format_string() {
-    ///     Err( error ) => {
-    ///         println!( "Error: {}", error );
-    ///         assert!( false );
-    ///         return;
-    ///     },
-    ///     Ok( _ ) => {}
-    /// };
     /// ```
     pub fn try_new(
+        data_provider: &Rc<IcuDataProvider<'a, P>>,
         language_tag: &Rc<String>,
         locale: &Rc<Locale>,
         tree: &Tree,
-    ) -> Result<Self, FormatterError> {
+    ) -> Result<Formatter<'a, P>, FormatterError> {
         let mut patterns = HashMap::<String, Vec<PatternPart>>::new();
         patterns.insert( "_".to_string(), Vec::<PatternPart>::new() ); // Insert empty main pattern.
         let mut numbers = Vec::<String>::new();
         let mut selectors = Vec::<HashMap<String, String>>::new();
         if tree.len() == 0 {
             return Ok( Formatter {
+                data_provider: Rc::clone( data_provider ),
                 language_tag: Rc::clone( &language_tag ),
                 locale: Rc::clone( &locale ),
                 patterns,
@@ -211,6 +214,7 @@ impl Formatter {
         }
         patterns.insert( "_".to_string(), pattern );
         Ok( Formatter {
+            data_provider: Rc::clone( data_provider ),
             language_tag: Rc::clone( &language_tag ),
             locale: Rc::clone( &locale ),
             patterns,
@@ -224,31 +228,36 @@ impl Formatter {
     /// # Examples
     ///
     /// ```
-    /// use icu_provider::prelude::*;
-    /// use std::rc::Rc;
-    /// use icu_locid::Locale;
+    /// use i18n_icu::IcuDataProvider;
     /// use i18n_lexer::{Token, TokenType, Lexer};
-    /// use icu_testdata::buffer;
     /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue};
+    /// use icu_testdata::buffer;
+    /// use icu_provider::serde::AsDeserializingBufferProvider;
+    /// use icu_locid::Locale;
     /// use std::collections::HashMap;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
     /// 
-    /// fn format_string() -> Result<(), FormatterError> {
-    ///     let buffer_provider = Box::new( buffer() );
-    ///     let mut lexer = Lexer::try_new( &buffer_provider ).expect( "Failed to initialise lexer." );
+    /// fn format_string() -> Result<(), Box<dyn Error>> {
+    ///     let buffer_provider = buffer();
+    ///     let data_provider = buffer_provider.as_deserializing();
+    ///     let icu_data_provider =
+    ///         Rc::new( IcuDataProvider::try_new( data_provider )? );
+    ///     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     ///     let tokens = lexer.tokenise(
     ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
     ///         &vec![ '{', '}', '`', '#' ]
     ///     );
-    ///     let tree = parse( tokens ).expect( "Failed to parse tokens." );
+    ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     ///     let language_tag = Rc::new( locale.to_string() );
-    ///     let mut formatter = Formatter::try_new( &language_tag, &locale, &tree )?;
+    ///     let mut formatter = Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
     ///         "dogs_number".to_string(),
     ///         PlaceholderValue::Unsigned( 3 )
     ///     );
-    ///     let result = formatter.format( &buffer_provider, &values )?;
+    ///     let result = formatter.format( &values )?;
     ///     assert_eq!(
     ///         result.as_str(),
     ///         "There are 3 dogs in the park.",
@@ -256,25 +265,12 @@ impl Formatter {
     ///     );
     ///     Ok( () )
     /// }
-    /// match format_string() {
-    ///     Err( error ) => {
-    ///         println!( "Error: {}", error );
-    ///         assert!( false );
-    ///         return;
-    ///     },
-    ///     Ok( _ ) => {}
-    /// };
     /// ```
-    pub fn format(
-        &mut self,
-        buffer_provider: &Box<impl BufferProvider + ?Sized>,
-        values: &HashMap<String, PlaceholderValue>
-    ) -> Result<LString, FormatterError> {
+    pub fn format( &mut self, values: &HashMap<String, PlaceholderValue> ) -> Result<LString, FormatterError> {
         if self.patterns.get( "_" ).unwrap().len() == 0 {
             return Ok( LString::new( String::new(), &self.language_tag ) );
         }
         let pattern_string = self.format_pattern(
-            buffer_provider,
             values,
             &"_".to_string(),
         )?;
@@ -304,7 +300,6 @@ impl Formatter {
 
     fn format_pattern(
         &mut self,
-        buffer_provider: &Box<impl BufferProvider + ?Sized>,
         values: &HashMap<String, PlaceholderValue>,
         named: &String
     ) -> Result<String, FormatterError> {
@@ -348,8 +343,8 @@ impl Formatter {
                     if group.is_some() {
                         options.grouping_strategy = group.unwrap();
                     }
-                    let fdf = FixedDecimalFormatter::try_new_with_buffer_provider(
-                        buffer_provider,
+                    let fdf = FixedDecimalFormatter::try_new_unstable(
+                        self.data_provider.data_provider(),
                         &data_locale,
                         options,
                     )?;
@@ -421,8 +416,8 @@ impl Formatter {
                     };
                     match value {
                         PlaceholderValue::DateTime( date_time) => {
-                            let dtf = DateTimeFormatter::try_new_with_buffer_provider(
-                                buffer_provider,
+                            let dtf = DateTimeFormatter::try_new_unstable(
+                                self.data_provider.data_provider(),
                                 &data_locale,
                                 options.into(),
                             )?;
@@ -430,8 +425,8 @@ impl Formatter {
                             string.push_str( date_string.as_str() );
                         },
                         PlaceholderValue::Date( date ) => {
-                            let df = DateFormatter::try_new_with_length_with_buffer_provider(
-                                buffer_provider,
+                            let df = DateFormatter::try_new_with_length_unstable(
+                                self.data_provider.data_provider(),
                                 &data_locale,
                                 length_date,
                             )?;
@@ -439,8 +434,8 @@ impl Formatter {
                             string.push_str( date_string.as_str() );
                         },
                         PlaceholderValue::Time( time ) => {
-                            let tf = TimeFormatter::try_new_with_length_with_buffer_provider(
-                                buffer_provider,
+                            let tf = TimeFormatter::try_new_with_length_unstable(
+                                self.data_provider.data_provider(),
                                 &data_locale,
                                 length_time,
                             )?;
@@ -455,8 +450,8 @@ impl Formatter {
                                     // time only
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
                                     let tf =
-                                        TimeFormatter::try_new_with_length_with_buffer_provider(
-                                        buffer_provider,
+                                        TimeFormatter::try_new_with_length_unstable(
+                                        self.data_provider.data_provider(),
                                         &data_locale,
                                         length_time,
                                     )?;
@@ -468,8 +463,8 @@ impl Formatter {
                                     let date: Date<Iso> = decompose_iso_date( date_time_strings[ 0 ] )?;
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
                                     let date_time = DateTime::<Iso>::new( date, time );
-                                    let dtf = DateTimeFormatter::try_new_with_buffer_provider(
-                                        buffer_provider,
+                                    let dtf = DateTimeFormatter::try_new_unstable(
+                                        self.data_provider.data_provider(),
                                         &data_locale,
                                         options.into(),
                                     )?;
@@ -480,8 +475,8 @@ impl Formatter {
 
                                 // date only
                                 let date: Date<Iso> = decompose_iso_date( date_time_strings[ 0 ] )?;
-                                let df = DateFormatter::try_new_with_length_with_buffer_provider(
-                                    buffer_provider,
+                                let df = DateFormatter::try_new_with_length_unstable(
+                                    self.data_provider.data_provider(),
                                     &data_locale,
                                     length_date,
                                 )?;
@@ -504,13 +499,12 @@ impl Formatter {
                     let data_locale = DataLocale::from( Rc::as_ref( &self.locale ) );
                     match complex {
                         ComplexType::Plural => {
-                            let plurals = PluralRules::try_new_cardinal_with_buffer_provider(
-                                buffer_provider,
+                            let plurals = PluralRules::try_new_cardinal_unstable(
+                                self.data_provider.data_provider(),
                                 &data_locale,
                             )?;
                             match value {
                                 PlaceholderValue::FixedDecimal( number ) => self.find_number_sign(
-                                    buffer_provider,
                                     values,
                                     &mut string,
                                     number,
@@ -521,7 +515,6 @@ impl Formatter {
                                 PlaceholderValue::Unsigned( number ) => {
                                     let fixed_decimal = FixedDecimal::from( *number );
                                     self.find_number_sign(
-                                        buffer_provider,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -533,7 +526,6 @@ impl Formatter {
                                 PlaceholderValue::Integer( number ) => {
                                     let fixed_decimal = FixedDecimal::from( *number );
                                     self.find_number_sign(
-                                        buffer_provider,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -547,7 +539,6 @@ impl Formatter {
                                         *number, DoublePrecision::Floating
                                     )?;
                                     self.find_number_sign(
-                                        buffer_provider,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -562,15 +553,14 @@ impl Formatter {
                         ComplexType::Ordinal => {
 
                             // Only positive integers and zero are allowed.
-                            let plurals = PluralRules::try_new_ordinal_with_buffer_provider(
-                                buffer_provider,
+                            let plurals = PluralRules::try_new_ordinal_unstable(
+                                self.data_provider.data_provider(),
                                 &data_locale,
                             )?;
                             match value {
                                 PlaceholderValue::Unsigned( number ) => {
                                     let fixed_decimal = FixedDecimal::from( *number );
                                     self.find_number_sign(
-                                        buffer_provider,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -586,7 +576,6 @@ impl Formatter {
                             match value {
                                 PlaceholderValue::String( value ) => {
                                     self.select(
-                                        buffer_provider,
                                         values,
                                         &mut string,
                                         value,
@@ -597,7 +586,6 @@ impl Formatter {
 
                                     // Locale is not used, and LSring is just treated as String for the selector
                                     self.select(
-                                        buffer_provider,
                                         values,
                                         &mut string,
                                         &value.as_str().to_string(),
@@ -623,7 +611,6 @@ impl Formatter {
 
     fn find_number_sign(
         &mut self,
-        buffer_provider: &Box<impl BufferProvider + ?Sized>,
         values: &HashMap<String, PlaceholderValue>,
         string: &mut String,
         fixed_decimal: &FixedDecimal,
@@ -634,8 +621,8 @@ impl Formatter {
         let mut _named = String::new();
 
         // Format number using graphemes of the locale.
-        let fdf = FixedDecimalFormatter::try_new_with_buffer_provider(
-            buffer_provider,
+        let fdf = FixedDecimalFormatter::try_new_unstable(
+            self.data_provider.data_provider(),
             data_locale,
             Default::default(),
         )?;
@@ -677,7 +664,6 @@ impl Formatter {
             }
         }
         let part_string = self.format_pattern(
-            buffer_provider,
             values,
             &_named
         )?;
@@ -687,7 +673,6 @@ impl Formatter {
 
     fn select(
         &mut self,
-        buffer_provider: &Box<impl BufferProvider + ?Sized>,
         values: &HashMap<String, PlaceholderValue>,
         string: &mut String,
         string_value: &String,
@@ -702,7 +687,6 @@ impl Formatter {
             return Err( FormatterError::SelectorsIndexNamed( string_value.to_string(), selectors_index ) );
         };
         let part_string = self.format_pattern(
-            buffer_provider,
             values,
             &named.to_string(),
         )?;

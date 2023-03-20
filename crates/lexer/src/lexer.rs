@@ -1,11 +1,13 @@
 // This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
 
+// TODO: Change return of tokenise to include a boolean to indicate if there are any Grammar tokens. This to aid in
+//       skipping the costly parsing and formatter functions, where a cheap alternative function can be used.
+// FUTURE: Look into storing &str instead of String, perhaps original string can live long enough for Token existence.
+
 use crate::LexerError;
+use i18n_icu::IcuDataProvider;
 use icu_provider::prelude::*;
-use icu_provider::serde::AsDeserializingBufferProvider;
-use icu_properties::sets::{ load_pattern_white_space, load_pattern_syntax, CodePointSetData };
-use icu_segmenter::GraphemeClusterSegmenter;
 use std::rc::Rc;
 
 /// String lexer and token types.
@@ -52,10 +54,11 @@ pub enum TokenType {
 /// White space and syntax characters are identified according to the character properties `Pattern_Syntax` and
 /// `Pattern_White_Space` as defined in the 
 /// [Unicode Standard Annex #44: Unicode Character Database](https://www.unicode.org/reports/tr44/).
-pub struct Lexer {
-    pattern_syntax: CodePointSetData,
-    pattern_white_space: CodePointSetData,
-    grapheme_segmenter: GraphemeClusterSegmenter,
+pub struct Lexer<'a, P>
+where
+    P: ?Sized + BufferProvider,
+{
+    data_provider: Rc<IcuDataProvider<'a, P>>,
     token_position_byte: Option<usize>,
     token_position_character: Option<usize>,
     token_position_grapheme: Option<usize>,
@@ -64,57 +67,46 @@ pub struct Lexer {
     position_grapheme: usize,
 }
 
-impl Lexer {
+impl<'a, P: BufferProvider> Lexer<'a, P> {
 
     /// Attempts to initialise the `Lexer` for tokenising a string using an ICU provider for character data.
     /// 
-    /// For the parameter `buffer_provider`, a [`Box`] reference to a [`FsDataProvider`] type is usually used,
-    /// though other providers are available to use.
+    /// For the parameter `data_provider`, the [`FsDataProvider`] type is usually used in creating the
+    /// `IcuDataProvider`, though other providers are available to use.
     /// 
     /// # Examples
     /// 
     /// ```
-    /// use icu_provider::prelude::*;
-    /// use std::rc::Rc;
+    /// use i18n_icu::IcuDataProvider;
     /// use i18n_lexer::{Token, TokenType, Lexer};
     /// use icu_testdata::buffer;
+    /// use icu_provider::serde::AsDeserializingBufferProvider;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
     /// 
-    /// let buffer_provider = Box::new( buffer() );
-    /// let mut lexer = match Lexer::try_new( &buffer_provider ) {
-    ///     Err( error ) => {
-    ///         println!( "{}", error );
-    ///         std::process::exit( 1 )
-    ///     },
-    ///     Ok( result ) => result
-    /// };
-    /// let tokens = lexer.tokenise(
-    ///     "String contains a {placeholder}.", &vec![ '{', '}' ]
-    /// );
-    /// let mut grammar = 0;
-    /// assert_eq!( tokens.iter().count(), 10, "Supposed to be a total of 10 tokens." );
-    /// for token in tokens.iter() {
-    ///     if token.token_type == TokenType::Grammar {
-    ///         grammar += 1;
+    /// fn tokenise() -> Result<(), Box<dyn Error>> {
+    ///     let buffer_provider = buffer();
+    ///     let data_provider = buffer_provider.as_deserializing();
+    ///     let icu_data_provider = IcuDataProvider::try_new( data_provider )?;
+    ///     let mut lexer = Lexer::try_new( &Rc::new( icu_data_provider ) )?;
+    ///     let tokens = lexer.tokenise(
+    ///         "String contains a {placeholder}.", &vec![ '{', '}' ]
+    ///     );
+    ///     let mut grammar = 0;
+    ///     assert_eq!( tokens.0.iter().count(), 10, "Supposed to be a total of 10 tokens." );
+    ///     for token in tokens.0.iter() {
+    ///         if token.token_type == TokenType::Grammar {
+    ///             grammar += 1;
+    ///         }
     ///     }
+    ///     assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
+    ///     Ok( () )
     /// }
-    /// assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
     /// ```
-    /// [`Box`]: https://doc.rust-lang.org/std/boxed/index.html
     /// [`FsDataProvider`]: https://docs.rs/icu_provider_fs/latest/icu_provider_fs/struct.FsDataProvider.html
-    pub fn try_new( buffer_provider: &Box<impl BufferProvider + ?Sized> ) -> Result<Self, LexerError> {
-        let syntax = load_pattern_syntax(
-            &buffer_provider.as_deserializing()
-        )?;
-        let white_space = load_pattern_white_space(
-            &buffer_provider.as_deserializing()
-        )?;
-        let grapheme_segmenter = GraphemeClusterSegmenter::try_new_unstable(
-            &buffer_provider.as_deserializing()
-        )?;
+    pub fn try_new( data_provider: &Rc<IcuDataProvider<'a, P>> ) -> Result<Lexer<'a, P>, LexerError> {
         Ok( Lexer {
-            pattern_syntax: syntax,
-            pattern_white_space: white_space,
-            grapheme_segmenter: grapheme_segmenter,
+            data_provider: Rc::clone( data_provider ),
             token_position_byte: None,
             token_position_character: None,
             token_position_grapheme: None,
@@ -140,40 +132,42 @@ impl Lexer {
     /// # Examples
     /// 
     /// ```
-    /// use icu_provider::prelude::*;
-    /// use std::rc::Rc;
+    /// use i18n_icu::IcuDataProvider;
     /// use i18n_lexer::{Token, TokenType, Lexer};
     /// use icu_testdata::buffer;
+    /// use icu_provider::serde::AsDeserializingBufferProvider;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
     /// 
-    /// let buffer_provider = Box::new( buffer() );
-    /// let mut lexer = match Lexer::try_new( &buffer_provider ) {
-    ///     Err( error ) => {
-    ///         println!( "{}", error );
-    ///         std::process::exit( 1 )
-    ///     },
-    ///     Ok( result ) => result
-    /// };
-    /// let tokens = lexer.tokenise(
-    ///     "String contains a {placeholder}.", &vec![ '{', '}' ]
-    /// );
-    /// let mut grammar = 0;
-    /// assert_eq!( tokens.iter().count(), 10, "Supposed to be a total of 10 tokens." );
-    /// for token in tokens.iter() {
-    ///     if token.token_type == TokenType::Grammar {
-    ///         grammar += 1;
+    /// fn tokenise() -> Result<(), Box<dyn Error>> {
+    ///     let buffer_provider = buffer();
+    ///     let data_provider = buffer_provider.as_deserializing();
+    ///     let icu_data_provider = IcuDataProvider::try_new( data_provider )?;
+    ///     let mut lexer = Lexer::try_new( &Rc::new( icu_data_provider ) )?;
+    ///     let tokens = lexer.tokenise(
+    ///         "String contains a {placeholder}.", &vec![ '{', '}' ]
+    ///     );
+    ///     let mut grammar = 0;
+    ///     assert_eq!( tokens.0.iter().count(), 10, "Supposed to be a total of 10 tokens." );
+    ///     for token in tokens.0.iter() {
+    ///         if token.token_type == TokenType::Grammar {
+    ///             grammar += 1;
+    ///         }
     ///     }
+    ///     assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
+    ///     Ok( () )
     /// }
-    /// assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
     /// ```
     /// 
     /// [`&str`]: https://doc.rust-lang.org/core/primitive.str.html
     /// [`Vec`]: https://doc.rust-lang.org/std/vec/index.html
     /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
     /// [`char`]: https://doc.rust-lang.org/core/primitive.char.html
-    pub fn tokenise<T: AsRef<str>>( &mut self, string: T, grammar: &Vec<char> ) -> Vec<Rc<Token>> {
+    pub fn tokenise<T: AsRef<str>>( &mut self, string: T, grammar: &Vec<char> ) -> ( Vec<Rc<Token>>, bool ) {
         let mut tokens = Vec::<Rc<Token>>::new();
+        let mut has_grammar = false;
         if string.as_ref().len() == 0 {
-            return tokens;
+            return ( tokens, has_grammar );
         }
 
         // Resets the Lexer
@@ -190,7 +184,7 @@ impl Lexer {
 
         while let Some( ( position, character ) ) = iterator.next() {
             self.position_byte = position;
-            if self.pattern_white_space.as_borrowed().contains( character ) {
+            if self.data_provider.pattern_white_space().as_borrowed().contains( character ) {
                 if state == LexerStates::Identifier {
                     self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
                 }
@@ -202,10 +196,11 @@ impl Lexer {
                 }
                 state = LexerStates::WhiteSpace;
             }
-            else if self.pattern_syntax.as_borrowed().contains( character ) {
+            else if self.data_provider.pattern_syntax().as_borrowed().contains( character ) {
                 let state_previous = state;
                 if grammar.contains( &character ) {
                     state = LexerStates::Grammar;
+                    has_grammar = true;
                 }
                 else {
                     state = LexerStates::Syntax;
@@ -260,7 +255,7 @@ impl Lexer {
                 }
             }
         }
-        tokens
+        ( tokens, has_grammar )
     }
 
     // Create a token for slice starting at the byte position after the previous token until current byte position.
@@ -277,7 +272,7 @@ impl Lexer {
             let slice = &string.as_ref()[ start_byte .. self.position_byte ];
             let len_byte = self.position_character - start_character;
             let len_character = self.position_character - start_character;
-            let len_grapheme = self.grapheme_segmenter.segment_str( slice ).count() - 1;
+            let len_grapheme = self.data_provider.grapheme_segmenter().segment_str( slice ).count() - 1;
             self.position_grapheme += len_grapheme;
             tokens.push( Rc::new(
                 Token {

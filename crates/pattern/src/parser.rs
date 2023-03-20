@@ -1,5 +1,6 @@
 // This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
+
 use crate::ParserError;
 use crate::types::*;
 use i18n_lexer::{ Token, TokenType };
@@ -9,7 +10,7 @@ use std::collections::HashMap;
 use core::fmt::{ Display, Formatter, Result as FmtResult };
 
 /// Constructs a valid syntax tree from the supplied `Vec<Rc<Token>>`. Any grammar error that occurs will result in     
-/// an `Err()` result to be returned.
+/// an `Err()` result being returned.
 /// 
 /// Implicit syntax tokens and optional whitespace tokens are not included in syntax trees.
 /// 
@@ -18,33 +19,38 @@ use core::fmt::{ Display, Formatter, Result as FmtResult };
 /// # Examples
 /// 
 /// ```
-/// use icu_provider::prelude::*;
-/// use std::rc::Rc;
+/// use i18n_icu::IcuDataProvider;
 /// use i18n_lexer::{Token, TokenType, Lexer};
+/// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue};
 /// use icu_testdata::buffer;
-/// use i18n_pattern::{parse, NodeType};
+/// use icu_provider::serde::AsDeserializingBufferProvider;
+/// use icu_locid::Locale;
+/// use std::collections::HashMap;
+/// use std::rc::Rc;
+/// use std::error::Error;
 /// 
-/// let buffer_provider = Box::new( buffer() );
-/// let mut lexer = match Lexer::try_new( &buffer_provider ) {
-///     Err( error ) => {
-///         println!( "{}", error );
-///         std::process::exit( 1 )
-///     },
-///     Ok( result ) => result
-/// };
-/// let tokens = lexer.tokenise(
-///     "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-///     &vec![ '{', '}', '`', '#' ]
-/// );
-/// let tree = match parse( tokens ) {
-///     Err( error ) => {
-///         println!( "Error: {}", error );
-///         assert!( false );
-///         std::process::exit( 1 )
-///     },
-///     Ok( result ) => result
-/// };
-/// assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
+/// fn pattern_plural() -> Result<(), Box<dyn Error>> {
+///     let buffer_provider = buffer();
+///     let data_provider = buffer_provider.as_deserializing();
+///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( data_provider )? );
+///     let mut lexer = Lexer::try_new( &icu_data_provider )?;
+///     let tokens = lexer.tokenise(
+///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
+///         &vec![ '{', '}', '`', '#' ]
+///     );
+///     let tree = parse( tokens.0 )?;
+///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+///     let language_tag = Rc::new( locale.to_string() );
+///     let mut formatter = Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+///     let mut values = HashMap::<String, PlaceholderValue>::new();
+///     values.insert(
+///         "dogs_number".to_string(),
+///         PlaceholderValue::Unsigned( 3 )
+///     );
+///     let result = formatter.format( &values )?;
+///     assert_eq!( result.as_str(), "There are 3 dogs in the park.", "Strings must be the same." );
+///     Ok( () )
+/// }
 /// ```
 pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
     let mut tree = Tree::new();
@@ -642,61 +648,3 @@ fn node_type_to_string( tree: &Tree, parser: &mut Parser, ) -> String {
     let node_type_ref = tree.node_type( current ).ok().unwrap().as_ref();
     node_type_ref.downcast_ref::<NodeType>().unwrap().to_string()
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use i18n_lexer::Lexer;
-    use icu_testdata::buffer;
-
-    #[test]
-    fn decimal() {
-        let buffer_provider = Box::new( buffer() );
-        let mut lexer = match Lexer::try_new( &buffer_provider ) {
-            Err( error ) => {
-                println!( "{}", error );
-                std::process::exit( 1 )
-            },
-            Ok( result ) => result
-        };
-        let tokens = lexer.tokenise(
-            "String contains a {placeholder decimal sign#negative}.", &vec![ '{', '}', '`', '#' ]
-        );
-        let tree = match parse( tokens ) {
-            Err( error ) => {
-                println!( "Error: {}", error );
-                assert!( false );
-                std::process::exit( 1 )
-            },
-            Ok( result ) => result
-        };
-        assert_eq!( tree.len(), 10, "Should contain 10 nodes." );
-    }
-
-    #[test]
-    fn plural() {
-        let buffer_provider = Box::new( buffer() );
-        let mut lexer = match Lexer::try_new( &buffer_provider ) {
-            Err( error ) => {
-                println!( "{}", error );
-                std::process::exit( 1 )
-            },
-            Ok( result ) => result
-        };
-        let tokens = lexer.tokenise(
-            "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-            &vec![ '{', '}', '`', '#' ]
-        );
-        let tree = match parse( tokens ) {
-            Err( error ) => {
-                println!( "Error: {}", error );
-                assert!( false );
-                std::process::exit( 1 )
-            },
-            Ok( result ) => result
-        };
-        assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
-    }
-}
-*/
