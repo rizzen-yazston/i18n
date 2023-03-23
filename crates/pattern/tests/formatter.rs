@@ -18,7 +18,7 @@ fn plain_text() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( data_provider )? );
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "A simple plain text string.", &vec![ '{', '}', '`', '#' ]
@@ -39,7 +39,7 @@ fn pattern_string() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( data_provider )? );
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "Expecting a string for placeholder: {string}", &vec![ '{', '}', '`', '#' ]
@@ -68,7 +68,7 @@ fn pattern_plural() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( data_provider )? );
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
@@ -98,7 +98,7 @@ fn pattern_decimal() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( data_provider )? );
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "There is {amount decimal} kg of rice in the container.",
@@ -128,7 +128,7 @@ fn pattern_decimal_with_option() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( data_provider )? );
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "There is {amount decimal sign#always} kg of rice in the container.",
@@ -158,7 +158,7 @@ fn pattern_dateime() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( data_provider )? );
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "At this point in time {time date_time} the moon winked out.",
@@ -191,7 +191,7 @@ fn pattern_dateime_string() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( data_provider )? );
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "At this point in time {time date_time} the moon winked out.",

@@ -38,6 +38,16 @@ version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde", "deserialize_bincode_1" ]
 
+[dependencies.icu_properties]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.icu_segmenter]
+version = "0.8.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
 [dependencies.icu_plurals]
 version = "1.1.0"
 # Needed for BufferProvider

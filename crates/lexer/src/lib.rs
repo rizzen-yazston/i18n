@@ -3,9 +3,11 @@
 
 //! String lexer and resultant tokens.
 //! 
-//! The `Lexer` is initialised using a data provider [`BufferProvider`] to an [Unicode Consortium] [CLDR] data
-//! repository, usually it is just a local copy of the CLDR in the application's data directory. Once the `Lexer` has
-//! been initialised it may be used to tokenise strings, without needing to re-initialising the `Lexer` before use.
+//! The `Lexer` is initialised using any data provider implementing the [`DataProvider`] trait to an
+//! [Unicode Consortium] [CLDR] data repository (even a custom database). Usually the repository is just a local copy
+//! of the CLDR in the application's data directory. Once the `Lexer` has been initialised it may be used to tokenise
+//! strings, without needing to re-initialising the `Lexer` before use.
+//! 
 //! Consult the [ICU4X] website for instructions on generating a suitable data repository for the application, by
 //! leaving out data that is not used by the application. 
 //! 
@@ -25,7 +27,7 @@
 //! fn tokenise() -> Result<(), Box<dyn Error>> {
 //!     let buffer_provider = buffer();
 //!     let data_provider = buffer_provider.as_deserializing();
-//!     let icu_data_provider = IcuDataProvider::try_new( data_provider )?;
+//!     let icu_data_provider = IcuDataProvider::try_new( &data_provider )?;
 //!     let mut lexer = Lexer::try_new( &Rc::new( icu_data_provider ) )?;
 //!     let tokens = lexer.tokenise(
 //!         "String contains a {placeholder}.", &vec![ '{', '}' ]

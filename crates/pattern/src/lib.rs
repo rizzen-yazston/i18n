@@ -29,7 +29,7 @@
 //! fn pattern_plural() -> Result<(), Box<dyn Error>> {
 //!     let buffer_provider = buffer();
 //!     let data_provider = buffer_provider.as_deserializing();
-//!     let icu_data_provider = Rc::new( IcuDataProvider::try_new( data_provider )? );
+//!     let icu_data_provider = Rc::new( IcuDataProvider::try_new( &data_provider )? );
 //!     let mut lexer = Lexer::try_new( &icu_data_provider )?;
 //!     let tokens = lexer.tokenise(
 //!         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",

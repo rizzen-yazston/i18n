@@ -32,3 +32,8 @@ pub trait LStringProvider {
     /// Return of `ProviderError` indicates there was an error to retrieve the string from the provider's data store.
     fn default_language_tag<T: AsRef<str>>( &self, identifier: T ) -> Result<Option<String>, ProviderError>;
 }
+
+/// A wrapper struct tuple to hold a reference to an `impl LStringProvider`, so that the Provider can be stored in
+/// structs.
+//pub struct LStringProviderWrapper<'a, P: ?Sized>( pub impl P );
+pub struct LStringProviderWrapper<'a, P: ?Sized>( pub &'a P );

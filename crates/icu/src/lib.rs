@@ -3,10 +3,12 @@
 
 //! ICU4X data provider helper.
 //! 
-//! The `IcuDataProvider` type contains a member `data_provider` holding the `DataProvider`, which is a deserialised
-//! `BufferProvider`.
+//! The `IcuDataProvider` type contains a member `data_provider` holding the `&DataProvider` as a `DataProviderWrapper`
+//! type.
 //! 
 //! The `IcuDataProvider` type also contains non-locale based data used within the `i18n_lexer` crate.
+//! 
+//! `IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` to prevent unnecessary duplication.
 //! 
 //! # Examples
 //! 

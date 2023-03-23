@@ -1,6 +1,46 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.6.0 (2023-03-??)
+
+WARNING: This update has many API breaking changes for many `i18n` crates.
+
+Breaking change is the result of changing how ICU data providers are used and passed to various components, thus many examples are affected even if the module is not affected by the ICU data provider change.
+
+* Added the `icu` crate:
+
+* Added `IcuDataProvider`, `DataProviderWrapper`, and `IcuError`.
+
+** Added the `Cargo.toml`, license, and documentation.
+
+* Updated the `i18n_provider` crate:
+
+** Added `LStringProviderWrapper`.
+
+** Updated documentation.
+
+* Updated the `i18n_provider_sqlite` crate:
+
+** Added `LStringProviderSqlite3`, `AsLStringProviderSqlite3`, and its blanket implementation.
+
+** Updated tests, examples and documentation.
+
+* Updated the `i18n_lexer` crate:
+
+
+
+* Updated the `i18n_pattern` crate:
+
+
+
+* Added the `i18n_message` crate:
+
+** Added `Message`, `MessageError`.
+
+** Added tests.
+
+** Added the `Cargo.toml`, license, and documentation.
+
 == i18n 0.5.0 (2023-03-16)
 
 WARNING: This update has many API breaking changes for all existing `i18n` crates.
@@ -9,11 +49,19 @@ Breaking change is the result of changing the implementation of handling error a
 
 * Added the `i18n_provider` crate:
 
-** Added `LStringProvider`
+** Added `LStringProvider`, `ProviderError`.
+
+** Added the `Cargo.toml`, license, and documentation.
 
 * Added the `i18n_provider_sqlite3` crate:
 
 ** Added implementation of `LStringProvider` using Sqlite3 backend.
+
+** Added `tests` directory.
+
+** Added Sqlite3 file for supported error language strings.
+
+** Added the `Cargo.toml`, license, and documentation.
 
 * Updated the `i18n_utility` crate:
 

@@ -24,6 +24,16 @@ version = "1.1.0"
 # Needed for BufferProvider
 features = [ "serde", "deserialize_bincode_1" ]
 
+[dependencies.icu_properties]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.icu_segmenter]
+version = "0.8.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
 [dependencies.icu_plurals]
 version = "1.1.0"
 # Needed for BufferProvider
@@ -66,7 +76,7 @@ use std::error::Error;
 fn pattern_plural() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( data_provider )? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( &data_provider )? );
     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     let tokens = lexer.tokenise(
         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",

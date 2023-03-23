@@ -8,6 +8,29 @@
 use crate::LexerError;
 use i18n_icu::IcuDataProvider;
 use icu_provider::prelude::*;
+use icu_properties::{ provider::{ PatternSyntaxV1Marker, PatternWhiteSpaceV1Marker } };
+use icu_segmenter::provider::GraphemeClusterBreakDataV1Marker;
+use icu_plurals::provider::{ CardinalV1Marker, OrdinalV1Marker };
+use icu_decimal::provider::DecimalSymbolsV1Marker;
+use icu_datetime::provider::calendar::{
+    TimeSymbolsV1Marker,
+    TimeLengthsV1Marker,
+    GregorianDateLengthsV1Marker,
+    BuddhistDateLengthsV1Marker,
+    JapaneseDateLengthsV1Marker,
+    JapaneseExtendedDateLengthsV1Marker,
+    CopticDateLengthsV1Marker,
+    IndianDateLengthsV1Marker,
+    EthiopianDateLengthsV1Marker,
+    GregorianDateSymbolsV1Marker,
+    BuddhistDateSymbolsV1Marker,
+    JapaneseDateSymbolsV1Marker,
+    JapaneseExtendedDateSymbolsV1Marker,
+    CopticDateSymbolsV1Marker,
+    IndianDateSymbolsV1Marker,
+    EthiopianDateSymbolsV1Marker,
+};
+use icu_calendar::provider::{ WeekDataV1Marker, JapaneseErasV1Marker, JapaneseExtendedErasV1Marker };
 use std::rc::Rc;
 
 /// String lexer and token types.
@@ -56,7 +79,18 @@ pub enum TokenType {
 /// [Unicode Standard Annex #44: Unicode Character Database](https://www.unicode.org/reports/tr44/).
 pub struct Lexer<'a, P>
 where
-    P: ?Sized + BufferProvider,
+    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
+        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
+        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
+        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
+        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
+        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
+        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
+        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
+        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
+        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
+        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
+        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
 {
     data_provider: Rc<IcuDataProvider<'a, P>>,
     token_position_byte: Option<usize>,
@@ -67,7 +101,21 @@ where
     position_grapheme: usize,
 }
 
-impl<'a, P: BufferProvider> Lexer<'a, P> {
+impl<'a, P> Lexer<'a, P>
+where
+    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
+        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
+        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
+        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
+        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
+        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
+        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
+        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
+        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
+        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
+        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
+        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
+{
 
     /// Attempts to initialise the `Lexer` for tokenising a string using an ICU provider for character data.
     /// 
@@ -87,7 +135,7 @@ impl<'a, P: BufferProvider> Lexer<'a, P> {
     /// fn tokenise() -> Result<(), Box<dyn Error>> {
     ///     let buffer_provider = buffer();
     ///     let data_provider = buffer_provider.as_deserializing();
-    ///     let icu_data_provider = IcuDataProvider::try_new( data_provider )?;
+    ///     let icu_data_provider = IcuDataProvider::try_new( &data_provider )?;
     ///     let mut lexer = Lexer::try_new( &Rc::new( icu_data_provider ) )?;
     ///     let tokens = lexer.tokenise(
     ///         "String contains a {placeholder}.", &vec![ '{', '}' ]
@@ -142,7 +190,7 @@ impl<'a, P: BufferProvider> Lexer<'a, P> {
     /// fn tokenise() -> Result<(), Box<dyn Error>> {
     ///     let buffer_provider = buffer();
     ///     let data_provider = buffer_provider.as_deserializing();
-    ///     let icu_data_provider = IcuDataProvider::try_new( data_provider )?;
+    ///     let icu_data_provider = IcuDataProvider::try_new( &data_provider )?;
     ///     let mut lexer = Lexer::try_new( &Rc::new( icu_data_provider ) )?;
     ///     let tokens = lexer.tokenise(
     ///         "String contains a {placeholder}.", &vec![ '{', '}' ]

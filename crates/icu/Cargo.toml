@@ -43,5 +43,30 @@ version = "0.8.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
+[dependencies.icu_plurals]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.fixed_decimal]
+version = "0.5.2"
+# Needed for BufferProvider
+features = [ "ryu" ]
+
+[dependencies.icu_decimal]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.icu_calendar]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
+[dependencies.icu_datetime]
+version = "1.1.0"
+# Needed for BufferProvider
+features = [ "serde" ]
+
 [lib]
 name = "i18n_icu"

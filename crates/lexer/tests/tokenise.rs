@@ -14,7 +14,7 @@ use std::error::Error;
 fn tokenise() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider = IcuDataProvider::try_new( data_provider )?;
+    let icu_data_provider = IcuDataProvider::try_new( &data_provider )?;
     let mut lexer = Lexer::try_new( &Rc::new( icu_data_provider ) )?;
     let tokens = lexer.tokenise(
         "String contains a {placeholder}.", &vec![ '{', '}' ]

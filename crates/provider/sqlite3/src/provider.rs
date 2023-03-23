@@ -343,3 +343,20 @@ impl LStringProvider for ProviderSqlite3 {
         Ok( None )
     }
 }
+
+// The next 3 items (struct, trait, and impl) is implementing the concept of storing an `impl Trait` into a struct as
+// a member, has been taken from the `icu_provider` crate, particular the serde module.
+pub struct LStringProviderSqlite3<'a, P: ?Sized>( &'a P );
+
+pub trait AsLStringProviderSqlite3 {
+    fn as_lstring_provider( &self ) -> LStringProviderSqlite3<Self>;
+}
+
+impl<P> AsLStringProviderSqlite3 for P
+where
+    P: LStringProvider + ?Sized,
+{
+    fn as_lstring_provider( &self ) -> LStringProviderSqlite3<Self> {
+        LStringProviderSqlite3( self )
+    }
+}

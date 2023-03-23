@@ -11,24 +11,58 @@ use i18n_lstring::LString;
 use tree::Tree;
 use icu_provider::prelude::*;
 use icu_locid::Locale;
-use icu_plurals::{PluralCategory, PluralRules};
-use icu_decimal::{FixedDecimalFormatter, options};
-use fixed_decimal::{FixedDecimal, DoublePrecision, SignDisplay};
+use icu_plurals::{ PluralCategory, PluralRules };
+use icu_decimal::{ FixedDecimalFormatter, options };
+use fixed_decimal::{FixedDecimal, DoublePrecision, SignDisplay };
 use icu_calendar::{
-    types::{Time, IsoHour, IsoMinute, IsoSecond, NanoSecond},
+    types::{ Time, IsoHour, IsoMinute, IsoSecond, NanoSecond },
     DateTime, Date, Iso
 };
 use icu_datetime::{
-    options::length::{Bag, Date as DateLength, Time as TimeLength},
+    options::length::{ Bag, Date as DateLength, Time as TimeLength },
     DateTimeFormatter, DateFormatter, TimeFormatter
 };
+use icu_properties::{ provider::{ PatternSyntaxV1Marker, PatternWhiteSpaceV1Marker } };
+use icu_segmenter::provider::GraphemeClusterBreakDataV1Marker;
+use icu_plurals::provider::{ CardinalV1Marker, OrdinalV1Marker };
+use icu_decimal::provider::DecimalSymbolsV1Marker;
+use icu_datetime::provider::calendar::{
+    TimeSymbolsV1Marker,
+    TimeLengthsV1Marker,
+    GregorianDateLengthsV1Marker,
+    BuddhistDateLengthsV1Marker,
+    JapaneseDateLengthsV1Marker,
+    JapaneseExtendedDateLengthsV1Marker,
+    CopticDateLengthsV1Marker,
+    IndianDateLengthsV1Marker,
+    EthiopianDateLengthsV1Marker,
+    GregorianDateSymbolsV1Marker,
+    BuddhistDateSymbolsV1Marker,
+    JapaneseDateSymbolsV1Marker,
+    JapaneseExtendedDateSymbolsV1Marker,
+    CopticDateSymbolsV1Marker,
+    IndianDateSymbolsV1Marker,
+    EthiopianDateSymbolsV1Marker,
+};
+use icu_calendar::provider::{ WeekDataV1Marker, JapaneseErasV1Marker, JapaneseExtendedErasV1Marker };
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
 
 pub struct Formatter<'a, P>
 where
-    P: ?Sized + BufferProvider,
+    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
+        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
+        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
+        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
+        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
+        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
+        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
+        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
+        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
+        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
+        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
+        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
 {
     data_provider: Rc<IcuDataProvider<'a, P>>,
     language_tag: Rc<String>,
@@ -38,7 +72,21 @@ where
     selectors: Vec<HashMap<String, String>>,
 }
 
-impl<'a, P: BufferProvider> Formatter<'a, P> {
+impl<'a, P> Formatter<'a, P>
+where
+    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
+        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
+        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
+        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
+        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
+        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
+        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
+        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
+        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
+        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
+        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
+        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
+{
     /// Creates a Formatter for a language string using parsing results.
     /// During the creation of the formatter for the supplied Tree, the semantic analyse is done.
     ///
@@ -59,7 +107,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
     ///     let buffer_provider = buffer();
     ///     let data_provider = buffer_provider.as_deserializing();
     ///     let icu_data_provider =
-    ///         Rc::new( IcuDataProvider::try_new( data_provider )? );
+    ///         Rc::new( IcuDataProvider::try_new( &data_provider )? );
     ///     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     ///     let tokens = lexer.tokenise(
     ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
@@ -242,7 +290,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
     ///     let buffer_provider = buffer();
     ///     let data_provider = buffer_provider.as_deserializing();
     ///     let icu_data_provider =
-    ///         Rc::new( IcuDataProvider::try_new( data_provider )? );
+    ///         Rc::new( IcuDataProvider::try_new( &data_provider )? );
     ///     let mut lexer = Lexer::try_new( &icu_data_provider )?;
     ///     let tokens = lexer.tokenise(
     ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
@@ -344,7 +392,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                         options.grouping_strategy = group.unwrap();
                     }
                     let fdf = FixedDecimalFormatter::try_new_unstable(
-                        self.data_provider.data_provider(),
+                        self.data_provider.data_provider().0,
                         &data_locale,
                         options,
                     )?;
@@ -417,7 +465,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                     match value {
                         PlaceholderValue::DateTime( date_time) => {
                             let dtf = DateTimeFormatter::try_new_unstable(
-                                self.data_provider.data_provider(),
+                                self.data_provider.data_provider().0,
                                 &data_locale,
                                 options.into(),
                             )?;
@@ -426,7 +474,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                         },
                         PlaceholderValue::Date( date ) => {
                             let df = DateFormatter::try_new_with_length_unstable(
-                                self.data_provider.data_provider(),
+                                self.data_provider.data_provider().0,
                                 &data_locale,
                                 length_date,
                             )?;
@@ -435,7 +483,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                         },
                         PlaceholderValue::Time( time ) => {
                             let tf = TimeFormatter::try_new_with_length_unstable(
-                                self.data_provider.data_provider(),
+                                self.data_provider.data_provider().0,
                                 &data_locale,
                                 length_time,
                             )?;
@@ -451,7 +499,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
                                     let tf =
                                         TimeFormatter::try_new_with_length_unstable(
-                                        self.data_provider.data_provider(),
+                                        self.data_provider.data_provider().0,
                                         &data_locale,
                                         length_time,
                                     )?;
@@ -464,7 +512,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
                                     let date_time = DateTime::<Iso>::new( date, time );
                                     let dtf = DateTimeFormatter::try_new_unstable(
-                                        self.data_provider.data_provider(),
+                                        self.data_provider.data_provider().0,
                                         &data_locale,
                                         options.into(),
                                     )?;
@@ -476,7 +524,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                                 // date only
                                 let date: Date<Iso> = decompose_iso_date( date_time_strings[ 0 ] )?;
                                 let df = DateFormatter::try_new_with_length_unstable(
-                                    self.data_provider.data_provider(),
+                                    self.data_provider.data_provider().0,
                                     &data_locale,
                                     length_date,
                                 )?;
@@ -500,7 +548,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
                     match complex {
                         ComplexType::Plural => {
                             let plurals = PluralRules::try_new_cardinal_unstable(
-                                self.data_provider.data_provider(),
+                                self.data_provider.data_provider().0,
                                 &data_locale,
                             )?;
                             match value {
@@ -554,7 +602,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
 
                             // Only positive integers and zero are allowed.
                             let plurals = PluralRules::try_new_ordinal_unstable(
-                                self.data_provider.data_provider(),
+                                self.data_provider.data_provider().0,
                                 &data_locale,
                             )?;
                             match value {
@@ -622,7 +670,7 @@ impl<'a, P: BufferProvider> Formatter<'a, P> {
 
         // Format number using graphemes of the locale.
         let fdf = FixedDecimalFormatter::try_new_unstable(
-            self.data_provider.data_provider(),
+            self.data_provider.data_provider().0,
             data_locale,
             Default::default(),
         )?;
