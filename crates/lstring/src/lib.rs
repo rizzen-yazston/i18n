@@ -56,7 +56,7 @@ use std::rc::Rc;
 /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
 /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-#[derive( PartialEq, Debug )]
+#[derive( PartialEq, Debug, Clone )]
 pub struct LString {
     string: String,
     language_tag: Rc<String>,

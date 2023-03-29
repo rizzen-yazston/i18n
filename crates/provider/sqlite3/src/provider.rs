@@ -22,13 +22,12 @@ use core::cell::RefCell;
 /// use i18n_provider_sqlite3::ProviderSqlite3;
 /// use i18n_provider::LStringProvider;
 /// use i18n_registry::LanguageTagRegistry;
-/// use core::cell::RefCell;
 /// use std::rc::Rc;
 /// use std::error::Error;
 /// fn main() -> Result<(), Box<dyn Error>> {
 ///     let path = "./i18n/";
-///     let registry = Rc::new( RefCell::new( LanguageTagRegistry::new() ) );
-///     let tag = registry.borrow_mut().get_language_tag( "en" )?;
+///     let registry = Rc::new( LanguageTagRegistry::new() );
+///     let tag = registry.get_language_tag( "en" )?;
 ///     let provider = ProviderSqlite3::try_new(
 ///         path,
 ///         &registry
@@ -45,7 +44,7 @@ use core::cell::RefCell;
 /// ```
 pub struct ProviderSqlite3 {
     directory: PathBuf,
-    language_tag_registry: Rc<RefCell<LanguageTagRegistry>>,
+    language_tag_registry: Rc<LanguageTagRegistry>,
     connections: RefCell<HashMap<String, Connection>>,
 }
 
@@ -63,7 +62,7 @@ impl ProviderSqlite3 {
     /// files.
     pub fn try_new<T: TryInto<PathBuf>>(
         directory_path: T,
-        language_tag_registry: &Rc<RefCell<LanguageTagRegistry>>
+        language_tag_registry: &Rc<LanguageTagRegistry>
     ) -> Result<Self, ProviderSqlite3Error> {
         let Ok( directory ) = directory_path.try_into() else {
                 return Err( ProviderSqlite3Error::InvalidPath )
@@ -113,11 +112,9 @@ impl LStringProvider for ProviderSqlite3 {
     /// Retrieve a vector of possible `LString` for requested identifier that matches a language tag.
     /// 
     /// Ideally a single exact match should be returned, yet may not be for the requested language tag. If no strings
-    /// is found for the requested tag, the right most subtag is removed sequentially until either at least 1 `LString`
-    /// is found, or `None returned when there are no more subtags to be removed. Multiple `LString` may be returned
-    /// when there are multiple entries of language tags having additional subtags than the requested language tag. 
-    /// 
-    /// Return of `None` indicates no strings was found matching the requested language tag, or its more general form.
+    /// is found for the requested tag, the right most subtag is removed sequentially until there are no more subtags.
+    /// Multiple `LString`s may be returned when there are multiple entries of language tags having additional subtags
+    /// than the requested language tag.
     /// 
     /// Return of `ErrorMessage` indicates there was a Sqlite3 error.
     /// 
@@ -127,13 +124,12 @@ impl LStringProvider for ProviderSqlite3 {
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_provider::LStringProvider;
     /// use i18n_registry::LanguageTagRegistry;
-    /// use core::cell::RefCell;
     /// use std::rc::Rc;
     /// use std::error::Error;
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let path = "./i18n/";
-    ///     let registry = Rc::new( RefCell::new( LanguageTagRegistry::new() ) );
-    ///     let tag = registry.borrow_mut().get_language_tag( "en" )?;
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let tag = registry.get_language_tag( "en" )?;
     ///     let provider = ProviderSqlite3::try_new(
     ///         path,
     ///         &registry
@@ -225,7 +221,7 @@ impl LStringProvider for ProviderSqlite3 {
                     )
                 };
                 let language = match
-                    self.language_tag_registry.as_ref().borrow().get_language_tag( tag_raw ) {
+                    self.language_tag_registry.as_ref().get_language_tag( tag_raw ) {
                     Ok( result ) => result,
                     Err( error ) => return Err(
                         ProviderError {
@@ -248,6 +244,47 @@ impl LStringProvider for ProviderSqlite3 {
         Ok( result )
     }
 
+    /// Similar to `get()` method, except that `get_one()` will only return a single `LString` if multiple strings are
+    /// available. 
+    /// 
+    /// `None` is returned when there is no strings available for the language tag.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_provider_sqlite3::ProviderSqlite3;
+    /// use i18n_provider::LStringProvider;
+    /// use i18n_registry::LanguageTagRegistry;
+    /// use core::cell::RefCell;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     let path = "./i18n/";
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let tag = registry.get_language_tag( "en" )?;
+    ///     let provider = ProviderSqlite3::try_new(
+    ///         path,
+    ///         &registry
+    ///     )?;
+    ///     let strings = provider.get(
+    ///         "i18n_provider_sqlite3/invalid_path",
+    ///         &tag
+    ///     )?;//.expect( "No string found for language tag." );
+    ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
+    ///     assert_eq!( strings[ 0 ].as_str(), "Invalid path provided.", "Not correct string." );
+    ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     Ok( () )
+    /// }
+    /// ```
+    fn get_one<T: AsRef<str>>(
+        &self, identifier: T,
+        language_tag: &Rc<String>
+    ) -> Result<Option<LString>, ProviderError> {
+        let mut result = self.get( identifier, language_tag )?;
+        //temp for now, TODO: try to return string closest to the language tag, by match language length
+        Ok( result.pop() )
+    }
+
     /// Retrieve the default language of the crate.
     /// 
     /// Return of `None` indicates no default language tag was found.
@@ -265,7 +302,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// use std::error::Error;
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let path = "./i18n/";
-    ///     let registry = Rc::new( RefCell::new( LanguageTagRegistry::new() ) );
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
     ///     let provider = ProviderSqlite3::try_new(
     ///         path,
     ///         &registry

@@ -6,13 +6,13 @@
 use i18n_provider::LStringProvider;
 use i18n_provider_sqlite3::ProviderSqlite3;
 use i18n_registry::LanguageTagRegistry;
-use std::{ rc::Rc, cell::RefCell, error::Error };
+use std::{ rc::Rc, error::Error };
 
 #[test]
 fn get_for_en() -> Result<(), Box<dyn Error>> {
     let path = "./i18n/";
-    let registry = Rc::new( RefCell::new( LanguageTagRegistry::new() ) );
-    let tag = registry.borrow_mut().get_language_tag( "en" )?;
+    let registry = Rc::new( LanguageTagRegistry::new() );
+    let tag = registry.get_language_tag( "en" )?;
     let provider = ProviderSqlite3::try_new(
         path,
         &registry
@@ -29,8 +29,8 @@ fn get_for_en() -> Result<(), Box<dyn Error>> {
 #[test]
 fn get_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
     let path = "./i18n/";
-    let registry = Rc::new( RefCell::new( LanguageTagRegistry::new() ) );
-    let tag = registry.borrow_mut().get_language_tag( "en-ZA-u-ca-julian" )?;
+    let registry = Rc::new( LanguageTagRegistry::new() );
+    let tag = registry.get_language_tag( "en-ZA-u-ca-julian" )?;
     let provider = ProviderSqlite3::try_new(
         path,
         &registry
@@ -47,7 +47,7 @@ fn get_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
 #[test]
 fn default_language_tag() -> Result<(), Box<dyn Error>> {
     let path = "./i18n/";
-    let registry = Rc::new( RefCell::new( LanguageTagRegistry::new() ) );
+    let registry = Rc::new( LanguageTagRegistry::new() );
     let provider = ProviderSqlite3::try_new(
         path,
         &registry

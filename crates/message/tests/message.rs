@@ -1,31 +1,8 @@
-= i18n_message
-Rizzen Yazston
+// This file is part of `i18n_message-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_message-rizzen-yazston` crate.
 
-== Message system
+//! Testing `Message`.
 
-The `i18n_message` crate contains the messaging system.
-
-A message system that connects to a string data store, to obtain strings for the specified language using a string identifier, and formatting the string to replace any placeholders within the string with provided values.
-
-The message is capable of caching retrieved strings that are prepared for placeholder replacement, thus can be reused without the need to parse the string for placeholders.
-
-The message system makes use of all the other component crates that make up the `i18n` project. Ideally one only needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
-
-== Cargo.toml
-
-```
-[dependencies]
-i18n_message-rizzen-yazston = "0.5.0"
-
-#[dependencies.icu_provider]
-#version = "1.0.0"
-## Needed for BufferProvider
-#features = [ "serde", "deserialize_bincode_1" ]
-```
-
-== Examples
-
-```
 use i18n_icu::IcuDataProvider;
 use i18n_registry::LanguageTagRegistry;
 use i18n_provider_sqlite3::ProviderSqlite3;
@@ -37,6 +14,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::error::Error;
 
+#[test]
 fn message() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
@@ -77,4 +55,3 @@ fn message() -> Result<(), Box<dyn Error>> {
     );
     Ok( () )
 }
-```

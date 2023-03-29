@@ -13,14 +13,13 @@
 //! use i18n_provider_sqlite3::ProviderSqlite3;
 //! use i18n_provider::LStringProvider;
 //! use i18n_registry::LanguageTagRegistry;
-//! use core::cell::RefCell;
 //! use std::rc::Rc;
 //! use std::error::Error;
 //! 
 //! fn main() -> Result<(), Box<dyn Error>> {
 //!     let path = "./i18n/";
-//!     let registry = Rc::new( RefCell::new( LanguageTagRegistry::new() ) );
-//!     let tag = registry.borrow_mut().get_language_tag( "en" )?;
+//!     let registry = Rc::new( LanguageTagRegistry::new() );
+//!     let tag = registry.get_language_tag( "en" )?;
 //!     let provider = ProviderSqlite3::try_new(
 //!         path,
 //!         &registry

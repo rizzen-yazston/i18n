@@ -3,13 +3,13 @@ Rizzen Yazston
 
 == i18n 0.6.0 (2023-03-??)
 
-WARNING: This update has many API breaking changes for many `i18n` crates.
+WARNING: This update has API breaking changes for some `i18n` crates.
 
 Breaking change is the result of changing how ICU data providers are used and passed to various components, thus many examples are affected even if the module is not affected by the ICU data provider change.
 
 * Added the `icu` crate:
 
-* Added `IcuDataProvider`, `DataProviderWrapper`, and `IcuError`.
+** Added `IcuDataProvider`, `DataProviderWrapper`, and `IcuError`.
 
 ** Added the `Cargo.toml`, license, and documentation.
 
@@ -23,15 +23,29 @@ Breaking change is the result of changing how ICU data providers are used and pa
 
 ** Added `LStringProviderSqlite3`, `AsLStringProviderSqlite3`, and its blanket implementation.
 
+** Removed the requirement of `RefCell` for `language_tag_registry` parameter and struct, as it was redundant.
+
 ** Updated tests, examples and documentation.
 
 * Updated the `i18n_lexer` crate:
 
+** Made `Lexer` struct private, made both `tokenise()` and `add_previous_characters()` methods as normal functions, removed `try_new` method and added `&Rc<IcuDataProvider>` to `tokenise()` function parameters.
 
+** Removed the `error.rs` as neither of the functions returns errors.
+
+** Updated the `lib.rs` to remove `error` module.
+
+** Updated `Cargo.toml`, tests, examples and documentation.
 
 * Updated the `i18n_pattern` crate:
 
+** Updated `Formatter` to use `IcuDataProvider`
 
+** Updated `Cargo.toml`, tests, examples and documentation.
+
+* Updated `i18n_lstring` crate:
+
+** Added `Clone` to `#[Derive()]` to allow cloning.
 
 * Added the `i18n_message` crate:
 

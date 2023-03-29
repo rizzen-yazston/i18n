@@ -18,19 +18,20 @@
 //! 
 //! ```
 //! use i18n_icu::IcuDataProvider;
-//! use i18n_lexer::{Token, TokenType, Lexer};
+//! use i18n_lexer::{Token, TokenType, tokenise};
 //! use icu_testdata::buffer;
 //! use icu_provider::serde::AsDeserializingBufferProvider;
 //! use std::rc::Rc;
 //! use std::error::Error;
 //! 
-//! fn tokenise() -> Result<(), Box<dyn Error>> {
+//! fn test_tokenise() -> Result<(), Box<dyn Error>> {
 //!     let buffer_provider = buffer();
 //!     let data_provider = buffer_provider.as_deserializing();
 //!     let icu_data_provider = IcuDataProvider::try_new( &data_provider )?;
-//!     let mut lexer = Lexer::try_new( &Rc::new( icu_data_provider ) )?;
-//!     let tokens = lexer.tokenise(
-//!         "String contains a {placeholder}.", &vec![ '{', '}' ]
+//!     let tokens = tokenise(
+//!         "String contains a {placeholder}.",
+//!         &vec![ '{', '}' ],
+//!         &Rc::new( icu_data_provider ),
 //!     );
 //!     let mut grammar = 0;
 //!     assert_eq!( tokens.0.iter().count(), 10, "Supposed to be a total of 10 tokens." );
@@ -51,5 +52,3 @@
 
 pub mod lexer;
 pub use lexer::*;
-pub mod error;
-pub use error::*;

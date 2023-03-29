@@ -94,7 +94,7 @@ where
     ///
     /// ```
     /// use i18n_icu::IcuDataProvider;
-    /// use i18n_lexer::{Token, TokenType, Lexer};
+    /// use i18n_lexer::{Token, TokenType, tokenise};
     /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue};
     /// use icu_testdata::buffer;
     /// use icu_provider::serde::AsDeserializingBufferProvider;
@@ -108,10 +108,10 @@ where
     ///     let data_provider = buffer_provider.as_deserializing();
     ///     let icu_data_provider =
     ///         Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    ///     let mut lexer = Lexer::try_new( &icu_data_provider )?;
-    ///     let tokens = lexer.tokenise(
+    ///     let tokens = tokenise(
     ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-    ///         &vec![ '{', '}', '`', '#' ]
+    ///         &vec![ '{', '}', '`', '#' ],
+    ///         &icu_data_provider,
     ///     );
     ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
@@ -277,7 +277,7 @@ where
     ///
     /// ```
     /// use i18n_icu::IcuDataProvider;
-    /// use i18n_lexer::{Token, TokenType, Lexer};
+    /// use i18n_lexer::{Token, TokenType, tokenise};
     /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue};
     /// use icu_testdata::buffer;
     /// use icu_provider::serde::AsDeserializingBufferProvider;
@@ -291,10 +291,10 @@ where
     ///     let data_provider = buffer_provider.as_deserializing();
     ///     let icu_data_provider =
     ///         Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    ///     let mut lexer = Lexer::try_new( &icu_data_provider )?;
-    ///     let tokens = lexer.tokenise(
+    ///     let tokens = tokenise(
     ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-    ///         &vec![ '{', '}', '`', '#' ]
+    ///         &vec![ '{', '}', '`', '#' ],
+    ///         &icu_data_provider,
     ///     );
     ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
@@ -331,7 +331,7 @@ where
     }
 
     /// Returns the language tag used in creating the formatter.
-    pub fn language( &self ) -> &Rc<String> {
+    pub fn language_tag( &self ) -> &Rc<String> {
         &self.language_tag
     }
 
@@ -370,12 +370,12 @@ where
                 },
                 PatternPart::PatternString( placeholder ) => {
                     let Some( value ) = values.get( placeholder ) else {
-                        return Err( FormatterError::PlaceholderValue( "PatternString".to_string() ) );
+                        return Err( FormatterError::PlaceholderValue( "PatternString 373".to_string() ) );
                     };
                     match value {
                         PlaceholderValue::String( value ) => string.push_str( value ),
                         PlaceholderValue::LString( value) => string.push_str( value.as_str() ),
-                        _ => return Err( FormatterError::InvalidValue( "PatternString".to_string() ) )
+                        _ => return Err( FormatterError::InvalidValue( "PatternString 378".to_string() ) )
                     }
                 },
                 PatternPart::PatternDecimal{
