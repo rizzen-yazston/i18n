@@ -2,7 +2,7 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
 use std::path::PathBuf;
-use i18n_registry::RegistryError;
+use i18n_utility::RegistryError;
 use rusqlite::Error as Sqlite3Error;
 use std::io::Error as IoError;
 use std::error::Error; // Experimental in `core` crate.
@@ -21,8 +21,6 @@ pub enum ProviderSqlite3Error {
 }
 
 impl Display for ProviderSqlite3Error {
-
-    /// Simply call the display formatter of embedded error.
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match *self {
             ProviderSqlite3Error::Io( ref error ) => error.fmt( formatter ),
@@ -32,10 +30,10 @@ impl Display for ProviderSqlite3Error {
             ProviderSqlite3Error::NoSqlite3Files( ref path ) =>
                 write!( formatter, "No ‘.sqlite3’ files was found in ‘{}’.", path.display() ),
             ProviderSqlite3Error::MissingIdentifierPart( ref string ) =>
-                write!( formatter, "Missing either string or crate identifier part for ‘{}’.", string ),
+                write!( formatter, "Missing either the string or the crate identifier part for ‘{}’.", string ),
             ProviderSqlite3Error::LanguageTagRegistry( ref error ) => error.fmt( formatter ),
             ProviderSqlite3Error::InvalidPath =>
-                write!( formatter, "Invalid path provided." ),
+                write!( formatter, "Invalid path was provided." ),
         }
     }
 }

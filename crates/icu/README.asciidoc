@@ -1,28 +1,42 @@
 = i18n_icu
 Rizzen Yazston
-:Locale: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
-:icu_locid: https://crates.io/crates/icu_locid
-:icu: https://crates.io/crates/icu
-:ICU4X: https://github.com/unicode-org/icu4x
-:Unicode Consortium: https://home.unicode.org/
-:LanguageIdentifier: https://docs.rs/icu/latest/icu/locid/struct.LanguageIdentifier.html
-:BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+:icu4x: https://github.com/unicode-org/icu4x
+:url-unicode: https://home.unicode.org/
+:DataProvider: https://docs.rs/icu_provider/1.2.0/icu_provider/trait.DataProvider.html
 
-ICU4X data provider helper.
+{icu4x}[*ICU4X*] project (maintained by the {url-unicode}[*Unicode Consortium*]) data provider helper.
 
-The `IcuDataProvider` type contains a member `data_provider` holding the `&DataProvider` as a `DataProviderWrapper` type.
+The `IcuDataProvider` type contains a member `data_provider` holding the ICU4X `&{DataProvider}[DataProvider]` as a `DataProviderWrapper` type.
 
 The `IcuDataProvider` type also contains non-locale based data used within the `i18n_lexer` crate.
 
 `IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` to prevent unnecessary duplication. 
 
+== Acknowledgement
+
+Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
+
 == Cargo.toml
 
 ```
 [dependencies]
-i18n_icu-rizzen-yazston = "0.5.0"
+icu_provider = "1.1.0"
+
+# These are required for the DataProvider.
+icu_properties = "1.1.0"
+icu_segmenter = "0.8.0"
+icu_plurals = "1.1.0"
+icu_decimal = "1.1.0"
+icu_calendar = "1.1.0"
+icu_datetime = "1.1.0"
+
+# This is required for the DataProvider.
+[dependencies.fixed_decimal]
+version = "0.5.2"
+# Needed for floating point support.
+features = [ "ryu" ]
 ```
 
 == Examples
 
-See various examples of `i18n_lexer`, `i18n_pattern`, and `i18n_message` crates.
+See various examples of the `i18n_lexer`, `i18n_pattern`, and `i18n_message` crates.

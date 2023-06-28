@@ -4,9 +4,9 @@
 //! Testing `Message`.
 
 use i18n_icu::IcuDataProvider;
-use i18n_registry::LanguageTagRegistry;
+use i18n_utility::LanguageTagRegistry;
 use i18n_provider_sqlite3::ProviderSqlite3;
-use i18n_pattern::PlaceholderValue;
+use i18n_pattern::{ PlaceholderValue, CommandRegistry };
 use i18n_message::Message;
 use icu_testdata::buffer;
 use icu_provider::serde::AsDeserializingBufferProvider;
@@ -25,8 +25,14 @@ fn message() -> Result<(), Box<dyn Error>> {
     let lstring_provider = ProviderSqlite3::try_new(
         "./i18n/", &language_tag_registry
     )?;
+    let command_registry = Rc::new( CommandRegistry::new() );
     let message_system = Message::try_new(
-        &icu_data_provider, &language_tag_registry, &lstring_provider, true, true
+        &icu_data_provider,
+        &language_tag_registry,
+        &lstring_provider,
+        &command_registry,
+        true,
+        true
     )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
@@ -50,7 +56,7 @@ fn message() -> Result<(), Box<dyn Error>> {
     )?;
     assert_eq!(
         lstring.as_str(),
-        "No string was found for identifier ‘i18n_message/string_not_found’ and language tag ‘en-ZA’. Fallback used: True.",
+        "No string was found for the identifier ‘i18n_message/string_not_found’ and the language tag ‘en-ZA’. Fallback was used: True.",
         "Check placeholder values."
     );
     Ok( () )

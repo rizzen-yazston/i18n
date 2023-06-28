@@ -1,32 +1,5 @@
-// This file is part of `i18n_lstring-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lstring-rizzen-yazston` crate.
-
-//! Language string.
-//! 
-//! This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
-//! specific language ([`Rc`]`<String>`).
-//! 
-//! The specified language is expected to be a [BCP 47 Language Tag] string, though any identifier could be used.
-//! 
-//! # Examples
-//! 
-//! ```
-//! use icu_locid::Locale;
-//! use std::rc::Rc;
-//! use i18n_lstring::LString;
-//! 
-//! let string = "This is a test string.";
-//! let tag = Rc::new(
-//!     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
-//! );
-//! let lang_string = LString::new( string, &tag );
-//! assert_eq!( lang_string.as_str(), string, "String failed." );
-//! assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
-//! ```
-//! 
-//! [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
-//! [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-//! [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+// This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
 use std::rc::Rc;
 
@@ -42,7 +15,7 @@ use std::rc::Rc;
 /// ```
 /// use icu_locid::Locale;
 /// use std::rc::Rc;
-/// use i18n_lstring::LString;
+/// use i18n_utility::LString;
 /// 
 /// let string = "This is a test string.";
 /// let tag = Rc::new(
@@ -53,8 +26,8 @@ use std::rc::Rc;
 /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 /// ```
 /// 
-/// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
-/// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+/// [`String`]: alloc::string::String
+/// [`Rc`]: std::rc::Rc
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 #[derive( PartialEq, Debug, Clone )]
 pub struct LString {
@@ -82,7 +55,7 @@ impl LString {
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_lstring::LString;
+    /// use i18n_utility::LString;
     /// 
     /// let string = "This is a test string.";
     /// let tag = Rc::new(
@@ -93,12 +66,12 @@ impl LString {
     /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
     /// ```
     /// 
-    /// [`str`]: https://doc.rust-lang.org/core/primitive.str.html
-    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`str`]: core::str
+    /// [`String`]: alloc::string::String
+    /// [`Rc`]: std::rc::Rc
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    /// [`Locale`]: https://docs.rs/icu/latest/icu/locid/struct.Locale.html
-    /// [`icu_locid`]: https://crates.io/crates/icu_locid
+    /// [`Locale`]: icu_locid::Locale
+    /// [`icu_locid`]: icu_locid
     pub fn new<T: Into<String>>( string: T, language_tag: &Rc<String> ) -> Self {
         LString { string: string.into(), language_tag: Rc::clone( language_tag ) }
     }
@@ -110,7 +83,7 @@ impl LString {
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_lstring::LString;
+    /// use i18n_utility::LString;
     /// 
     /// let string = "This is a test string.";
     /// let tag = Rc::new(
@@ -119,8 +92,8 @@ impl LString {
     /// let lang_string = LString::new( string, &tag );
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// ```
-    /// [`str`]: https://doc.rust-lang.org/core/primitive.str.html
-    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`str`]: core::str
+    /// [`String`]: alloc::string::String
     pub fn as_str( &self ) -> &str {
         &self.string
     }
@@ -132,7 +105,7 @@ impl LString {
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_lstring::LString;
+    /// use i18n_utility::LString;
     /// 
     /// let tag = Rc::new(
     ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
@@ -140,8 +113,8 @@ impl LString {
     /// let lang_string = LString::new( "This is a test string.", &tag );
     /// assert_eq!( lang_string.language_tag(), &tag, "Locale failed." );
     /// ```
-    /// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-    /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+    /// [`Rc`]: std::rc::Rc
+    /// [`String`]: alloc::string::String
     pub fn language_tag( &self ) -> &Rc<String> {
         &self.language_tag
     }

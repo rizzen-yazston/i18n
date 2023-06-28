@@ -45,7 +45,7 @@
 //! }
 //! ```
 //! 
-//! [`BufferProvider`]: https://docs.rs/icu_provider/latest/icu_provider/buf/trait.BufferProvider.html
+//! [`DataProvider`] icu_provider::DataProvider
 //! [Unicode Consortium]: https://home.unicode.org/
 //! [CLDR]: https://cldr.unicode.org/
 //! [ICU4X]: https://github.com/unicode-org/icu4x

@@ -5,9 +5,8 @@
 resolver = "2"
 members = [
     "crates/icu",
-    "crates/lstring",
     "crates/lexer",
-    "crates/registry",
+    "crates/utility",
     "crates/provider/core",
     "crates/provider/sqlite3",
     "crates/pattern",

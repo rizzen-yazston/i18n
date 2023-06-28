@@ -77,6 +77,7 @@ where
     /// `DataProviderWrapper` type, which is provided by this crate. Besides storing the `DataProvider`, it also
     /// obtains and stores the Pattern_Syntax character set, the Pattern_White_Space character set, and the Grapheme
     /// Cluster Segmenter required for the `Lexer` types to function.
+    /// See `i18n_lexer` crate on usage.
     pub fn try_new( data_provider: &'a P ) -> Result<Self, IcuError> {
         let syntax = load_pattern_syntax( data_provider )?;
         let white_space = load_pattern_white_space( data_provider )?;
@@ -92,21 +93,25 @@ where
 
     /// Get the `DataProviderWrapper` object that can be used in any ICU function that accepts a `DataProvider` as a
     /// parameter, as `data_provider().0`.
+    /// See `i18n_lexer` crate on usage.
     pub fn data_provider( &self ) -> &DataProviderWrapper<P> {
         &self.data_provider
     }
 
     /// Get the preloaded Pattern_Syntax character set.
+    /// See `i18n_lexer` crate on usage.
     pub fn pattern_syntax( &self ) -> &CodePointSetData {
         &self.pattern_syntax
     }
 
     /// Get the preloaded Pattern_White_Space character set.
+    /// See `i18n_lexer` crate on usage.
     pub fn pattern_white_space( &self ) -> &CodePointSetData {
         &self.pattern_white_space
     }
 
     /// Get the Grapheme Cluster Segmenter with preloaded character data set.
+    /// See `i18n_lexer` crate on usage.
     pub fn grapheme_segmenter( &self ) -> &GraphemeClusterSegmenter {
         &self.grapheme_segmenter
     }

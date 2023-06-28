@@ -1,0 +1,81 @@
+= i18n_utility
+Rizzen Yazston
+:icu4x: https://github.com/unicode-org/icu4x
+:url-unicode: https://home.unicode.org/
+:BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+
+Welcome to the *utility* crate of the _Internationalisation_ (i18n) project.
+
+This crate consists of two models:
+
+* `registry`: Registry for Language Tags and ICU4X's `Locale` instances,
+
+* `lstring`: Simple tagged string type.
+
+ 
+== Registry for holding _ICU4X_ `Locale` objects.
+
+This module contains the `LanguageTagRegistry` type, to provide a simple container that caches the {BCP_47_Language_Tag}[BCP 47 Language Tag] strings and the `Locale` type for querying language tags. The purpose of the registry is to reduce the need of parsing language tags repeatedly, by storing the result `Locale` for querying language tag in the registry, and uses the existing `Locale` for the querying language tag when requested.
+
+The `Locale` type can be provided by either the `icu_locid` crate or the `icu` meta-crate. These two crates are part of the {icu4x}[ICU4X] protect developed by the {url-unicode}[Unicode Consortium].
+
+This crate makes use of the `Locale` type instead of the `LanguageIdentifier` type due to that the `Locale` type supports the entire BCP 47 Language Tag specification, where as the `LanguageIdentifier` type excludes the *extension* subtags of the BCP 47 Language Tag specification.
+
+
+== Language string.
+
+This crate contains the `LString` type (aka LanguageString), for associating a text string (`String`) to a
+specific language (`Rc<String>`).
+
+The specified language is expected to be a {BCP_47_Language_Tag}[BCP 47 Language Tag] string, though any identifier could be used.
+
+
+== Acknowledgements
+
+Stefano Angeleri for advice on various design aspects of implementing the library of the Internationalisation project, and also providing the Italian translation of error message strings.
+
+
+== Usage
+
+Simply include the `i18n_utility-rizzen-yazston` crate in the `Cargo.toml` to make it available to the application or library.
+
+
+=== Cargo.toml
+
+```
+[dependencies]
+icu_locid = "1.1.0"
+i18n_utility-rizzen-yazston = "0.5.0"
+```
+
+
+=== Examples
+
+==== `LanguageTagRegistry`
+```
+use icu_locid::Locale;
+use std::rc::Rc;
+use i18n_utility::registry::LanguageTagRegistry;
+
+let mut registry = LanguageTagRegistry::new();
+let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
+let tags = registry.list().iter().count();
+
+assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
+assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
+```
+
+==== `LString`
+```
+use icu_locid::Locale;
+use std::rc::Rc;
+use i18n_utility::LString;
+
+let string = "This is a test string.";
+let tag = Rc::new(
+    Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
+);
+let lang_string = LString::new( string, &tag );
+assert_eq!( lang_string.as_str(), string, "String failed." );
+assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
+```

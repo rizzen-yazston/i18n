@@ -14,10 +14,8 @@ pub enum IcuError {
 }
 
 impl Display for IcuError {
-
-    /// Simply call the display formatter of embedded error.
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
-        match *self {
+        match self {
             IcuError::Properties( ref error ) => error.fmt( formatter ),
             IcuError::Segmenter( ref error ) => error.fmt( formatter ),
         }

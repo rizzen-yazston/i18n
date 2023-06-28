@@ -5,9 +5,8 @@ use crate::MessageError;
 use i18n_icu::IcuDataProvider;
 use i18n_lexer::tokenise;
 use i18n_provider::{ LStringProvider, LStringProviderWrapper };
-use i18n_registry::LanguageTagRegistry;
-use i18n_lstring::LString;
-use i18n_pattern::{ parse, Formatter, PlaceholderValue };
+use i18n_utility::{ LanguageTagRegistry, LString };
+use i18n_pattern::{ parse, Formatter, PlaceholderValue, CommandRegistry };
 use icu_provider::DataProvider;
 use icu_properties::{ provider::{ PatternSyntaxV1Marker, PatternWhiteSpaceV1Marker } };
 use icu_segmenter::provider::GraphemeClusterBreakDataV1Marker;
@@ -53,6 +52,7 @@ where
     icu_data_provider: Rc<IcuDataProvider<'a, I>>,
     language_tag_registry: Rc<LanguageTagRegistry>,
     lstring_provider: LStringProviderWrapper<'a, L>,
+    command_registry: Rc<CommandRegistry>,
     fallback: bool,
     caching: bool,
     cache: RefCell<HashMap<Rc<String>, HashMap<String, CacheData<'a, I>>>>,
@@ -76,10 +76,10 @@ where
     L: ?Sized + LStringProvider,
 {
 
-    /// Create a new `Message` instance, that is connected to a language string provider `LStringProvider`. A
-    /// reference to the language tag registry `Rc<LanguageTagRegistry>` instance and reference to the ICU data
-    /// provider `Rc<IcuDataProvider>` are stored within the `Message` to facilitate the parsing of language string
-    /// patterns, and for formatting strings.
+    /// Create a new `Message` instance, that is connected to a language string provider [`LStringProvider`]. A
+    /// reference to the language tag registry [`Rc`]`<`[`LanguageTagRegistry`]`>` instance and reference to the ICU
+    /// data provider [`Rc`]`<`[`IcuDataProvider`]`>` are stored within the `Message` to facilitate the parsing of
+    /// language string patterns, and for formatting strings.
     /// 
     /// Two boolean flags `fallback` and `caching` are also set to be the defaults of the `Message` instance. These
     /// flags govern whether parsed strings are cached for reuse, and if no string is found for the specified language
@@ -89,9 +89,9 @@ where
     /// 
     /// ```
     /// use i18n_icu::IcuDataProvider;
-    /// use i18n_registry::LanguageTagRegistry;
+    /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_pattern::PlaceholderValue;
+    /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_message::Message;
     /// use icu_testdata::buffer;
     /// use icu_provider::serde::AsDeserializingBufferProvider;
@@ -109,8 +109,9 @@ where
     ///     let lstring_provider = ProviderSqlite3::try_new(
     ///         "./i18n/", &language_tag_registry
     ///     )?;
+    ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, &lstring_provider, true, true
+    ///         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -140,11 +141,16 @@ where
     ///     Ok( () )
     /// }
     /// ```
-    // TODO: Add struct contain callback functions for commands
+    /// 
+    /// [`LStringProvider`]: i18n_provider::LStringProvider
+    /// [`Rc`]: std::rc::Rc
+    /// [`LanguageTagRegistry`]: i18n_utility::LanguageTagRegistry
+    /// [`IcuDataProvider`]: i18n_icu::IcuDataProvider
     pub fn try_new(
         icu_data_provider: &Rc<IcuDataProvider<'a, I>>,
         language_tag_registry: &Rc<LanguageTagRegistry>,
         lstring_provider: &'a L,
+        command_registry: &Rc<CommandRegistry>,
         fallback: bool, //true = fallback to default language
         caching: bool,
     ) -> Result<Self, MessageError> {
@@ -152,6 +158,7 @@ where
             icu_data_provider: Rc::clone( icu_data_provider ),
             language_tag_registry: Rc::clone( language_tag_registry ),
             lstring_provider: LStringProviderWrapper( lstring_provider ),
+            command_registry: Rc::clone( command_registry ),
             fallback,
             caching,
             cache: RefCell::new( HashMap::<Rc<String>, HashMap<String, CacheData<'a, I>>>::new() ),
@@ -168,9 +175,9 @@ where
     /// 
     /// ```
     /// use i18n_icu::IcuDataProvider;
-    /// use i18n_registry::LanguageTagRegistry;
+    /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_pattern::PlaceholderValue;
+    /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_message::Message;
     /// use icu_testdata::buffer;
     /// use icu_provider::serde::AsDeserializingBufferProvider;
@@ -188,8 +195,9 @@ where
     ///     let lstring_provider = ProviderSqlite3::try_new(
     ///         "./i18n/", &language_tag_registry
     ///     )?;
+    ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, &lstring_provider, true, true
+    ///         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -313,7 +321,8 @@ where
             &self.icu_data_provider,
             language_tag,
             &self.language_tag_registry.get_locale( language_tag.as_str() )?,
-            &tree
+            &tree,
+            &self.command_registry,
         )?;
 
         // If caching is not allowed, simple use `Formatter` to get the LString.

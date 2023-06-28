@@ -2,8 +2,7 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
 use crate::ProviderSqlite3Error;
-use i18n_registry::registry::LanguageTagRegistry;
-use i18n_lstring::LString;
+use i18n_utility::{ LanguageTagRegistry, LString };
 use i18n_provider::{ LStringProvider, ProviderError };
 use rusqlite::{ Connection, OpenFlags };
 use std::collections::HashMap;
@@ -11,7 +10,7 @@ use std::rc::Rc;
 use std::path::PathBuf;
 use core::cell::RefCell;
 
-/// `ProviderSqlite3` struct is an implementation of the `LStringProvider` trait, and uses Sqlite3 as the data store
+/// `ProviderSqlite3` struct is an implementation of the [`LStringProvider`] trait, and uses Sqlite3 as the data store
 /// for language strings. As the directory path of the data store is embedded in the `ProviderSqlite3` struct upon
 /// creating an instance of `ProviderSqlite3`, one can have multiple `ProviderSqlite3` objects representing the
 /// application itself, and for data packages that supports internationalisation.
@@ -21,7 +20,7 @@ use core::cell::RefCell;
 /// ```
 /// use i18n_provider_sqlite3::ProviderSqlite3;
 /// use i18n_provider::LStringProvider;
-/// use i18n_registry::LanguageTagRegistry;
+/// use i18n_utility::LanguageTagRegistry;
 /// use std::rc::Rc;
 /// use std::error::Error;
 /// fn main() -> Result<(), Box<dyn Error>> {
@@ -37,11 +36,13 @@ use core::cell::RefCell;
 ///         &tag
 ///     )?;
 ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
-///     assert_eq!( strings[ 0 ].as_str(), "Invalid path provided.", "Not correct string." );
+///     assert_eq!( strings[ 0 ].as_str(), "Invalid path was provided.", "Not correct string." );
 ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
 ///     Ok( () )
 /// }
 /// ```
+/// 
+/// [`LStringProvider`]: i18n_provider::LStringProvider
 pub struct ProviderSqlite3 {
     directory: PathBuf,
     language_tag_registry: Rc<LanguageTagRegistry>,
@@ -58,8 +59,8 @@ impl ProviderSqlite3 {
     /// 
     /// Returns a `ProviderSqlite3` struct, which indicates a valid path to directory containing `.sqlite3` files.
     /// 
-    /// Returns a `ErrorMessage` when there is an error in verifying the path is a directory and contains `.sqlite3`
-    /// files.
+    /// Returns a `ProviderSqlite3Error` when there is an error in verifying the path is a directory and contains
+    /// `.sqlite3` files.
     pub fn try_new<T: TryInto<PathBuf>>(
         directory_path: T,
         language_tag_registry: &Rc<LanguageTagRegistry>
@@ -109,21 +110,21 @@ impl ProviderSqlite3 {
 
 impl LStringProvider for ProviderSqlite3 {
 
-    /// Retrieve a vector of possible `LString` for requested identifier that matches a language tag.
+    /// Retrieve a vector of possible [`LString`] for requested identifier that matches a language tag.
     /// 
     /// Ideally a single exact match should be returned, yet may not be for the requested language tag. If no strings
     /// is found for the requested tag, the right most subtag is removed sequentially until there are no more subtags.
-    /// Multiple `LString`s may be returned when there are multiple entries of language tags having additional subtags
-    /// than the requested language tag.
+    /// Multiple [`LString`]s may be returned when there are multiple entries of language tags having additional
+    /// subtags than the requested language tag.
     /// 
-    /// Return of `ErrorMessage` indicates there was a Sqlite3 error.
+    /// Return of `ProviderSqlite3Errore` indicates there was a Sqlite3 error.
     /// 
     /// # Examples
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_provider::LStringProvider;
-    /// use i18n_registry::LanguageTagRegistry;
+    /// use i18n_utility::LanguageTagRegistry;
     /// use std::rc::Rc;
     /// use std::error::Error;
     /// fn main() -> Result<(), Box<dyn Error>> {
@@ -139,11 +140,13 @@ impl LStringProvider for ProviderSqlite3 {
     ///         &tag
     ///     )?;//.expect( "No string found for language tag." );
     ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
-    ///     assert_eq!( strings[ 0 ].as_str(), "Invalid path provided.", "Not correct string." );
+    ///     assert_eq!( strings[ 0 ].as_str(), "Invalid path was provided.", "Not correct string." );
     ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
     ///     Ok( () )
     /// }
     /// ```
+    /// 
+    /// [`LString`]: i18n_utility::LString
     fn get<T: AsRef<str>>(
         &self,
         identifier: T,
@@ -244,17 +247,19 @@ impl LStringProvider for ProviderSqlite3 {
         Ok( result )
     }
 
-    /// Similar to `get()` method, except that `get_one()` will only return a single `LString` if multiple strings are
-    /// available. 
+    /// Similar to `get()` method, except that `get_one()` will only return a single [`LString`] if multiple strings
+    /// are available. 
     /// 
     /// `None` is returned when there is no strings available for the language tag.
+    /// 
+    /// Return of [`ProviderError`] indicates there was a Sqlite3 error.
     /// 
     /// # Examples
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_provider::LStringProvider;
-    /// use i18n_registry::LanguageTagRegistry;
+    /// use i18n_utility::LanguageTagRegistry;
     /// use core::cell::RefCell;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -271,11 +276,14 @@ impl LStringProvider for ProviderSqlite3 {
     ///         &tag
     ///     )?;//.expect( "No string found for language tag." );
     ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
-    ///     assert_eq!( strings[ 0 ].as_str(), "Invalid path provided.", "Not correct string." );
+    ///     assert_eq!( strings[ 0 ].as_str(), "Invalid path was provided.", "Not correct string." );
     ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
     ///     Ok( () )
     /// }
     /// ```
+    /// 
+    /// [`LString`]: i18n_utility::LString
+    /// [`ProviderError`]: i18n_provider::ProviderError
     fn get_one<T: AsRef<str>>(
         &self, identifier: T,
         language_tag: &Rc<String>
@@ -289,14 +297,14 @@ impl LStringProvider for ProviderSqlite3 {
     /// 
     /// Return of `None` indicates no default language tag was found.
     /// 
-    /// Return of `ErrorMessage` indicates there was a Sqlite3 error.
+    /// Return of [`ProviderError`] indicates there was a Sqlite3 error.
     /// 
     /// # Examples
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_provider::LStringProvider;
-    /// use i18n_registry::LanguageTagRegistry;
+    /// use i18n_utility::LanguageTagRegistry;
     /// use core::cell::RefCell;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -314,6 +322,8 @@ impl LStringProvider for ProviderSqlite3 {
     ///     Ok( () )
     /// }
     /// ```
+    /// 
+    /// [`ProviderError`]: i18n_provider::ProviderError
     fn default_language_tag<T: AsRef<str>>( &self, identifier: T ) -> Result<Option<String>, ProviderError> {
         let mut have = false;
         {

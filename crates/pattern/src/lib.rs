@@ -18,7 +18,9 @@
 //! ```
 //! use i18n_icu::IcuDataProvider;
 //! use i18n_lexer::{Token, TokenType, tokenise};
-//! use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue };
+//! use i18n_pattern::{
+//!     parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry, english_a_or_an
+//! };
 //! use icu_testdata::buffer;
 //! use icu_provider::serde::AsDeserializingBufferProvider;
 //! use icu_locid::Locale;
@@ -38,7 +40,10 @@
 //!     let tree = parse( tokens.0 )?;
 //!     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
 //!     let language_tag = Rc::new( locale.to_string() );
-//!     let mut formatter = Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+//!     let command_registry = Rc::new( CommandRegistry::new() );
+//!     let mut formatter = Formatter::try_new(
+//!         &icu_data_provider, &language_tag, &locale, &tree, &command_registry
+//!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
 //!     values.insert(
 //!         "dogs_number".to_string(),
@@ -48,14 +53,50 @@
 //!     assert_eq!( result.as_str(), "There are 3 dogs in the park.", "Strings must be the same." );
 //!     Ok( () )
 //! }
+//! 
+//! fn command_delayed() -> Result<(), Box<dyn Error>> {
+//!     let buffer_provider = buffer();
+//!     let data_provider = buffer_provider.as_deserializing();
+//!     let icu_data_provider =
+//!         Rc::new( IcuDataProvider::try_new( &data_provider )? );
+//!     let tokens = tokenise(
+//!         "At night {#english_a_or_an# hunter} {hunter} stalked {#english_a_or_an # prey} {prey}.",
+//!         &vec![ '{', '}', '`', '#' ],
+//!         &icu_data_provider,
+//!     );
+//!     let tree = parse( tokens.0 )?;
+//!     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+//!     let language_tag = Rc::new( locale.to_string() );
+//!     let command_registry = Rc::new( CommandRegistry::new() );
+//!     command_registry.insert( "english_a_or_an", english_a_or_an )?;
+//!     let mut formatter =
+//!         Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
+//!     let mut values = HashMap::<String, PlaceholderValue>::new();
+//!     values.insert(
+//!         "hunter".to_string(),
+//!         PlaceholderValue::String( "owl".to_string() )
+//!     );
+//!     values.insert(
+//!         "prey".to_string(),
+//!         PlaceholderValue::String( "mouse".to_string() )
+//!     );
+//!     let result = formatter.format( &values )?;
+//!     assert_eq!(
+//!         result.as_str(),
+//!         "At night an owl stalked a mouse.",
+//!         "Strings must be the same."
+//!     );
+//!     Ok( () )
+//! }
 //! ```
 
 pub mod types;
-pub mod parser;
-pub mod formatter;
-pub mod error;
-
 pub use types::*;
+pub mod parser;
 pub use parser::*;
+pub mod command;
+pub use command::*;
+pub mod formatter;
 pub use formatter::*;
+pub mod error;
 pub use error::*;

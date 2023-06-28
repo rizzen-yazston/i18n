@@ -1,7 +1,7 @@
 // This file is part of `i18n_message-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_message-rizzen-yazston` crate.
 
-use i18n_registry::RegistryError;
+use i18n_utility::RegistryError;
 use i18n_pattern::{ ParserError, FormatterError };
 use i18n_provider::ProviderError;
 use std::error::Error; // Experimental in `core` crate.
@@ -19,8 +19,6 @@ pub enum MessageError {
 }
 
 impl Display for MessageError {
-
-    /// Simply call the display formatter of embedded error.
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match self {
             MessageError::Registry( ref error ) => error.fmt( formatter ),
@@ -34,14 +32,14 @@ impl Display for MessageError {
                 };
                 write!(
                     formatter,
-                    "No string was found for identifier ‘{}’ and language tag ‘{}’. Fallback used: {}.",
+                    "No string was found for the identifier ‘{}’ and the language tag ‘{}’. Fallback was used: {}.",
                     identifier,
                     language_tag,
                     string,
                 )
             },
             MessageError::NoDefaultLanguageTag( identifier ) =>
-                write!( formatter, "No default language tag was found for identifier ‘{}’.", identifier )
+                write!( formatter, "No default language tag was found for the identifier ‘{}’.", identifier )
         }
     }
 }

@@ -13,21 +13,12 @@ license = "BSD-3-Clause"
 readme = "README.asciidoc"
 # false prevents publishing while developing, else string of repository identfier
 publish = false
-
-# these keys are used when preparing to publish to 'crates.io'
-#documentation = "<url, default is docs.rs>"
-#homepage = "<url"
-# once public GitHub repository is used
-#repository = "<github url>"
-#'crates.io' has max 5 keywords, of max 20 characters [A-Za-z0-9_-] 
-#keywords = ["",...]
-#'crates.io' has max 5 categories, selected from `crates.io` list
-#categories = ["internationalization"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+repository = "https://github.com/rizzen-yazston/i18n"
+keywords = ["internationalization", "localization", "icu4x"]
+categories = ["internationalization", "localization", "rust-pattern"]
 
 [dependencies]
-i18n_lstring-rizzen-yazston = { version = "0.5.0", path = "../../lstring" }
+i18n_utility-rizzen-yazston = { version = "0.5.0", path = "../../utility" }
 
 [dev-dependencies]
 

@@ -2,31 +2,38 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider-rizzen-yazston` crate.
 
 use crate::ProviderError;
-use i18n_lstring::LString;
+use i18n_utility::LString;
 use std::rc::Rc;
 
-/// A trait for providing language strings in the form of a `LString` vector, and obtaining the default language tag
-/// used for the crate's messages.
+/// A trait for providing language strings in the form of [`Vec`]`<`[`LString`]`>`, and obtaining the default language
+/// tag used for the crate's messages.
 /// 
 /// For an implementation example, see the `i18n_provider_sqlite3-rizzen-yazston` crate, which uses Sqlite3 for its
 /// data store.
+/// 
+/// [`Vec`]: std::vec::Vec
+/// [`LString`]: i18n_utility::LString
 pub trait LStringProvider {
 
     /// Ideally a single exact match should be returned, yet may not be for the requested language tag. If no strings
-    /// is found for the requested tag, the right most subtag is removed sequentially until there are no more subtags.
-    /// Multiple `LString`s may be returned when there are multiple entries of language tags having additional subtags
-    /// than the requested language tag.
+    /// are found for the requested tag, the right most subtag is removed sequentially until there are no more subtags.
+    /// Multiple [`LString`]'s may be returned when there are multiple entries of language tags having additional 
+    /// subtags than the requested language tag.
     /// 
     /// Return of `ProviderError` indicates there was an error, usually in the data store.
+    /// 
+    /// [`LString`]: i18n_utility::LString
     fn get<T: AsRef<str>>(
         &self, identifier: T,
         language_tag: &Rc<String>
     ) -> Result<Vec<LString>, ProviderError>;
 
-    /// Similar to `get()` method, except that `get_one()` will only return a single `LString` if multiple strings are
-    /// available.
+    /// Similar to `get()` method, except that `get_one()` will only return a single [`LString`] if multiple strings
+    /// are available.
     /// 
     /// `None` is returned when there is no strings available for the language tag.
+    /// 
+    /// [`LString`]: i18n_utility::LString
     fn get_one<T: AsRef<str>>(
         &self, identifier: T,
         language_tag: &Rc<String>
@@ -42,5 +49,4 @@ pub trait LStringProvider {
 
 /// A wrapper struct tuple to hold a reference to an `impl LStringProvider`, so that the Provider can be stored in
 /// structs.
-//pub struct LStringProviderWrapper<'a, P: ?Sized>( pub impl P );
 pub struct LStringProviderWrapper<'a, P: ?Sized>( pub &'a P );

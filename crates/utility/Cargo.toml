@@ -1,0 +1,24 @@
+# This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
+# called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
+
+[package]
+# suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
+name = "i18n_utility-rizzen-yazston"
+version = "0.5.0"
+authors = ["Rizzen Yazston"]
+edition = "2021"
+rust-version = "1.67.0"
+description = "The `i18n_utility` crate of the Internationalisation project."
+license = "BSD-3-Clause"
+readme = "README.asciidoc"
+# remove publish line when ready to publish to crate.io
+publish = false
+repository = "https://github.com/rizzen-yazston/i18n"
+keywords = ["internationalization", "localization", "icu4x"]
+categories = ["internationalization", "localization", "rust-pattern"]
+
+[dependencies]
+icu_locid = "1.1.0"
+
+[lib]
+name = "i18n_utility"

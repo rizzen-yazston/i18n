@@ -2,17 +2,16 @@
 Rizzen Yazston
 :url-unicode: https://unicode.org/
 :icu4x: https://github.com/unicode-org/icu4x
-:BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
 Welcome to the Internationalisation (I18n) project.
 
-The *Internationalisation* project provides alternative components for the {icu4x}[*ICU4X*] project (maintained by the {url-unicode}[*Unicode Consortium*]), yet still depends on many core components of ICU4X for internal functionality, thus can also be seen as an extension library to ICU4X. The Internationalisation project consists of an alternative messaging system, and adding macro functionality to patterns when formatting strings for locales.
+The *Internationalisation* project provides alternative components for the {icu4x}[*ICU4X*] project (maintained by the {url-unicode}[*Unicode Consortium*]), yet still depends on many core components of ICU4X for internal functionality, thus can also be seen as an extension library to ICU4X. The Internationalisation project consists of an alternative messaging system, and adding macro functionality to patterns when formatting strings for locales (language tags).
 
 The repository contains the following crates:
 
 - `i18n`: The convenience meta crate that contains selected available crates,
 
-- `i18n_lstring`: Associating a {BCP_47_Language_Tag}[_BCP 47 Language Tag_] to a `String`,
+- `i18n_icu`: Contains ICU4X data provider helper,
 
 - `i18n_lexer`: A simple lexer to tokenise a string,
 
@@ -24,9 +23,13 @@ The repository contains the following crates:
 
 - `i18n_provider_sqlite3`: Implementation of `i18n_provider` using Sqlite3 as its data store,
 
-- `i18n_registry`: Language tag registry, that caches language tag strings and their `Locale` objects.
+- `i18n_utility`: Contains the Language tag registry, and the LString type (language tagged string).
 
-Note:: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from internationalisation crates created by other authors.
+NOTE: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from internationalisation crates created by other authors.
+
+== Acknowledgement
+
+Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
 
 == Usage
 

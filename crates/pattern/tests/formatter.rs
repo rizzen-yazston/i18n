@@ -5,11 +5,12 @@
 
 use i18n_icu::IcuDataProvider;
 use i18n_lexer::tokenise;
-use i18n_pattern::{ parse, Formatter, PlaceholderValue };
+use i18n_pattern::{ parse, Formatter, PlaceholderValue, CommandRegistry, file_path, english_a_or_an };
 use icu_testdata::buffer;
 use icu_provider::serde::AsDeserializingBufferProvider;
 use icu_locid::Locale;
 use icu_calendar::{ Iso, DateTime, Date, types::Time };
+use os_info;
 use std::collections::HashMap;
 use std::{ rc::Rc, error::Error };
 
@@ -26,8 +27,9 @@ fn plain_text() -> Result<(), Box<dyn Error>> {
     let tree = parse( tokens.0 )?;
     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
     let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
-        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
     let values = HashMap::<String, PlaceholderValue>::new();
     let result = formatter.format( &values )?;
     assert_eq!( result.as_str(), "A simple plain text string.", "Strings must be the same." );
@@ -47,8 +49,9 @@ fn pattern_string() -> Result<(), Box<dyn Error>> {
     let tree = parse( tokens.0 )?;
     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
     let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
-        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "string".to_string(),
@@ -77,8 +80,9 @@ fn pattern_plural() -> Result<(), Box<dyn Error>> {
     let tree = parse( tokens.0 )?;
     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
     let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
-        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "dogs_number".to_string(),
@@ -107,8 +111,9 @@ fn pattern_decimal() -> Result<(), Box<dyn Error>> {
     let tree = parse( tokens.0 )?;
     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
     let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
-        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "amount".to_string(),
@@ -137,8 +142,9 @@ fn pattern_decimal_with_option() -> Result<(), Box<dyn Error>> {
     let tree = parse( tokens.0 )?;
     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
     let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
-        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "amount".to_string(),
@@ -154,7 +160,7 @@ fn pattern_decimal_with_option() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn pattern_dateime() -> Result<(), Box<dyn Error>> {
+fn pattern_datetime() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
@@ -167,8 +173,9 @@ fn pattern_dateime() -> Result<(), Box<dyn Error>> {
     let tree = parse( tokens.0 )?;
     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
     let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
-        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "time".to_string(),
@@ -187,7 +194,7 @@ fn pattern_dateime() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn pattern_dateime_string() -> Result<(), Box<dyn Error>> {
+fn pattern_datetime_string() -> Result<(), Box<dyn Error>> {
     let buffer_provider = buffer();
     let data_provider = buffer_provider.as_deserializing();
     let icu_data_provider =
@@ -200,8 +207,9 @@ fn pattern_dateime_string() -> Result<(), Box<dyn Error>> {
     let tree = parse( tokens.0 )?;
     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
     let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
-        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "time".to_string(),
@@ -211,6 +219,71 @@ fn pattern_dateime_string() -> Result<(), Box<dyn Error>> {
     assert_eq!(
         result.as_str(),
         "At this point in time 06 Oct 248624, 05:47:23 the moon winked out.",
+        "Strings must be the same."
+    );
+    Ok( () )
+}
+
+#[test]
+fn command_static() -> Result<(), Box<dyn Error>> {
+    let buffer_provider = buffer();
+    let data_provider = buffer_provider.as_deserializing();
+    let icu_data_provider =
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
+    let tokens = tokenise(
+        "The file ‘{#file_path `tests/formatter.rs`}’ failed to open.",
+        &vec![ '{', '}', '`', '#' ],
+        &icu_data_provider,
+    );
+    let tree = parse( tokens.0 )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
+    command_registry.insert( "file_path", file_path )?;
+    let mut formatter =
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
+    let values = HashMap::<String, PlaceholderValue>::new();
+    let result = formatter.format( &values )?;
+    let info = os_info::get();
+    if info.os_type() == os_info::Type::Windows {
+        assert_eq!( result.as_str(), "The file ‘tests\\formatter.rs’ failed to open.", "Should be Windows path." );
+    } else {
+        assert_eq!( result.as_str(), "The file ‘tests/formatter.rs’ failed to open.", "Should be non-Windows path." );
+    }
+    Ok( () )
+}
+
+#[test]
+fn command_delayed() -> Result<(), Box<dyn Error>> {
+    let buffer_provider = buffer();
+    let data_provider = buffer_provider.as_deserializing();
+    let icu_data_provider =
+        Rc::new( IcuDataProvider::try_new( &data_provider )? );
+    let tokens = tokenise(
+        "At night {#english_a_or_an# hunter} {hunter} stalked {#english_a_or_an # prey} {prey}.",
+        &vec![ '{', '}', '`', '#' ],
+        &icu_data_provider,
+    );
+    let tree = parse( tokens.0 )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let language_tag = Rc::new( locale.to_string() );
+    let command_registry = Rc::new( CommandRegistry::new() );
+    command_registry.insert( "english_a_or_an", english_a_or_an )?;
+    let mut formatter =
+        Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree, &command_registry )?;
+    let mut values = HashMap::<String, PlaceholderValue>::new();
+    values.insert(
+        "hunter".to_string(),
+        PlaceholderValue::String( "owl".to_string() )
+    );
+    values.insert(
+        "prey".to_string(),
+        PlaceholderValue::String( "mouse".to_string() )
+    );
+    let result = formatter.format( &values )?;
+    assert_eq!(
+        result.as_str(),
+        "At night an owl stalked a mouse.",
         "Strings must be the same."
     );
     Ok( () )

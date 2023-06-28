@@ -3,7 +3,7 @@
 
 //! Collection of types used by `parser` and `formatter` modules.
 
-use i18n_lstring::LString;
+use i18n_utility::LString;
 use fixed_decimal::FixedDecimal;
 use icu_calendar::{Iso, Date, DateTime, types::Time };
 use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
@@ -51,10 +51,29 @@ impl Display for NodeType {
     }
 }
 
-// --- placeholder value types ---
-
-/// An enum consists of a selection of Rust primitives, ICU4X types, and `LString` for messages.
-#[derive( Debug )]
+/// An enum consists of a selection of Rust primitives, ICU4X types, and [`LString`] for messages.
+/// The following are types are available:
+/// * String( [`String`] ), Can also be used for date (ISO format), time (ISO format), fixed decimal.
+/// * Integer( [`i128`] ),
+/// * Unsigned( [`u128`] ),
+/// * Float( [`f64`] ),
+/// * LString( [`LString`] ),
+/// * FixedDecimal( [`FixedDecimal`] ),
+/// * DateTime( [`DateTime`]`<`[`Iso`]`>` ),
+/// * Date( [`Date`]`<`[`Iso`]`>` ),
+/// * Time( [`Time`] ),
+/// 
+/// [`LString`]: i18n_utility::LString
+/// [`String`]: alloc::string::String
+/// [`i128`]: core::i128
+/// [`u128`]: core::u128
+/// [`f64`]: core::f64
+/// [`FixedDecimal`]: fixed_decimal::FixedDecimal
+/// [`DateTime`]: icu_calendar::DateTime
+/// [`Iso`]: icu_calendar::Iso
+/// [`Date`]: icu_calendar::Date
+/// [`Time`]: icu_calendar::types::Time
+#[derive( Debug, Clone )]
 pub enum PlaceholderValue {
     String( String ), // Can also be used for date (ISO format), time (ISO format), fixed decimal.
     Integer( i128 ),

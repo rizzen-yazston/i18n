@@ -11,16 +11,37 @@ The message is capable of caching retrieved strings that are prepared for placeh
 
 The message system makes use of all the other component crates that make up the `i18n` project. Ideally one only needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
 
+== Acknowledgement
+
+Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
+
 == Cargo.toml
 
 ```
 [dependencies]
 i18n_message-rizzen-yazston = "0.5.0"
+i18n_icu-rizzen-yazston = "0.5.0"
+i18n_lexer-rizzen-yazston = "0.5.0" # Needed for Token, TokenType
+i18n_pattern-rizzen-yazston = "0.5.0"
+i18n_provider-rizzen-yazston = "0.5.0"
+i18n_provider_sqlite3-rizzen-yazston = "0.5.0"
+i18n_utility-rizzen-yazston = "0.5.0"
+tree-rizzen-yazston = "0.4.0"
+icu_provider = "1.1.0"
 
-#[dependencies.icu_provider]
-#version = "1.0.0"
-## Needed for BufferProvider
-#features = [ "serde", "deserialize_bincode_1" ]
+# These are required for the DataProvider.
+icu_properties = "1.1.0"
+icu_segmenter = "0.8.0"
+icu_plurals = "1.1.0"
+icu_decimal = "1.1.0"
+icu_calendar = "1.1.0"
+icu_datetime = "1.1.0"
+
+# These are required for the DataProvider.
+[dependencies.fixed_decimal]
+version = "0.5.2"
+# Required for floating point support
+features = [ "ryu" ]
 ```
 
 == Examples
@@ -29,7 +50,7 @@ i18n_message-rizzen-yazston = "0.5.0"
 use i18n_icu::IcuDataProvider;
 use i18n_registry::LanguageTagRegistry;
 use i18n_provider_sqlite3::ProviderSqlite3;
-use i18n_pattern::PlaceholderValue;
+use i18n_pattern::{PlaceholderValue, CommandRegistry};
 use i18n_message::Message;
 use icu_testdata::buffer;
 use icu_provider::serde::AsDeserializingBufferProvider;
@@ -47,8 +68,9 @@ fn message() -> Result<(), Box<dyn Error>> {
     let lstring_provider = ProviderSqlite3::try_new(
         "./i18n/", &language_tag_registry
     )?;
+    let command_registry = Rc::new( CommandRegistry::new() );
     let message_system = Message::try_new(
-        &icu_data_provider, &language_tag_registry, &lstring_provider, true, true
+        &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
     )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(

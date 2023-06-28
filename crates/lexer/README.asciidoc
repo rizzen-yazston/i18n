@@ -1,65 +1,28 @@
 = i18n_lexer
 Rizzen Yazston
-:BufferProvider: https://docs.rs/icu_provider/latest/icu_provider/buf/trait.BufferProvider.html
+:DataProvider: https://docs.rs/icu_provider/1.2.0/icu_provider/trait.DataProvider.html
+:url-unicode: https://home.unicode.org/
 :CLDR: https://cldr.unicode.org/
-:ICU4X: https://github.com/unicode-org/icu4x
-:Unicode_Consortium: https://home.unicode.org/
+:icu4x: https://github.com/unicode-org/icu4x
 
 String lexer and resultant tokens.
 
-The `Lexer` is initialised using any data provider implementing the [`DataProvider`] trait to an [Unicode Consortium] [CLDR] data repository (even a custom database). Usually the repository is just a local copy of the CLDR in the application's data directory. Once the `Lexer` has been initialised it may be used to tokenise strings, without needing to re-initialising the `Lexer` before use.
+The `Lexer` is initialised using any data provider implementing the `{DataProvider}[DataProvider]` trait to an {url-unicode}[Unicode Consortium] {url-unicode}[*CLDR*] data repository (even a custom database). Usually the repository is just a local copy of the CLDR in the application's data directory. Once the `Lexer` has been initialised it may be used to tokenise strings, without needing to re-initialising the `Lexer` before use.
 
-Consult the [ICU4X] website for instructions on generating a suitable data repository for the application, by leaving out data that is not used by the application. 
+Consult the {icu4x}[ICU4X] website for instructions on generating a suitable data repository for the application, by leaving out data that is not used by the application. 
 
 Strings are tokenised using the method `tokenise()` taking string slice and a vector containing grammar syntax characters.
+
+== Acknowledgement
+
+Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
 
 == Cargo.toml
 
 ```
 [dependencies]
 i18n_icu-rizzen-yazston = "0.5.0"
-i18n_lexer-rizzen-yazston = "0.5.0"
-
-[dependencies.icu_provider]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde", "deserialize_bincode_1" ]
-
-
-[dependencies.icu_properties]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde" ]
-
-[dependencies.icu_segmenter]
-version = "0.8.0"
-# Needed for BufferProvider
-features = [ "serde" ]
-
-[dependencies.icu_plurals]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde" ]
-
-[dependencies.fixed_decimal]
-version = "0.5.2"
-# Needed for BufferProvider
-features = [ "ryu" ]
-
-[dependencies.icu_decimal]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde" ]
-
-[dependencies.icu_calendar]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde" ]
-
-[dependencies.icu_datetime]
-version = "1.1.0"
-# Needed for BufferProvider
-features = [ "serde" ]
+icu_provider = "1.1.0"
 ```
 
 == Examples

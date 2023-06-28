@@ -106,10 +106,10 @@ pub enum TokenType {
 /// }
 /// ```
 /// 
-/// [`&str`]: https://doc.rust-lang.org/core/primitive.str.html
-/// [`Vec`]: https://doc.rust-lang.org/std/vec/index.html
-/// [`Rc`]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-/// [`char`]: https://doc.rust-lang.org/core/primitive.char.html
+/// [`&str`]: core::str
+/// [`Vec`]: std::vec::Vec
+/// [`Rc`]: std::rc::Rc
+/// [`char`]: core::char
 pub fn tokenise<'a,
     T: AsRef<str>,
     P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>

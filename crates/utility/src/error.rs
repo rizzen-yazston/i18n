@@ -1,5 +1,5 @@
-// This file is part of `i18n_registry-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_registry-rizzen-yazston` crate.
+// This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
 use icu_locid::ParserError;
 use std::error::Error; // Experimental in `core` crate.
@@ -12,8 +12,6 @@ pub enum RegistryError {
 }
 
 impl Display for RegistryError {
-
-    /// Simply call the display formatter of embedded error.
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match *self {
             RegistryError::Locale( ref error ) => error.fmt( formatter ),

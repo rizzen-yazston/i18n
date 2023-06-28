@@ -16,9 +16,9 @@
 //! 
 //! ```
 //! use i18n_icu::IcuDataProvider;
-//! use i18n_registry::LanguageTagRegistry;
+//! use i18n_utility::LanguageTagRegistry;
 //! use i18n_provider_sqlite3::ProviderSqlite3;
-//! use i18n_pattern::PlaceholderValue;
+//! use i18n_pattern::{ PlaceholderValue, CommandRegistry };
 //! use i18n_message::Message;
 //! use icu_testdata::buffer;
 //! use icu_provider::serde::AsDeserializingBufferProvider;
@@ -36,8 +36,9 @@
 //!     let lstring_provider = ProviderSqlite3::try_new(
 //!         "./i18n/", &language_tag_registry
 //!     )?;
+//!     let command_registry = Rc::new( CommandRegistry::new() );
 //!     let message_system = Message::try_new(
-//!         &icu_data_provider, &language_tag_registry, &lstring_provider, true, true
+//!         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
 //!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
 //!     values.insert(

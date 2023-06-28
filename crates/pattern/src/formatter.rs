@@ -1,19 +1,18 @@
 // This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
 
-// Outstanding: Command (to be done during or after `message` crate), experimental ICU4X components and options.
 // Feature option: language tag wrapping
 
-use crate::{ NodeType, FormatterError, PlaceholderValue };
+use crate::{ NodeType, FormatterError, PlaceholderValue, CommandRegistry };
 use i18n_icu::IcuDataProvider;
 use i18n_lexer::Token;
-use i18n_lstring::LString;
+use i18n_utility::LString;
 use tree::Tree;
 use icu_provider::prelude::*;
 use icu_locid::Locale;
 use icu_plurals::{ PluralCategory, PluralRules };
 use icu_decimal::{ FixedDecimalFormatter, options };
-use fixed_decimal::{FixedDecimal, DoublePrecision, SignDisplay };
+use fixed_decimal::{ FixedDecimal, DoublePrecision, SignDisplay };
 use icu_calendar::{
     types::{ Time, IsoHour, IsoMinute, IsoSecond, NanoSecond },
     DateTime, Date, Iso
@@ -70,6 +69,7 @@ where
     patterns: HashMap<String, Vec<PatternPart>>,
     numbers: Vec<String>,
     selectors: Vec<HashMap<String, String>>,
+    command_registry: Rc<CommandRegistry>,
 }
 
 impl<'a, P> Formatter<'a, P>
@@ -88,14 +88,14 @@ where
         + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
 {
     /// Creates a Formatter for a language string using parsing results.
-    /// During the creation of the formatter for the supplied Tree, the semantic analyse is done.
+    /// During the creation of the formatter for the supplied [`Tree`], the semantic analyse is done.
     ///
     /// # Examples
     ///
     /// ```
     /// use i18n_icu::IcuDataProvider;
     /// use i18n_lexer::{Token, TokenType, tokenise};
-    /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue};
+    /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry};
     /// use icu_testdata::buffer;
     /// use icu_provider::serde::AsDeserializingBufferProvider;
     /// use icu_locid::Locale;
@@ -116,7 +116,10 @@ where
     ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     ///     let language_tag = Rc::new( locale.to_string() );
-    ///     let mut formatter = Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+    ///     let command_registry = Rc::new( CommandRegistry::new() );
+    ///     let mut formatter = Formatter::try_new(
+    ///         &icu_data_provider, &language_tag, &locale, &tree, &command_registry
+    ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
     ///         "dogs_number".to_string(),
@@ -131,11 +134,14 @@ where
     ///     Ok( () )
     /// }
     /// ```
+    /// 
+    /// [`Tree`]: tree::Tree
     pub fn try_new(
         data_provider: &Rc<IcuDataProvider<'a, P>>,
         language_tag: &Rc<String>,
         locale: &Rc<Locale>,
         tree: &Tree,
+        command_registry: &Rc<CommandRegistry>,
     ) -> Result<Formatter<'a, P>, FormatterError> {
         let mut patterns = HashMap::<String, Vec<PatternPart>>::new();
         patterns.insert( "_".to_string(), Vec::<PatternPart>::new() ); // Insert empty main pattern.
@@ -149,6 +155,7 @@ where
                 patterns,
                 numbers,
                 selectors,
+                command_registry: Rc::clone( command_registry ),
             } );
         }
         let option_selectors = OptionSelectors {
@@ -220,7 +227,7 @@ where
                                 locale,
                             )?;
                         } else if check_node_type( tree, *child, NodeType::Command ) {
-                            // TODO: create a method for Command pattern as both NamedString and main String have it.
+                            part_command( &mut pattern, tree, *child, command_registry )?;
                         } else {
                             return Err( FormatterError::InvalidNode( NodeType::String ) );
                         }
@@ -255,7 +262,7 @@ where
                     locale,
                 )?;
             } else if check_node_type( tree, *child, NodeType::Command ) {
-                // TODO: create a method for Command pattern as both NamedString and main String have it.
+                part_command( &mut pattern, tree, *child, command_registry )?;
             } else {
                 return Err( FormatterError::InvalidNode( NodeType::String ) );
             }
@@ -268,17 +275,18 @@ where
             patterns,
             numbers,
             selectors,
+            command_registry: Rc::clone( command_registry ),
         } )
     }
 
-    /// Format the language string with supplied values.
+    /// Format the language string with supplied values as [`HashMap`]`<`[`String`]`, `[`PlaceholderValue`]`>`.
     ///
     /// # Examples
     ///
     /// ```
     /// use i18n_icu::IcuDataProvider;
     /// use i18n_lexer::{Token, TokenType, tokenise};
-    /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue};
+    /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry};
     /// use icu_testdata::buffer;
     /// use icu_provider::serde::AsDeserializingBufferProvider;
     /// use icu_locid::Locale;
@@ -299,7 +307,10 @@ where
     ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     ///     let language_tag = Rc::new( locale.to_string() );
-    ///     let mut formatter = Formatter::try_new( &icu_data_provider, &language_tag, &locale, &tree )?;
+    ///     let command_registry = Rc::new( CommandRegistry::new() );
+    ///     let mut formatter = Formatter::try_new(
+    ///         &icu_data_provider, &language_tag, &locale, &tree, &command_registry
+    ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
     ///         "dogs_number".to_string(),
@@ -314,6 +325,10 @@ where
     ///     Ok( () )
     /// }
     /// ```
+    /// 
+    /// [`HashMap`]: std::collections::HashMap
+    /// [`String`]: alloc::string::String
+    /// [`PlaceholderValue`]: crate::PlaceholderValue
     pub fn format( &mut self, values: &HashMap<String, PlaceholderValue> ) -> Result<LString, FormatterError> {
         if self.patterns.get( "_" ).unwrap().len() == 0 {
             return Ok( LString::new( String::new(), &self.language_tag ) );
@@ -650,6 +665,37 @@ where
                         return Err( FormatterError::NumberSignString( *index ) );
                     };
                     string.push_str( number_string.as_str() );
+                },
+                PatternPart::Command{ strings } => {
+                    let mut parameters = Vec::<PlaceholderValue>::new();
+                    let mut iterator = strings.iter();
+
+                    // First string is always command identifier.
+                    let first = iterator.next().unwrap();
+                    let command = match first {
+                        PlaceholderValue::String( string ) => string,
+
+                        // Never reached. Always PlaceholderValue::String.
+                        _ => return Err( FormatterError::NeverReached )
+                    };
+                    parameters.push( first.clone() );
+
+                    // If parameter is same as placeholder, take the placeholder value instead.
+                    while let Some( parameter ) = iterator.next() {
+                        let string = match parameter {
+                            PlaceholderValue::String( string ) => string,
+
+                            // Never reached. Always PlaceholderValue::String.
+                            _ => return Err( FormatterError::NeverReached )
+                        };
+                        if let Some( value ) = values.get( string ) {
+                            parameters.push( value.clone() );
+                        } else {
+                            parameters.push( parameter.clone() );
+                        }
+                    }
+                    let function = self.command_registry.get( command )?;
+                    string.push_str( &function( parameters )? );
                 }
             }
             i += 1;
@@ -751,7 +797,7 @@ where
     }
 }
 
-/// Decomposes an ISO 8601 date string into a `Date<Iso>` struct.
+/// Decomposes an ISO 8601 date string into a [`Date`]`<`[`Iso`]`>` struct.
 /// 
 /// Supported ISO 8601 extended and basic formats:
 ///   YYYY-MM-DD or YYYYMMDD
@@ -782,6 +828,9 @@ where
 /// 
 /// ISO 8601 _Week_ and _Ordinal date_ formats are not supported as there are currently no methods available for 
 /// ICU4X `Date<Iso>` for creating structs using the week number or the ordinal day of the year.
+/// 
+/// [`Date`]: icu_calendar::Date
+/// [`Iso`]: icu_calendar::Iso
 pub fn decompose_iso_date( string: &str ) -> Result<Date<Iso>, FormatterError> {
     let no_plus = string.trim_start_matches( '+' );
     let mut year: i32 = 0;
@@ -839,7 +888,7 @@ pub fn decompose_iso_date( string: &str ) -> Result<Date<Iso>, FormatterError> {
     Ok( result )
 }
 
-/// Decomposes an ISO time string into a `Time` struct.
+/// Decomposes an ISO time string into a [`Time`] struct.
 /// 
 /// Supported ISO 8601 extended and basic formats:
 ///   Thh:mm:ss.nnn or Thhmmss.nnn
@@ -859,7 +908,8 @@ pub fn decompose_iso_date( string: &str ) -> Result<Date<Iso>, FormatterError> {
 /// Time zones are not supported by ICU4X `Time`, thus will be ignored.
 /// - time zones ( Z (for UCT 00:00), +hh:mm, -hh:mm, +hhmm, -hhmm ).
 ///   -00:00 or -0000 are not supported by ISO 8601.
-
+///
+/// [`Time`]: icu_calendar::types::Time
 pub fn decompose_iso_time( string: &str ) -> Result<Time, FormatterError> {
     let no_t = string.trim_start_matches( 'T' );
     let no_plus = match no_t.find( '+' ) {
@@ -914,7 +964,7 @@ fn check_node_type( tree: &Tree, index: usize, node_type: NodeType ) -> bool {
     let Ok( node_type_data ) = tree.node_type( index ) else {
         return false;
     };
-    let Some( node_type2 ) = node_type_data.downcast_ref::<NodeType>() else {
+    let Some( node_type2 ) = node_type_data.as_ref().unwrap().downcast_ref::<NodeType>() else {
         return false;
     };
     if node_type != *node_type2 {
@@ -1184,6 +1234,82 @@ fn part_pattern(
     Ok( () )
 }
 
+// Commands always returns static text
+fn part_command(
+    pattern: &mut Vec<PatternPart>,
+    tree: &Tree,
+    index: usize,
+    command_registry: &Rc<CommandRegistry>,
+) -> Result<(), FormatterError> {
+    let mut delay = false;
+    let mut parameters = Vec::<PlaceholderValue>::new();
+    let Ok( children ) = tree.children( index ) else {
+        return Err( FormatterError::RetrieveChildren( NodeType::Pattern ) );
+    };
+    let mut iterator = children.iter();
+
+    // Identifier - first node
+    let Some( command ) = iterator.next() else {
+        return Err( FormatterError::NoChildren( NodeType::Pattern ) );
+    };
+    if !check_node_type( tree, *command, NodeType::Identifier ) {
+        return Err( FormatterError::NodeNotFound( NodeType::Identifier ) );
+    }
+    let Ok( command_data ) = tree.data_ref( *command ) else {
+        return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
+    };
+    let Some( command_token ) = command_data.first().unwrap().downcast_ref::<Rc<Token>>() else {
+        return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
+    };
+    parameters.push( PlaceholderValue::String( command_token.as_ref().string.to_string() ) );
+
+    // Check if delay command marker `#` is present.
+    //peek ahead so not to interfere with while if not present.
+    let mut iterator_peeking = iterator.clone();
+    let command_next = iterator_peeking.next();
+    if command_next.is_some() && check_node_type( tree, *command_next.unwrap(), NodeType::NumberSign ) {
+        delay = true;
+        iterator = iterator_peeking;
+    }
+
+    // Rest can be either Identifier or Text nodes.
+    while let Some( parameter ) = iterator.next() {
+        if check_node_type( tree, *parameter, NodeType::Identifier ) {
+            let Ok( identifier_data ) = tree.data_ref( *parameter ) else {
+                return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
+            };
+            let Some( identifier_token ) = identifier_data.first().unwrap().downcast_ref::<Rc<Token>>()
+            else {
+                return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
+            };
+            parameters.push( PlaceholderValue::String( identifier_token.as_ref().string.to_string() ) );
+        } else if check_node_type( tree, *parameter, NodeType::Text ) {
+            let mut string = String::new();
+            let Ok( text_data ) = tree.data_ref( *parameter ) else {
+                return Err( FormatterError::RetrieveNodeData( NodeType::Text ) );
+            };
+            for token_data in text_data.iter() {
+                let Some( token ) = token_data.downcast_ref::<Rc<Token>>() else {
+                    return Err( FormatterError::RetrieveNodeToken( NodeType::Text ) );
+                };
+                string.push_str( token.string.as_str() );
+            }
+            parameters.push( PlaceholderValue::String( string ) );
+        } else {
+            return Err( FormatterError::InvalidNode( NodeType::Command ) );
+        }
+    }
+    if delay {
+        pattern.push( PatternPart::Command{ strings: parameters } );
+    } else {
+        let function = command_registry.get(
+            command_token.as_ref().string.to_string()
+        )?;
+        pattern.push( PatternPart::Text( function( parameters )? ) );
+    }
+    Ok( () )
+}
+
 fn pattern_selectors(
     tree: &Tree,
     index: usize,
@@ -1320,4 +1446,7 @@ enum PatternPart {
         complex: ComplexType,
         selectors: usize,
     },
+    Command{
+        strings: Vec<PlaceholderValue>,
+    }
 }
