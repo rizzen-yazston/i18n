@@ -44,7 +44,7 @@ Simply include the `i18n_utility-rizzen-yazston` crate in the `Cargo.toml` to ma
 
 ```
 [dependencies]
-icu_locid = "1.1.0"
+icu_locid = "1.2.0"
 i18n_utility-rizzen-yazston = "0.5.0"
 ```
 

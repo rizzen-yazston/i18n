@@ -142,12 +142,6 @@ pub fn tokenise<'a,
     let mut iterator = string.as_ref().char_indices();
     while let Some( ( position, character ) ) = iterator.next() {
         lexer.position_byte = position;
-
-// These are left here until the GraphemeClusterSegmenter works correctly, currently buggy.
-//println!( "Byte position: {}", lexer.position_byte );
-//println!( "Character position: {}", lexer.position_character );
-//println!( "Grapheme position: {}", lexer.position_grapheme );
-
         if lexer.data_provider.pattern_white_space().as_borrowed().contains( character ) {
             if state == LexerStates::Identifier {
                 add_previous_characters( &mut lexer, &mut tokens, TokenType::Identifier, string.as_ref() );
@@ -279,9 +273,7 @@ P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpace
         let slice = &string.as_ref()[ lexer.token_position_byte .. lexer.position_byte ];
         let len_byte = lexer.position_byte - lexer.token_position_byte;
         let len_character = lexer.position_character - lexer.token_position_character;
-        // GraphemeClusterSegmenter is currently buggy, thus is commented out.
-        //let len_grapheme = lexer.data_provider.grapheme_segmenter().segment_str( slice ).count();
-        let len_grapheme = 1; // Temporary statement.
+        let len_grapheme = lexer.data_provider.grapheme_segmenter().segment_str( slice ).count() - 1;
         tokens.push( Rc::new(
             Token {
                 token_type: token,

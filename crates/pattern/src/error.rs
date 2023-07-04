@@ -156,7 +156,7 @@ impl Display for FormatterError {
                     keyword, placeholder
                 ),
             FormatterError::NoChildren( node_type) =>
-                write!( formatter, "No children nodes was not found for ‘{}’ node.", node_type ),
+                write!( formatter, "No children nodes was found for ‘{}’ node.", node_type ),
             FormatterError::InvalidOption( option, keyword, placeholder ) =>
                 write!(
                     formatter,

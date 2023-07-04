@@ -7,7 +7,7 @@ name = "i18n_message-rizzen-yazston"
 version = "0.0.0"
 authors = ["Rizzen Yazston"]
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.70.0"
 description = "The `i18n-message` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
@@ -25,53 +25,53 @@ i18n_provider-rizzen-yazston = { version = "0.5.0", path = "../provider/core" }
 i18n_provider_sqlite3-rizzen-yazston = { version = "0.5.0", path = "../provider/sqlite3" }
 i18n_utility-rizzen-yazston = { version = "0.5.0", path = "../utility" }
 tree-rizzen-yazston = "0.4.0"
-icu_provider = "1.1.0"
-icu_properties = "1.1.0"
-icu_segmenter = "0.8.0"
-icu_plurals = "1.1.0"
-icu_decimal = "1.1.0"
-icu_calendar = "1.1.0"
-icu_datetime = "1.1.0"
+icu_provider = "1.2.0"
+icu_properties = "1.2.0"
+icu_segmenter = "1.2.0"
+icu_plurals = "1.2.0"
+icu_decimal = "1.2.0"
+icu_calendar = "1.2.0"
+icu_datetime = "1.2.0"
 
 [dependencies.fixed_decimal]
-version = "0.5.2"
+version = "0.5.3"
 # Required for floating point support
 features = [ "ryu" ]
 
 [dev-dependencies]
 
 [dev-dependencies.icu_provider]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde", "deserialize_bincode_1" ]
 
 [dev-dependencies.icu_properties]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_segmenter]
-version = "0.8.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_plurals]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_calendar]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_datetime]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_testdata]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider and icu_segmenter used in i18n_lexer.
 features = [ "buffer", "icu_segmenter" ]
 

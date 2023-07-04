@@ -1,11 +1,19 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.6.0 (2023-06-??)
+== i18n 0.6.0 (2023-07-0?)
 
 WARNING: This update has API breaking changes for some `i18n` crates.
 
 Breaking change is the result of changing how ICU data providers are used and passed to various components, thus many examples are affected even if the module is not affected by the ICU data provider change.
+
+* Updated various `Cargo.toml` files:
+
+** Bumped rust-version to "1.70.0".
+
+** Bumped all ICU4X crates version to "1.2.0".
+
+** Bumped rusqlite crate version to "1.29.0".
 
 * Added the `icu` crate:
 
@@ -30,6 +38,8 @@ Breaking change is the result of changing how ICU data providers are used and pa
 * Updated the `i18n_lexer` crate:
 
 ** Made `Lexer` struct private, made both `tokenise()` and `add_previous_characters()` methods as normal functions, removed `try_new` method and added `&Rc<IcuDataProvider>` to `tokenise()` function parameters.
+
+** Re-enabled the string segmenter function, as the issue in icu_segmenter 0.8.0 was fixed in icu_segmenter 1.2.0, allowing proper counting of graphemes in a string slice.
 
 ** Removed the `error.rs` as neither of the functions returns errors.
 

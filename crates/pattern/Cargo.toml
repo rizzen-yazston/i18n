@@ -7,7 +7,7 @@ name = "i18n_pattern-rizzen-yazston"
 version = "0.5.0"
 authors = ["Rizzen Yazston"]
 edition = "2021"
-rust-version = "1.67.0"
+rust-version = "1.70.0"
 description = "The `i18n_pattern` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
@@ -18,21 +18,21 @@ keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]
 
 [dependencies]
-icu_locid = "1.1.0"
 i18n_icu-rizzen-yazston = { version = "0.5.0", path = "../icu" }
 i18n_utility-rizzen-yazston = { version = "0.5.0", path = "../utility" }
 i18n_lexer-rizzen-yazston = { version = "0.5.0", path = "../lexer" } # Needed for Token, TokenType
 tree-rizzen-yazston = "0.4.0"
-icu_provider = "1.1.0"
-icu_properties = "1.1.0"
-icu_segmenter = "0.8.0"
-icu_plurals = "1.1.0"
-icu_decimal = "1.1.0"
-icu_calendar = "1.1.0"
-icu_datetime = "1.1.0"
+icu_locid = "1.2.0"
+icu_provider = "1.2.0"
+icu_properties = "1.2.0"
+icu_segmenter = "1.2.0"
+icu_plurals = "1.2.0"
+icu_decimal = "1.2.0"
+icu_calendar = "1.2.0"
+icu_datetime = "1.2.0"
 
 [dependencies.fixed_decimal]
-version = "0.5.2"
+version = "0.5.3"
 # Required for floating point support
 features = [ "ryu" ]
 
@@ -40,42 +40,42 @@ features = [ "ryu" ]
 os_info = "3"
 
 [dev-dependencies.icu_provider]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde", "deserialize_bincode_1" ]
 
 [dev-dependencies.icu_properties]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_segmenter]
-version = "0.8.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_plurals]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_calendar]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_datetime]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_decimal]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider
 features = [ "serde" ]
 
 [dev-dependencies.icu_testdata]
-version = "1.1.0"
+version = "1.2.0"
 # Needed for BufferProvider and icu_segmenter used in i18n_lexer.
 features = [ "buffer", "icu_segmenter" ]
 

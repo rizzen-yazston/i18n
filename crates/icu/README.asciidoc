@@ -20,19 +20,19 @@ Stefano Angeleri for advice on various design aspects of implementing the compon
 
 ```
 [dependencies]
-icu_provider = "1.1.0"
+icu_provider = "1.2.0"
 
 # These are required for the DataProvider.
-icu_properties = "1.1.0"
-icu_segmenter = "0.8.0"
-icu_plurals = "1.1.0"
-icu_decimal = "1.1.0"
-icu_calendar = "1.1.0"
-icu_datetime = "1.1.0"
+icu_properties = "1.2.0"
+icu_segmenter = "1.2.0"
+icu_plurals = "1.2.0"
+icu_decimal = "1.2.0"
+icu_calendar = "1.2.0"
+icu_datetime = "1.2.0"
 
 # This is required for the DataProvider.
 [dependencies.fixed_decimal]
-version = "0.5.2"
+version = "0.5.3"
 # Needed for floating point support.
 features = [ "ryu" ]
 ```
