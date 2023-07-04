@@ -18,9 +18,9 @@ Stefano Angeleri for advice on various design aspects of implementing the compon
 ```
 [dependencies]
 icu_locid = "1.1.0"
-i18n_icu-rizzen-yazston = "0.5.0"
-i18n_utility-rizzen-yazston = "0.5.0"
-i18n_lexer-rizzen-yazston = "0.5.0" # Needed for Token, TokenType
+i18n_icu-rizzen-yazston = "0.6.0"
+i18n_utility-rizzen-yazston = "0.6.0"
+i18n_lexer-rizzen-yazston = "0.6.0" # Needed for Token, TokenType
 tree-rizzen-yazston = "0.4.0"
 icu_provider = "1.2.0"
 
