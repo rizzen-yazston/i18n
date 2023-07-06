@@ -11,6 +11,7 @@ members = [
     "crates/provider/sqlite3",
     "crates/pattern",
     "crates/message",
+    "crates/i18n",
 ]
 
 exclude = [

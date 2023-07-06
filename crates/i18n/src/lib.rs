@@ -26,21 +26,14 @@
 //! For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficient to use the multilingual message
 //! system, though the individual crates can be selected individual if the entire `i18n` project is not required.
 //! 
-//! ## Cargo.toml
-//! 
-//! ```
-//! [dependencies]
-//! i18n-rizzen-yazston = "0.5.0"
-//! ```
-//! 
 //! ## Examples
 //! 
 //! See the various component crates for usage examples.
 
-pub use i18n_icu-rizzen-yazston as icu;
-pub use i18n_lexer-rizzen-yazston as lexer;
-pub use i18n_message-rizzen-yazston as message;
-pub use i18n_pattern-rizzen-yazston as pattern;
-pub use i18n_provider-rizzen-yazston as provider;
-pub use i18n_provider_sqlite3-rizzen-yazston as provider_sqlite3;
-pub use i18n_utility-rizzen-yazston as utility;
+pub use i18n_icu as icu;
+pub use i18n_lexer as lexer;
+pub use i18n_message as message;
+pub use i18n_pattern as pattern;
+pub use i18n_provider as provider;
+pub use i18n_provider_sqlite3 as provider_sqlite3;
+pub use i18n_utility as utility;
