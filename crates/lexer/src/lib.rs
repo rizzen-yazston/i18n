@@ -45,10 +45,12 @@
 //! }
 //! ```
 //! 
-//! [`DataProvider`] icu_provider::DataProvider
 //! [Unicode Consortium]: https://home.unicode.org/
 //! [CLDR]: https://cldr.unicode.org/
 //! [ICU4X]: https://github.com/unicode-org/icu4x
+
+#[cfg( doc )]
+use icu_provider::DataProvider;
 
 pub mod lexer;
 pub use lexer::*;

@@ -39,7 +39,7 @@ For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficie
 
 ```
 [dependencies]
-i18n-rizzen-yazston = "0.6.0"
+i18n-rizzen-yazston = "0.6.1"
 ```
 
 === Examples

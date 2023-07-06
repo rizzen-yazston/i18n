@@ -105,11 +105,7 @@ pub enum TokenType {
 ///     Ok( () )
 /// }
 /// ```
-/// 
 /// [`&str`]: core::str
-/// [`Vec`]: std::vec::Vec
-/// [`Rc`]: std::rc::Rc
-/// [`char`]: core::char
 pub fn tokenise<'a,
     T: AsRef<str>,
     P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>

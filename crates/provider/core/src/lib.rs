@@ -8,9 +8,9 @@
 //! 
 //! For an implementation example, see the `i18n_provider_sqlite3-rizzen-yazston` crate, which uses Sqlite3 for its
 //! data store.
-//! 
-//! [`Vec`]: std::vec::Vec
-//! [`LString`]: i18n_utility::LString
+
+#[cfg( doc )]
+use i18n_utility::LString;
 
 pub mod provider;
 pub use provider::*;

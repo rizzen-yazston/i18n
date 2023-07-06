@@ -26,7 +26,6 @@ use std::rc::Rc;
 /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 /// ```
 /// 
-/// [`String`]: alloc::string::String
 /// [`Rc`]: std::rc::Rc
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 #[derive( PartialEq, Debug, Clone )]
@@ -67,7 +66,6 @@ impl LString {
     /// ```
     /// 
     /// [`str`]: core::str
-    /// [`String`]: alloc::string::String
     /// [`Rc`]: std::rc::Rc
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
     /// [`Locale`]: icu_locid::Locale
@@ -93,7 +91,6 @@ impl LString {
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// ```
     /// [`str`]: core::str
-    /// [`String`]: alloc::string::String
     pub fn as_str( &self ) -> &str {
         &self.string
     }
@@ -114,7 +111,6 @@ impl LString {
     /// assert_eq!( lang_string.language_tag(), &tag, "Locale failed." );
     /// ```
     /// [`Rc`]: std::rc::Rc
-    /// [`String`]: alloc::string::String
     pub fn language_tag( &self ) -> &Rc<String> {
         &self.language_tag
     }

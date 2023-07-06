@@ -4,15 +4,13 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_icu-rizzen-yazston"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.70.0"
 description = "The `i18n_icu` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
-# false prevents publishing while developing, else string of repository identfier
-publish = false
 repository = "https://github.com/rizzen-yazston/i18n"
 keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]

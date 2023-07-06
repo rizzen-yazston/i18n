@@ -1,6 +1,12 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.6.1 (2023-07-06)
+
+* Enabling publishing for all crates.
+
+* Fixed various links in the documentation, that was reported by rustdoc tool.
+
 == i18n 0.6.0 (2023-07-04)
 
 WARNING: This update has API breaking changes for some `i18n` crates.

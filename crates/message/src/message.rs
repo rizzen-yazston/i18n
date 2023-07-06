@@ -141,11 +141,6 @@ where
     ///     Ok( () )
     /// }
     /// ```
-    /// 
-    /// [`LStringProvider`]: i18n_provider::LStringProvider
-    /// [`Rc`]: std::rc::Rc
-    /// [`LanguageTagRegistry`]: i18n_utility::LanguageTagRegistry
-    /// [`IcuDataProvider`]: i18n_icu::IcuDataProvider
     pub fn try_new(
         icu_data_provider: &Rc<IcuDataProvider<'a, I>>,
         language_tag_registry: &Rc<LanguageTagRegistry>,

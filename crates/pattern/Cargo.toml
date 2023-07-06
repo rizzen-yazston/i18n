@@ -4,23 +4,21 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_pattern-rizzen-yazston"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.70.0"
 description = "The `i18n_pattern` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
-# false prevents publishing while developing, else string of repository identfier
-publish = false
 repository = "https://github.com/rizzen-yazston/i18n"
 keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]
 
 [dependencies]
-i18n_icu-rizzen-yazston = { version = "0.6.0", path = "../icu" }
-i18n_utility-rizzen-yazston = { version = "0.6.0", path = "../utility" }
-i18n_lexer-rizzen-yazston = { version = "0.6.0", path = "../lexer" } # Needed for Token, TokenType
+i18n_icu-rizzen-yazston = { version = "0.6.1", path = "../icu" }
+i18n_utility-rizzen-yazston = { version = "0.6.1", path = "../utility" }
+i18n_lexer-rizzen-yazston = { version = "0.6.1", path = "../lexer" } # Needed for Token, TokenType
 tree-rizzen-yazston = "0.4.0"
 icu_locid = "1.2.0"
 icu_provider = "1.2.0"

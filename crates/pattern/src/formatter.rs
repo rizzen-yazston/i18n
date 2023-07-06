@@ -325,10 +325,6 @@ where
     ///     Ok( () )
     /// }
     /// ```
-    /// 
-    /// [`HashMap`]: std::collections::HashMap
-    /// [`String`]: alloc::string::String
-    /// [`PlaceholderValue`]: crate::PlaceholderValue
     pub fn format( &mut self, values: &HashMap<String, PlaceholderValue> ) -> Result<LString, FormatterError> {
         if self.patterns.get( "_" ).unwrap().len() == 0 {
             return Ok( LString::new( String::new(), &self.language_tag ) );
@@ -828,9 +824,6 @@ where
 /// 
 /// ISO 8601 _Week_ and _Ordinal date_ formats are not supported as there are currently no methods available for 
 /// ICU4X `Date<Iso>` for creating structs using the week number or the ordinal day of the year.
-/// 
-/// [`Date`]: icu_calendar::Date
-/// [`Iso`]: icu_calendar::Iso
 pub fn decompose_iso_date( string: &str ) -> Result<Date<Iso>, FormatterError> {
     let no_plus = string.trim_start_matches( '+' );
     let mut year: i32 = 0;
@@ -908,8 +901,6 @@ pub fn decompose_iso_date( string: &str ) -> Result<Date<Iso>, FormatterError> {
 /// Time zones are not supported by ICU4X `Time`, thus will be ignored.
 /// - time zones ( Z (for UCT 00:00), +hh:mm, -hh:mm, +hhmm, -hhmm ).
 ///   -00:00 or -0000 are not supported by ISO 8601.
-///
-/// [`Time`]: icu_calendar::types::Time
 pub fn decompose_iso_time( string: &str ) -> Result<Time, FormatterError> {
     let no_t = string.trim_start_matches( 'T' );
     let no_plus = match no_t.find( '+' ) {

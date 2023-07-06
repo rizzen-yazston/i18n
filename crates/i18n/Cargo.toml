@@ -4,27 +4,25 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n-rizzen-yazston"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Rizzen Yazston"]
 edition = "2021"
 rust-version = "1.70.0"
 description = "The `i18n` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 readme = "README.asciidoc"
-# false prevents publishing while developing, else string of repository identfier
-publish = false
 repository = "https://github.com/rizzen-yazston/i18n"
 keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]
 
 [dependencies]
-i18n_icu-rizzen-yazston = { version = "0.6.0", path = "../icu" }
-i18n_lexer-rizzen-yazston = { version = "0.6.0", path = "../lexer" }
-i18n_message-rizzen-yazston = { version = "0.6.0", path = "../message" }
-i18n_pattern-rizzen-yazston = { version = "0.6.0", path = "../pattern" }
-i18n_provider-rizzen-yazston = { version = "0.6.0", path = "../provider/core" }
-i18n_provider_sqlite3-rizzen-yazston = { version = "0.6.0", path = "../provider/sqlite3" }
-i18n_utility-rizzen-yazston = { version = "0.6.0", path = "../utility" }
+i18n_icu-rizzen-yazston = { version = "0.6.1", path = "../icu" }
+i18n_lexer-rizzen-yazston = { version = "0.6.1", path = "../lexer" }
+i18n_message-rizzen-yazston = { version = "0.6.1", path = "../message" }
+i18n_pattern-rizzen-yazston = { version = "0.6.1", path = "../pattern" }
+i18n_provider-rizzen-yazston = { version = "0.6.1", path = "../provider/core" }
+i18n_provider_sqlite3-rizzen-yazston = { version = "0.6.1", path = "../provider/sqlite3" }
+i18n_utility-rizzen-yazston = { version = "0.6.1", path = "../utility" }
 
 [lib]
 name = "i18n"

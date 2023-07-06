@@ -10,9 +10,6 @@ use std::rc::Rc;
 /// 
 /// For an implementation example, see the `i18n_provider_sqlite3-rizzen-yazston` crate, which uses Sqlite3 for its
 /// data store.
-/// 
-/// [`Vec`]: std::vec::Vec
-/// [`LString`]: i18n_utility::LString
 pub trait LStringProvider {
 
     /// Ideally a single exact match should be returned, yet may not be for the requested language tag. If no strings
@@ -21,8 +18,6 @@ pub trait LStringProvider {
     /// subtags than the requested language tag.
     /// 
     /// Return of `ProviderError` indicates there was an error, usually in the data store.
-    /// 
-    /// [`LString`]: i18n_utility::LString
     fn get<T: AsRef<str>>(
         &self, identifier: T,
         language_tag: &Rc<String>
@@ -32,8 +27,6 @@ pub trait LStringProvider {
     /// are available.
     /// 
     /// `None` is returned when there is no strings available for the language tag.
-    /// 
-    /// [`LString`]: i18n_utility::LString
     fn get_one<T: AsRef<str>>(
         &self, identifier: T,
         language_tag: &Rc<String>

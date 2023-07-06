@@ -3,7 +3,7 @@
 
 //! Welcome to the **utility** crate of the *Internationalisation* (i18n) project.
 //! 
-//! This crate consists of two models:
+//! This crate consists of two modules:
 //! 
 //! * `registry`: Registry for Language Tags and ICU4X's `Locale` instances,
 //! 
@@ -62,14 +62,18 @@
 //! assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
 //! ```
 //! 
-//! [`Locale`]: icu_locid::Locale
-//! [`icu_locid`]: icu_locid
 //! [`ICU4X`]: https://github.com/unicode-org/icu4x
 //! [Unicode Consortium]: https://home.unicode.org/
-//! [`LanguageIdentifier`]: icu_locid::LanguageIdentifier
 //! [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-//! [`String`]: alloc::string::String
-//! [`Rc`]: std::rc::Rc
+
+#[cfg( doc )]
+use icu_locid::Locale;
+
+#[cfg( doc )]
+use icu_locid::LanguageIdentifier;
+
+#[cfg( doc )]
+use std::rc::Rc;
 
 pub mod lstring;
 pub use lstring::*;

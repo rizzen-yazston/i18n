@@ -85,9 +85,6 @@ impl CommandRegistry {
     ///     Ok( () )
     /// }
     /// ```
-    /// 
-    /// [`Vec`]: std::vec::Vec
-    /// [`String`]: alloc::string::String
     pub fn insert<T: AsRef<str>>(
         &self,
         command: T,
@@ -149,9 +146,6 @@ impl CommandRegistry {
     ///     Ok( () )
     /// }
     /// ```
-    /// 
-    /// [`Vec`]: std::vec::Vec
-    /// [`String`]: alloc::string::String
     pub fn list( &self ) -> Vec<String> {
         Vec::from_iter( self.registry.borrow().keys().map( |x| x.to_string() ) )
     }
@@ -160,8 +154,6 @@ impl CommandRegistry {
 /// Format a file path according to the OS being used.
 /// Requires 1 parameter having type of [`PlaceholderValue`]`::String`.
 /// Additional parameters are simply ignored.
-/// 
-/// [`PlaceholderValue`]: crate::PlaceholderValue
 pub fn file_path( parameters: Vec<PlaceholderValue> ) -> Result<String, CommandError> {
     let command = match &parameters[ 0 ] {
         PlaceholderValue::String( string ) => string,
@@ -183,8 +175,6 @@ pub fn file_path( parameters: Vec<PlaceholderValue> ) -> Result<String, CommandE
 /// Select a or an for english words passed as parameter.
 /// Requires 1 parameter having type of [`PlaceholderValue`]`::String`.
 /// Additional parameters are simply ignored.
-/// 
-/// [`PlaceholderValue`]: crate::PlaceholderValue
 pub fn english_a_or_an( parameters: Vec<PlaceholderValue> ) -> Result<String, CommandError> {
     let command = match &parameters[ 0 ] {
         PlaceholderValue::String( string ) => string,

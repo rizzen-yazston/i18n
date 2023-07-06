@@ -55,11 +55,6 @@ use core::fmt::{ Display, Formatter, Result as FmtResult };
 ///     Ok( () )
 /// }
 /// ```
-/// 
-/// [`Tree`]: tree::Tree
-/// [`Vec`]: std::vec::Vec
-/// [`Rc`]: std::rc::Rc
-/// [`Token`]: i18n_lexer::Token
 pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
     let mut tree = Tree::new();
     if tokens.len() == 0 {

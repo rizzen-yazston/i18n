@@ -21,7 +21,7 @@ Stefano Angeleri for advice on various design aspects of implementing the compon
 
 ```
 [dependencies]
-i18n_icu-rizzen-yazston = "0.6.0"
+i18n_icu-rizzen-yazston = "0.6.1"
 icu_provider = "1.2.0"
 
 # These are required for the DataProvider.

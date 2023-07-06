@@ -101,7 +101,6 @@ impl LanguageTagRegistry {
     /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
     /// ```
     /// 
-    /// [`String`]: alloc::string::String
     /// [`Rc`]: std::rc::Rc
     /// [`Locale`]: icu_locid::Locale
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
@@ -163,7 +162,6 @@ impl LanguageTagRegistry {
     /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
     /// ```
     /// 
-    /// [`String`]: alloc::string::String
     /// [`Rc`]: std::rc::Rc
     /// [`Locale`]: icu_locid::Locale
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
@@ -197,7 +195,6 @@ impl LanguageTagRegistry {
     /// assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
     /// ```
     /// 
-    /// [`String`]: alloc::string::String
     /// [`Rc`]: std::rc::Rc
     /// [`Locale`]: icu_locid::Locale
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt

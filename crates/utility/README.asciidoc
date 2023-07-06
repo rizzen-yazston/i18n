@@ -6,7 +6,7 @@ Rizzen Yazston
 
 Welcome to the *utility* crate of the _Internationalisation_ (i18n) project.
 
-This crate consists of two models:
+This crate consists of two modules:
 
 * `registry`: Registry for Language Tags and ICU4X's `Locale` instances,
 
@@ -44,7 +44,7 @@ Simply include the `i18n_utility-rizzen-yazston` crate in the `Cargo.toml` to ma
 
 ```
 [dependencies]
-i18n_utility-rizzen-yazston = "0.6.0"
+i18n_utility-rizzen-yazston = "0.6.1"
 icu_locid = "1.2.0"
 ```
 

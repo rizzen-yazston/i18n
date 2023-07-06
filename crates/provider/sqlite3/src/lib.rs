@@ -34,9 +34,12 @@
 //!     Ok( () )
 //! }
 //! ```
-//! 
-//! [`LString`]: i18n_utility::LString
-//! [`LStringProvider`]: i18n_provider::LStringProvider
+
+#[cfg( doc )]
+use i18n_utility::LString;
+
+#[cfg( doc )]
+use i18n_provider::LStringProvider;
 
 pub mod provider;
 pub use provider::*;

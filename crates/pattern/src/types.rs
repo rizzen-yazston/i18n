@@ -10,16 +10,16 @@ use core::fmt::{ Debug, Display, Formatter, Result as FmtResult };
 
 /// Enum of the node types that can exist in the generate AST.
 /// The following node types are available:
-/// * Root: [Container] The top level, which may optional contained NamedGroup container, and required String container.
-/// * NamedGroup: [Container] Container: Exists if at least 1 named substring (NamedString node) is detected.
-/// * NamedString: [Container] Contains the Identifier leaf, and its substring String container
-/// * String: [Container] represents either whole string, or a substring for a plural or select pattern.
-/// * Text: [Leaf] Just literal text, and consist of 1 or more tokens (of any type that are treated as text).
-/// * NumberSign: [Leaf] The number pattern `#` in text.
-/// * Command: [Container] Contains command data.
-/// * Pattern: [Container] Usually a multilingual pattern data. 2nd node indicates pattern type.
-/// * Identifier: [Leaf] Always 1 identifier token.
-/// * Selector: [Container] Contains 2 Identifier nodes. Used for `plural` and `select` patterns.
+/// * Root: \[Container\] The top level, which may optional contained NamedGroup container, and required String container.
+/// * NamedGroup: \[Container\] Container: Exists if at least 1 named substring (NamedString node) is detected.
+/// * NamedString: \[Container\] Contains the Identifier leaf, and its substring String container
+/// * String: \[Container\] represents either whole string, or a substring for a plural or select pattern.
+/// * Text: \[Leaf\] Just literal text, and consist of 1 or more tokens (of any type that are treated as text).
+/// * NumberSign: \[Leaf\] The number pattern `#` in text.
+/// * Command: \[Container\] Contains command data.
+/// * Pattern: \[Container\] Usually a multilingual pattern data. 2nd node indicates pattern type.
+/// * Identifier: \[Leaf\] Always 1 identifier token.
+/// * Selector: \[Container\] Contains 2 Identifier nodes. Used for `plural` and `select` patterns.
 #[derive( Debug, PartialEq )]
 pub enum NodeType {
     Root,
@@ -62,17 +62,6 @@ impl Display for NodeType {
 /// * DateTime( [`DateTime`]`<`[`Iso`]`>` ),
 /// * Date( [`Date`]`<`[`Iso`]`>` ),
 /// * Time( [`Time`] ),
-/// 
-/// [`LString`]: i18n_utility::LString
-/// [`String`]: alloc::string::String
-/// [`i128`]: core::i128
-/// [`u128`]: core::u128
-/// [`f64`]: core::f64
-/// [`FixedDecimal`]: fixed_decimal::FixedDecimal
-/// [`DateTime`]: icu_calendar::DateTime
-/// [`Iso`]: icu_calendar::Iso
-/// [`Date`]: icu_calendar::Date
-/// [`Time`]: icu_calendar::types::Time
 #[derive( Debug, Clone )]
 pub enum PlaceholderValue {
     String( String ), // Can also be used for date (ISO format), time (ISO format), fixed decimal.
