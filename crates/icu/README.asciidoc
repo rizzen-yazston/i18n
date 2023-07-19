@@ -3,14 +3,27 @@ Rizzen Yazston
 :icu4x: https://github.com/unicode-org/icu4x
 :url-unicode: https://home.unicode.org/
 :DataProvider: https://docs.rs/icu_provider/1.2.0/icu_provider/trait.DataProvider.html
+:BlobDataProvider: https://docs.rs/icu_provider_blob/1.2.0/icu_provider_blob/struct.BlobDataProvider.html
+:FsDataProvider: https://docs.rs/icu_provider_fs/1.2.1/icu_provider_fs/struct.FsDataProvider.html
+:BufferProvider: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
 {icu4x}[*ICU4X*] project (maintained by the {url-unicode}[*Unicode Consortium*]) data provider helper.
 
-The `IcuDataProvider` type contains a member `data_provider` holding the ICU4X `&{DataProvider}[DataProvider]` as a `DataProviderWrapper` type.
+The `IcuDataProvider` type contains the `DataProvider` enum of supported implementations of ICU4X {DataProvider}[`DataProvider`]. Depending on the features selected, they are: `Internal` (internally uses the BakedDataProvider), {BlobDataProvider}[`BlobDataProvider`], or {FsDataProvider}[`FsDataProvider`].
 
-The `IcuDataProvider` type also contains non-locale based data used within the `i18n_lexer` crate.
+When data provider is not `Internal` and depending on the data provider used, the `IcuDataProvider` may contain non-locale based data, such as the grapheme cluster segmenter and the selected character properties set data.
 
-`IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` to prevent unnecessary duplication. 
+`IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` to prevent unnecessary duplication.
+
+## Features
+
+Available features for `i18n_icu` crate:
+ 
+* `compiled_data`: Allow for the internal data of the various ICU4X components.
+ 
+* `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
+ 
+* `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
 
 == Acknowledgement
 
@@ -20,21 +33,12 @@ Stefano Angeleri for advice on various design aspects of implementing the compon
 
 ```
 [dependencies]
-icu_provider = "1.2.0"
-
-# These are required for the DataProvider.
-icu_properties = "1.2.0"
-icu_segmenter = "1.2.0"
-icu_plurals = "1.2.0"
-icu_decimal = "1.2.0"
-icu_calendar = "1.2.0"
-icu_datetime = "1.2.0"
-
-# This is required for the DataProvider.
-[dependencies.fixed_decimal]
-version = "0.5.3"
-# Needed for floating point support.
-features = [ "ryu" ]
+i18n_icu = "0.7.0"
+icu_provider = "1.3.0"
+icu_provider_fs = "1.3.0" # Optional
+icu_provider_glob = "1.3.0" # Optional
+icu_properties = "1.3.0"
+icu_segmenter = "1.3.0"
 ```
 
 == Examples

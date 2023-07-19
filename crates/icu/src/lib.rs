@@ -3,12 +3,24 @@
 
 //! [ICU4X] project (maintained by the [Unicode Consortium]) data provider helper.
 //! 
-//! The `IcuDataProvider` type contains a member `data_provider` holding the ICU4X `&`[`DataProvider`] as a
-//! `DataProviderWrapper` type.
+//! The `IcuDataProvider` type contains the `DataProvider` enum of supported implementations of ICU4X [`DataProvider`].
+//! Depending on the features selected, they are: `Internal` (internally uses the BakedDataProvider),
+//! [`BlobDataProvider`], or [`FsDataProvider`].
 //! 
-//! The `IcuDataProvider` type also contains non-locale based data used within the `i18n_lexer` crate.
+//! When data provider is not `Internal` and depending on the data provider used, the `IcuDataProvider` may contain
+//! non-locale based data, such as the grapheme cluster segmenter and the selected character properties set data.
 //! 
 //! `IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` to prevent unnecessary duplication.
+//! 
+//! # Features
+//! 
+//! Available features for `i18n_icu` crate:
+//! 
+//! * `compiled_data`: Allow for the internal data of the various ICU4X components.
+//! 
+//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
+//! 
+//! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
 //! 
 //! # Examples
 //! 
@@ -16,6 +28,9 @@
 //! 
 //! [ICU4X]: https://github.com/unicode-org/icu4x
 //! [Unicode Consortium]: https://home.unicode.org/
+//! [`BlobDataProvider`]: https://docs.rs/icu_provider_blob/1.2.0/icu_provider_blob/struct.BlobDataProvider.html
+//! [`FsDataProvider`]: https://docs.rs/icu_provider_fs/1.2.1/icu_provider_fs/struct.FsDataProvider.html
+//! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
 #[cfg( doc )]
 use icu_provider::DataProvider;
