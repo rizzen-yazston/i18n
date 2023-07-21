@@ -19,20 +19,24 @@ pub enum IcuError {
     Segmenter( SegmenterError ),
     #[cfg( feature = "buffer" )]
     Data( DataError ),
+    Grapheme,
+    Syntax,
+    WhiteSpace,
 }
 
 impl Display for IcuError {
-    fn fmt( &self, _formatter: &mut Formatter ) -> Result {
-        #[cfg( feature = "buffer" )]
+    fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match self {
-            IcuError::Properties( ref error ) => return error.fmt( _formatter ),
-            IcuError::Segmenter( ref error ) => return error.fmt( _formatter ),
-            IcuError::Data( ref error ) => return error.fmt( _formatter ),
-            #[allow( unreachable_patterns )]
-            _ => return Ok( () )
-        };
-        #[allow( unreachable_code )]
-        Ok( () )
+            #[cfg( feature = "buffer" )]
+            IcuError::Properties( ref error ) => return error.fmt( formatter ),
+            #[cfg( feature = "buffer" )]
+            IcuError::Segmenter( ref error ) => return error.fmt( formatter ),
+            #[cfg( feature = "buffer" )]
+            IcuError::Data( ref error ) => return error.fmt( formatter ),
+            IcuError::Grapheme =>  write!( formatter, "No provider available for the ‘Grapheme Cluster Segmenter’." ),
+            IcuError::Syntax => write!( formatter, "No provider available for the ‘Pattern_Syntax’." ),
+            IcuError::WhiteSpace => write!( formatter, "No provider available for the ‘Pattern_White_Space’." ),
+        }
     }
 }
 

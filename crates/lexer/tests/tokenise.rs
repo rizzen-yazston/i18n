@@ -3,53 +3,49 @@
 
 //! Testing `tokenise()`.
 
-use i18n_icu::IcuDataProvider;
-use i18n_lexer::{ tokenise, TokenType };
-use icu_testdata::buffer;
-use icu_provider::serde::AsDeserializingBufferProvider;
+use i18n_icu::{ IcuDataProvider, DataProvider };
+use i18n_lexer::{ Lexer, TokenType };
 use std::rc::Rc;
 use std::error::Error;
 
 #[test]
 fn tokenise_single_byte_character_string() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        IcuDataProvider::try_new( &data_provider )?;
-    let tokens = tokenise(
-        "String contains a {placeholder}.",
-        &vec![ '{', '}' ],
-        &Rc::new( icu_data_provider ),
-    );
-    let mut grammar = 0;
-    assert_eq!( tokens.0.iter().count(), 10, "Supposed to be a total of 10 tokens." );
-    for token in tokens.0.iter() {
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}' ], &icu_data_provider );
+    let ( tokens, lengths, grammar ) =
+        lexer.tokenise( "String contains a {placeholder}." );
+    let mut grammar_tokens = 0;
+    assert_eq!( lengths.bytes, 32, "Supposed to be a total of 32 bytes." );
+    assert_eq!( lengths.characters, 32, "Supposed to be a total of 32 characters." );
+    assert_eq!( lengths.graphemes, 32, "Supposed to be a total of 32 graphemes." );
+    assert_eq!( lengths.tokens, 10, "Supposed to be a total of 10 tokens." );
+    for token in tokens.iter() {
         if token.token_type == TokenType::Grammar {
-            grammar += 1;
+            grammar_tokens += 1;
         }
     }
-    assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
+    assert_eq!( grammar_tokens, 2, "Supposed to be 2 grammar tokens." );
+    assert!(grammar, "There supposed to be grammar tokens." );
     Ok( () )
 }
 
 #[test]
 fn tokenise_multi_byte_character_string() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        IcuDataProvider::try_new( &data_provider )?;
-    let tokens = tokenise(
-        "String contains a ‘{identifier}’.",
-        &vec![ '{', '}' ],
-        &Rc::new( icu_data_provider ),
-    );
-    let mut grammar = 0;
-    assert_eq!( tokens.0.iter().count(), 11, "Supposed to be a total of 11 tokens." );
-    for token in tokens.0.iter() {
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}' ], &icu_data_provider );
+    let ( tokens, lengths, grammar ) =
+        lexer.tokenise( "Earth = \u{1F30D}. 각" );
+    let mut grammar_tokens = 0;
+    assert_eq!( lengths.bytes, 20, "Supposed to be a total of 20 bytes." );
+    assert_eq!( lengths.characters, 13, "Supposed to be a total of 13 characters." );
+    assert_eq!( lengths.graphemes, 12, "Supposed to be a total of 12 graphemes." );
+    assert_eq!( lengths.tokens, 8, "Supposed to be a total of 8 tokens." );
+    for token in tokens.iter() {
         if token.token_type == TokenType::Grammar {
-            grammar += 1;
+            grammar_tokens += 1;
         }
     }
-    assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
+    assert_eq!( grammar_tokens, 0, "Supposed to be 0 grammar tokens." );
+    assert!(!grammar, "There supposed to be no grammar tokens." );
     Ok( () )
 }

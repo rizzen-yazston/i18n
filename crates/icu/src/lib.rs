@@ -32,9 +32,6 @@
 //! [`FsDataProvider`]: https://docs.rs/icu_provider_fs/1.2.1/icu_provider_fs/struct.FsDataProvider.html
 //! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
-#[cfg( doc )]
-use icu_provider::DataProvider;
-
 pub mod icu;
 pub use icu::*;
 pub mod error;

@@ -4,30 +4,6 @@
 // FUTURE: Look into storing &str instead of String, perhaps original string can live long enough for Token existence.
 
 use i18n_icu::IcuDataProvider;
-use icu_provider::prelude::*;
-use icu_properties::{ provider::{ PatternSyntaxV1Marker, PatternWhiteSpaceV1Marker } };
-use icu_segmenter::provider::GraphemeClusterBreakDataV1Marker;
-use icu_plurals::provider::{ CardinalV1Marker, OrdinalV1Marker };
-use icu_decimal::provider::DecimalSymbolsV1Marker;
-use icu_datetime::provider::calendar::{
-    TimeSymbolsV1Marker,
-    TimeLengthsV1Marker,
-    GregorianDateLengthsV1Marker,
-    BuddhistDateLengthsV1Marker,
-    JapaneseDateLengthsV1Marker,
-    JapaneseExtendedDateLengthsV1Marker,
-    CopticDateLengthsV1Marker,
-    IndianDateLengthsV1Marker,
-    EthiopianDateLengthsV1Marker,
-    GregorianDateSymbolsV1Marker,
-    BuddhistDateSymbolsV1Marker,
-    JapaneseDateSymbolsV1Marker,
-    JapaneseExtendedDateSymbolsV1Marker,
-    CopticDateSymbolsV1Marker,
-    IndianDateSymbolsV1Marker,
-    EthiopianDateSymbolsV1Marker,
-};
-use icu_calendar::provider::{ WeekDataV1Marker, JapaneseErasV1Marker, JapaneseExtendedErasV1Marker };
 use std::rc::Rc;
 
 /// String lexer and token types.
@@ -62,152 +38,230 @@ pub enum TokenType {
     Syntax, // All other Pattern_Syntax characters (UAX #31), excluding listed grammar syntax characters.
 }
 
-/// Tokenise a string (as [`&str`]) into a vector of tokens ([`Vec`]`<`[`Rc`]`<Token>>`).
-/// 
-/// Non-grammar syntax characters are simply made into `Syntax` tokens for the parser to handle.
-/// 
-/// No characters are discarded, thus every character belongs to a token. Allowing for the full reconstruction of
-/// the original string, that was tokenised.
-/// 
-/// The `grammar` parameter contain of a simple vector of [`char`]s containing all the characters that are used as
-/// grammar syntax characters within a parser. Each grammar syntax character is placed in its own `Token` of type
-/// `Grammar`.
-/// 
-/// Note: Only single character graphemes are supported for grammar syntax characters. 
-/// 
-/// # Examples
-/// 
-/// ```
-/// use i18n_icu::IcuDataProvider;
-/// use i18n_lexer::{Token, TokenType, tokenise};
-/// use icu_testdata::buffer;
-/// use icu_provider::serde::AsDeserializingBufferProvider;
-/// use std::rc::Rc;
-/// use std::error::Error;
-/// 
-/// fn test_tokenise() -> Result<(), Box<dyn Error>> {
-///     let buffer_provider = buffer();
-///     let data_provider = buffer_provider.as_deserializing();
-///     let icu_data_provider = IcuDataProvider::try_new( &data_provider )?;
-///     let tokens = tokenise(
-///         "String contains a {placeholder}.",
-///         &vec![ '{', '}' ],
-///         &Rc::new( icu_data_provider ),
-///     );
-///     let mut grammar = 0;
-///     assert_eq!( tokens.0.iter().count(), 10, "Supposed to be a total of 10 tokens." );
-///     for token in tokens.0.iter() {
-///         if token.token_type == TokenType::Grammar {
-///             grammar += 1;
-///         }
-///     }
-///     assert_eq!( grammar, 2, "Supposed to be 2 grammar tokens." );
-///     Ok( () )
-/// }
-/// ```
-/// [`&str`]: core::str
-pub fn tokenise<'a,
-    T: AsRef<str>,
-    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>
->( string: T, grammar: &Vec<char>, data_provider: &Rc<IcuDataProvider<'a, P>>, ) -> ( Vec<Rc<Token>>, bool ) {
-    let mut tokens = Vec::<Rc<Token>>::new();
-    let mut has_grammar = false;
-    if string.as_ref().len() == 0 {
-        return ( tokens, has_grammar );
+/// Just a simple struct containing the string length in terms of bytes, characters, graphemes, and tokens.
+pub struct Length {
+    pub bytes: usize,
+    pub characters: usize,
+    pub graphemes: usize,
+    pub tokens: usize,
+}
+
+/// A reusable lexer that tracks the current position in the string being tokenised, besides holding the length of
+/// the string in terms of bytes, characters, graphemes, and tokens. Also holds the data provider, that contains 
+/// locale independent data such as Pattern_Syntax and Pattern_White_Space properties, and the Grapheme Cluster
+/// Segmenter.
+pub struct Lexer{
+    data_provider: Rc<IcuDataProvider>,
+    grammar: Vec<char>,
+    length_bytes: usize,
+    length_characters: usize,
+    length_graphemes: usize,
+    length_tokens: usize,
+    token_position_byte: usize,
+    token_position_character: usize,
+    token_position_grapheme: usize,
+    position_byte: usize,
+    position_character: usize,
+}
+
+impl Lexer {
+
+    /// Create a `Lexer` instance initiated with a `&`[`Rc`]`<`[`IcuDataProvider`]`>` and grammar syntax vector.
+    /// 
+    /// The `grammar` parameter contain of a simple [`Vec`]`<`[`char`]`>` containing all the characters that are used
+    /// as grammar syntax characters within a parser. Each grammar syntax character is placed in its own `Token` of
+    /// type `Grammar`.
+    /// 
+    /// Note: Only single character graphemes are supported for grammar syntax characters. 
+    /// 
+    pub fn new( grammar: Vec<char>, data_provider: &Rc<IcuDataProvider>, ) -> Self {
+        Lexer {
+            data_provider: Rc::clone( data_provider ),
+            grammar,
+            length_bytes: 0,
+            length_characters: 0,
+            length_graphemes: 0,
+            length_tokens: 0,
+            token_position_byte: 0,
+            token_position_character: 0,
+            token_position_grapheme: 0,
+            position_byte: 0,
+            position_character: 0,
+        }       
     }
-    let mut lexer = Lexer {
-        data_provider: Rc::clone( data_provider ),
-        position_byte: 0,
-        position_character: 0,
-        token_position_byte: 0,
-        token_position_character: 0,
-        token_position_grapheme: 0,
-    };
-    let mut state = LexerStates::Identifier; // Most strings would begin with an alphabet letter.
-    let mut iterator = string.as_ref().char_indices();
-    while let Some( ( position, character ) ) = iterator.next() {
-        lexer.position_byte = position;
-        if lexer.data_provider.pattern_white_space().as_borrowed().contains( character ) {
-            if state == LexerStates::Identifier {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::Identifier, string.as_ref() );
-            }
-            else if state == LexerStates::Grammar {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::Grammar, string.as_ref() );
-            }
-            else if state == LexerStates::Syntax {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::Syntax, string.as_ref() );
-            }
-            state = LexerStates::WhiteSpace;
+
+    /// Tokenise a string (as [`&str`]) into a vector of tokens ([`Vec`]`<`[`Rc`]`<Token>>`). The lexer is reset before
+    /// tokenising the string.
+    /// 
+    /// Non-grammar syntax characters are simply made into `Syntax` tokens for the parser to handle.
+    /// 
+    /// No characters are discarded, thus every character belongs to a token. Allowing for the full reconstruction of
+    /// the original string, that was tokenised.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_icu::{ IcuDataProvider, DataProvider };
+    /// use i18n_lexer::{Token, TokenType, Lexer};
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// 
+    /// fn test_tokenise() -> Result<(), Box<dyn Error>> {
+    ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    ///     let mut lexer = Lexer::new( vec![ '{', '}' ], &icu_data_provider );
+    ///     let ( tokens, lengths, grammar ) =
+    ///         lexer.tokenise( "String contains a {placeholder}." );
+    ///     let mut grammar_tokens = 0;
+    ///     assert_eq!( lengths.bytes, 32, "Supposed to be a total of 32 bytes." );
+    ///     assert_eq!( lengths.characters, 32, "Supposed to be a total of 32 characters." );
+    ///     assert_eq!( lengths.graphemes, 32, "Supposed to be a total of 32 graphemes." );
+    ///     assert_eq!( lengths.tokens, 10, "Supposed to be a total of 10 tokens." );
+    ///     for token in tokens.iter() {
+    ///     if token.token_type == TokenType::Grammar {
+    ///          grammar_tokens += 1;
+    ///         }
+    ///     }
+    ///     assert_eq!( grammar_tokens, 2, "Supposed to be 2 grammar tokens." );
+    ///     assert!(grammar, "There supposed to be grammar tokens." );
+    ///     Ok( () )
+    /// }
+    /// ```
+    /// [`&str`]: core::str
+    pub fn tokenise<T: AsRef<str>>( &mut self, string: T ) -> ( Vec<Rc<Token>>, Length, bool ) {
+        let mut tokens = Vec::<Rc<Token>>::new();
+        let mut has_grammar = false;
+        self.length_bytes = 0;
+        self.length_characters = 0;
+        self.length_graphemes = 0;
+        self.length_tokens = 0;
+        self.token_position_byte = 0;
+        self.token_position_character = 0;
+        self.token_position_grapheme = 0;
+        self.position_byte = 0;
+        self.position_character = 0;
+
+        if string.as_ref().len() == 0 {
+            return ( tokens, Length {
+                bytes: self.length_bytes,
+                characters: self.length_characters,
+                graphemes: self.length_graphemes,
+                tokens: self.length_tokens,
+            }, has_grammar );
         }
-        else if lexer.data_provider.pattern_syntax().as_borrowed().contains( character ) {
-            let state_previous = state;
-            if grammar.contains( &character ) {
-                state = LexerStates::Grammar;
-                has_grammar = true;
+        let mut state = LexerStates::Identifier; // Most strings would begin with an alphabet letter.
+        let mut iterator = string.as_ref().char_indices();
+        while let Some( ( position, character ) ) = iterator.next() {
+            self.position_byte = position;
+            if self.data_provider.white_space().as_ref().unwrap().as_borrowed().contains( character ) {
+                if state == LexerStates::Identifier {
+                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
+                }
+                else if state == LexerStates::Grammar {
+                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
+                }
+                else if state == LexerStates::Syntax {
+                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
+                }
+                state = LexerStates::WhiteSpace;
             }
-            else {
-                state = LexerStates::Syntax;
-            }
-            if state_previous == LexerStates::Identifier {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::Identifier, string.as_ref() );
-            }
-            else if state_previous == LexerStates::WhiteSpace {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::WhiteSpace, string.as_ref() );
-            }
-            else {
-                if state_previous == LexerStates::Grammar {
-                    add_previous_characters( &mut lexer, &mut tokens, TokenType::Grammar, string.as_ref() );
+            else if self.data_provider.syntax().as_ref().unwrap().as_borrowed().contains( character ) {
+                let state_previous = state;
+                if self.grammar.contains( &character ) {
+                    state = LexerStates::Grammar;
+                    has_grammar = true;
                 }
                 else {
-                    if state == LexerStates::Grammar {
-                        add_previous_characters( &mut lexer, &mut tokens, TokenType::Syntax, string.as_ref() );
+                    state = LexerStates::Syntax;
+                }
+                if state_previous == LexerStates::Identifier {
+                    self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
+                }
+                else if state_previous == LexerStates::WhiteSpace {
+                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string.as_ref() );
+                }
+                else {
+                    if state_previous == LexerStates::Grammar {
+                        self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
+                    }
+                    else {
+                        if state == LexerStates::Grammar {
+                            self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
+                        }
                     }
                 }
             }
+            else {
+                if state == LexerStates::WhiteSpace {
+                    self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string.as_ref() );
+                }
+                else if state == LexerStates::Grammar {
+                    self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
+                }
+                else if state == LexerStates::Syntax {
+                    self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
+                }
+                state = LexerStates::Identifier;
+            }
+            self.position_character += 1;
         }
-        else {
-            if state == LexerStates::WhiteSpace {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::WhiteSpace, string.as_ref() );
+
+        // Complete final token
+        self.position_byte = string.as_ref().len();
+        match state {
+            LexerStates::Grammar => {
+                self.add_previous_characters( &mut tokens, TokenType::Grammar, string.as_ref() );
+            },
+            LexerStates::Syntax => {
+                self.add_previous_characters( &mut tokens, TokenType::Syntax, string.as_ref() );
+            },
+            LexerStates::Identifier => {
+                self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
+            },
+            LexerStates::WhiteSpace => {
+                self.add_previous_characters( &mut tokens, TokenType::WhiteSpace, string.as_ref() );
             }
-            else if state == LexerStates::Grammar {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::Grammar, string.as_ref() );
-            }
-            else if state == LexerStates::Syntax {
-                add_previous_characters( &mut lexer, &mut tokens, TokenType::Syntax, string.as_ref() );
-            }
-            state = LexerStates::Identifier;
         }
-        lexer.position_character += 1;
+        ( tokens, Length {
+            bytes: self.length_bytes,
+            characters: self.length_characters,
+            graphemes: self.length_graphemes,
+            tokens: self.length_tokens,
+        }, has_grammar )
     }
 
-    // Complete final token
-    lexer.position_byte = string.as_ref().len();
-    match state {
-        LexerStates::Grammar => {
-            add_previous_characters( &mut lexer, &mut tokens, TokenType::Grammar, string.as_ref() );
-        },
-        LexerStates::Syntax => {
-            add_previous_characters( &mut lexer, &mut tokens, TokenType::Syntax, string.as_ref() );
-        },
-        LexerStates::Identifier => {
-            add_previous_characters( &mut lexer, &mut tokens, TokenType::Identifier, string.as_ref() );
-        },
-        LexerStates::WhiteSpace => {
-            add_previous_characters( &mut lexer, &mut tokens, TokenType::WhiteSpace, string.as_ref() );
+    // Create a token for slice starting at the byte position after the previous token until current byte position.
+    fn add_previous_characters<T: AsRef<str>>(
+        &mut self,
+        tokens: &mut Vec::<Rc<Token>>,
+        token: TokenType,
+        string: T,
+    ) {
+        if self.token_position_byte != self.position_byte {
+            let slice = &string.as_ref()[ self.token_position_byte .. self.position_byte ];
+            let len_bytes = self.position_byte - self.token_position_byte;
+            let len_characters = self.position_character - self.token_position_character;
+            let len_graphemes = self.data_provider.grapheme_segmenter().as_ref().unwrap().segment_str( slice ).count() - 1;
+            tokens.push( Rc::new(
+                Token {
+                    token_type: token,
+                    string: slice.to_string(),
+                    position_byte: self.token_position_byte,
+                    position_character: self.token_position_character,
+                    position_grapheme: self.token_position_grapheme,
+                    length_bytes: len_bytes,
+                    length_characters: len_characters,
+                    length_graphemes: len_graphemes,
+                }
+            ) );
+            self.token_position_byte += len_bytes;
+            self.token_position_character += len_characters;
+            self.token_position_grapheme += len_graphemes;
+            self.length_bytes += len_bytes;
+            self.length_characters += len_characters;
+            self.length_graphemes += len_graphemes;
+            self.length_tokens += 1;
         }
     }
-    ( tokens, has_grammar )
 }
 
 // Internal structures, enums, etc.
@@ -219,71 +273,4 @@ enum LexerStates {
     WhiteSpace, // Ends with non-white space.
     Grammar, // A grammar syntax character.
     Syntax, // Any other syntax character.
-}
-
-struct Lexer<'a, P>
-where
-    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
-{
-    data_provider: Rc<IcuDataProvider<'a, P>>,
-    token_position_byte: usize,
-    token_position_character: usize,
-    token_position_grapheme: usize,
-    position_byte: usize,
-    position_character: usize,
-}
-
-// Create a token for slice starting at the byte position after the previous token until current byte position.
-fn add_previous_characters<'a,
-T: AsRef<str>,
-P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-    + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-    + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-    + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-    + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-    + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-    + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-    + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-    + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-    + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-    + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-    + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>
->(
-    lexer: &mut Lexer<'a, P>,
-    tokens: &mut Vec::<Rc<Token>>,
-    token: TokenType,
-    string: T,
-) {
-    if lexer.token_position_byte != lexer.position_byte {
-        let slice = &string.as_ref()[ lexer.token_position_byte .. lexer.position_byte ];
-        let len_byte = lexer.position_byte - lexer.token_position_byte;
-        let len_character = lexer.position_character - lexer.token_position_character;
-        let len_grapheme = lexer.data_provider.grapheme_segmenter().segment_str( slice ).count() - 1;
-        tokens.push( Rc::new(
-            Token {
-                token_type: token,
-                string: slice.to_string(),
-                position_byte: lexer.token_position_byte,
-                position_character: lexer.token_position_character,
-                position_grapheme: lexer.token_position_grapheme,
-                length_bytes: len_byte,
-                length_characters: len_character,
-                length_graphemes: len_grapheme,
-            }
-        ) );
-        lexer.token_position_byte += len_byte;
-        lexer.token_position_character += len_character;
-        lexer.token_position_grapheme += len_grapheme;
-    }
 }
