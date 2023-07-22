@@ -3,11 +3,11 @@
 
 //! Testing formatter.
 
-use i18n_icu::IcuDataProvider;
-use i18n_lexer::tokenise;
+use i18n_icu::{ IcuDataProvider, DataProvider };
+use i18n_lexer::Lexer;
 use i18n_pattern::{ parse, Formatter, PlaceholderValue, CommandRegistry, file_path, english_a_or_an };
-use icu_testdata::buffer;
-use icu_provider::serde::AsDeserializingBufferProvider;
+//use icu_testdata::buffer;
+//use icu_provider::serde::AsDeserializingBufferProvider;
 use icu_locid::Locale;
 use icu_calendar::{ Iso, DateTime, Date, types::Time };
 use os_info;
@@ -16,16 +16,12 @@ use std::{ rc::Rc, error::Error };
 
 #[test]
 fn plain_text() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "A simple plain text string.", &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "A simple plain text string." );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
@@ -38,16 +34,12 @@ fn plain_text() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn pattern_string() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "Expecting a string for placeholder: {string}", &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "Expecting a string for placeholder: {string}" );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
@@ -68,17 +60,12 @@ fn pattern_string() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn pattern_plural() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-        &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
@@ -99,17 +86,12 @@ fn pattern_plural() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn pattern_decimal() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "There is {amount decimal} kg of rice in the container.",
-        &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "There is {amount decimal} kg of rice in the container." );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
@@ -130,17 +112,12 @@ fn pattern_decimal() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn pattern_decimal_with_option() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "There is {amount decimal sign#always} kg of rice in the container.",
-        &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "There is {amount decimal sign#always} kg of rice in the container." );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
@@ -161,17 +138,12 @@ fn pattern_decimal_with_option() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn pattern_datetime() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "At this point in time {time date_time} the moon winked out.",
-        &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "At this point in time {time date_time} the moon winked out." );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
@@ -195,17 +167,12 @@ fn pattern_datetime() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn pattern_datetime_string() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "At this point in time {time date_time} the moon winked out.",
-        &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "At this point in time {time date_time} the moon winked out." );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     let mut formatter =
@@ -226,17 +193,12 @@ fn pattern_datetime_string() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn command_static() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "The file ‘{#file_path `tests/formatter.rs`}’ failed to open.",
-        &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "The file ‘{#file_path `tests/formatter.rs`}’ failed to open." );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     command_registry.insert( "file_path", file_path )?;
@@ -255,17 +217,12 @@ fn command_static() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn command_delayed() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider =
-        Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    let tokens = tokenise(
-        "At night {#english_a_or_an# hunter} {hunter} stalked {#english_a_or_an # prey} {prey}.",
-        &vec![ '{', '}', '`', '#' ],
-        &icu_data_provider,
-    );
-    let tree = parse( tokens.0 )?;
-    let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    let ( tokens, _lengths, _grammar ) =
+        lexer.tokenise( "At night {#english_a_or_an# hunter} {hunter} stalked {#english_a_or_an # prey} {prey}." );
+    let tree = parse( tokens )?;
+    let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     let language_tag = Rc::new( locale.to_string() );
     let command_registry = Rc::new( CommandRegistry::new() );
     command_registry.insert( "english_a_or_an", english_a_or_an )?;

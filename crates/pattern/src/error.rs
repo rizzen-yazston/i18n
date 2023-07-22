@@ -1,8 +1,8 @@
 // This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
 
-use crate::{ NodeType };
-use i18n_lexer::{ Token };
+use crate::NodeType;
+use i18n_lexer::Token;
 use icu_locid::ParserError as IcuParserError;
 use icu_calendar::CalendarError;
 use icu_decimal::Error as DecimalError;

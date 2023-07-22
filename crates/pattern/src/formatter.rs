@@ -4,11 +4,12 @@
 // Feature option: language tag wrapping
 
 use crate::{ NodeType, FormatterError, PlaceholderValue, CommandRegistry };
-use i18n_icu::IcuDataProvider;
+#[allow( unused_imports )]
+use i18n_icu::{ IcuDataProvider, DataProvider };
 use i18n_lexer::Token;
 use i18n_utility::LString;
 use tree::Tree;
-use icu_provider::prelude::*;
+use icu_provider::prelude::DataLocale;
 use icu_locid::Locale;
 use icu_plurals::{ PluralCategory, PluralRules };
 use icu_decimal::{ FixedDecimalFormatter, options };
@@ -21,49 +22,12 @@ use icu_datetime::{
     options::length::{ Bag, Date as DateLength, Time as TimeLength },
     DateTimeFormatter, DateFormatter, TimeFormatter
 };
-use icu_properties::{ provider::{ PatternSyntaxV1Marker, PatternWhiteSpaceV1Marker } };
-use icu_segmenter::provider::GraphemeClusterBreakDataV1Marker;
-use icu_plurals::provider::{ CardinalV1Marker, OrdinalV1Marker };
-use icu_decimal::provider::DecimalSymbolsV1Marker;
-use icu_datetime::provider::calendar::{
-    TimeSymbolsV1Marker,
-    TimeLengthsV1Marker,
-    GregorianDateLengthsV1Marker,
-    BuddhistDateLengthsV1Marker,
-    JapaneseDateLengthsV1Marker,
-    JapaneseExtendedDateLengthsV1Marker,
-    CopticDateLengthsV1Marker,
-    IndianDateLengthsV1Marker,
-    EthiopianDateLengthsV1Marker,
-    GregorianDateSymbolsV1Marker,
-    BuddhistDateSymbolsV1Marker,
-    JapaneseDateSymbolsV1Marker,
-    JapaneseExtendedDateSymbolsV1Marker,
-    CopticDateSymbolsV1Marker,
-    IndianDateSymbolsV1Marker,
-    EthiopianDateSymbolsV1Marker,
-};
-use icu_calendar::provider::{ WeekDataV1Marker, JapaneseErasV1Marker, JapaneseExtendedErasV1Marker };
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
 
-pub struct Formatter<'a, P>
-where
-    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
-{
-    data_provider: Rc<IcuDataProvider<'a, P>>,
+pub struct Formatter {
+    data_provider: Rc<IcuDataProvider>,
     language_tag: Rc<String>,
     locale: Rc<Locale>,
     patterns: HashMap<String, Vec<PatternPart>>,
@@ -72,48 +36,27 @@ where
     command_registry: Rc<CommandRegistry>,
 }
 
-impl<'a, P> Formatter<'a, P>
-where
-    P: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
-{
+impl Formatter {
     /// Creates a Formatter for a language string using parsing results.
     /// During the creation of the formatter for the supplied [`Tree`], the semantic analyse is done.
     ///
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::IcuDataProvider;
-    /// use i18n_lexer::{Token, TokenType, tokenise};
-    /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry};
-    /// use icu_testdata::buffer;
-    /// use icu_provider::serde::AsDeserializingBufferProvider;
+    /// use i18n_icu::{ IcuDataProvider, DataProvider };
+    /// use i18n_lexer::{ Token, TokenType, Lexer };
+    /// use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry };
     /// use icu_locid::Locale;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
     /// 
-    /// fn format_string() -> Result<(), Box<dyn Error>> {
-    ///     let buffer_provider = buffer();
-    ///     let data_provider = buffer_provider.as_deserializing();
-    ///     let icu_data_provider =
-    ///         Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    ///     let tokens = tokenise(
-    ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-    ///         &vec![ '{', '}', '`', '#' ],
-    ///         &icu_data_provider,
-    ///     );
-    ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
+    /// fn pattern_plural() -> Result<(), Box<dyn Error>> {
+    ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    ///     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    ///     let ( tokens, _lengths, _grammar ) =
+    ///         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );
+    ///     let tree = parse( tokens )?;
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     ///     let language_tag = Rc::new( locale.to_string() );
     ///     let command_registry = Rc::new( CommandRegistry::new() );
@@ -137,12 +80,12 @@ where
     /// 
     /// [`Tree`]: tree::Tree
     pub fn try_new(
-        data_provider: &Rc<IcuDataProvider<'a, P>>,
+        data_provider: &Rc<IcuDataProvider>,
         language_tag: &Rc<String>,
         locale: &Rc<Locale>,
         tree: &Tree,
         command_registry: &Rc<CommandRegistry>,
-    ) -> Result<Formatter<'a, P>, FormatterError> {
+    ) -> Result<Formatter, FormatterError> {
         let mut patterns = HashMap::<String, Vec<PatternPart>>::new();
         patterns.insert( "_".to_string(), Vec::<PatternPart>::new() ); // Insert empty main pattern.
         let mut numbers = Vec::<String>::new();
@@ -284,27 +227,20 @@ where
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::IcuDataProvider;
-    /// use i18n_lexer::{Token, TokenType, tokenise};
-    /// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry};
-    /// use icu_testdata::buffer;
-    /// use icu_provider::serde::AsDeserializingBufferProvider;
+    /// use i18n_icu::{ IcuDataProvider, DataProvider };
+    /// use i18n_lexer::{ Token, TokenType, Lexer };
+    /// use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry };
     /// use icu_locid::Locale;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
     /// 
-    /// fn format_string() -> Result<(), Box<dyn Error>> {
-    ///     let buffer_provider = buffer();
-    ///     let data_provider = buffer_provider.as_deserializing();
-    ///     let icu_data_provider =
-    ///         Rc::new( IcuDataProvider::try_new( &data_provider )? );
-    ///     let tokens = tokenise(
-    ///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-    ///         &vec![ '{', '}', '`', '#' ],
-    ///         &icu_data_provider,
-    ///     );
-    ///     let tree = parse( tokens.0 ).expect( "Failed to parse tokens." );
+    /// fn pattern_plural() -> Result<(), Box<dyn Error>> {
+    ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    ///     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+    ///     let ( tokens, _lengths, _grammar ) =
+    ///         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );
+    ///     let tree = parse( tokens )?;
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     ///     let language_tag = Rc::new( locale.to_string() );
     ///     let command_registry = Rc::new( CommandRegistry::new() );
@@ -402,11 +338,7 @@ where
                     if group.is_some() {
                         options.grouping_strategy = group.unwrap();
                     }
-                    let fdf = FixedDecimalFormatter::try_new_unstable(
-                        self.data_provider.data_provider().0,
-                        &data_locale,
-                        options,
-                    )?;
+                    let fdf = self.fixed_decimal_formatter( &data_locale, options )?;
                     match value {
                         PlaceholderValue::FixedDecimal( number ) => {
                             let fixed_decimal = &mut number.clone();
@@ -475,29 +407,17 @@ where
                     };
                     match value {
                         PlaceholderValue::DateTime( date_time) => {
-                            let dtf = DateTimeFormatter::try_new_unstable(
-                                self.data_provider.data_provider().0,
-                                &data_locale,
-                                options.into(),
-                            )?;
+                            let dtf = self.date_time_formatter( &data_locale, options )?;
                             let date_string = dtf.format_to_string( &date_time.to_any() )?;
                             string.push_str( date_string.as_str() );
                         },
                         PlaceholderValue::Date( date ) => {
-                            let df = DateFormatter::try_new_with_length_unstable(
-                                self.data_provider.data_provider().0,
-                                &data_locale,
-                                length_date,
-                            )?;
+                            let df = self.date_formatter( &data_locale, length_date )?;
                             let date_string = df.format_to_string( &date.to_any() )?;
                             string.push_str( date_string.as_str() );
                         },
                         PlaceholderValue::Time( time ) => {
-                            let tf = TimeFormatter::try_new_with_length_unstable(
-                                self.data_provider.data_provider().0,
-                                &data_locale,
-                                length_time,
-                            )?;
+                            let tf = self.time_formatter(&data_locale, length_time )?;
                             let date_string = tf.format_to_string( time );
                             string.push_str( date_string.as_str() );
                         },
@@ -508,12 +428,7 @@ where
 
                                     // time only
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
-                                    let tf =
-                                        TimeFormatter::try_new_with_length_unstable(
-                                        self.data_provider.data_provider().0,
-                                        &data_locale,
-                                        length_time,
-                                    )?;
+                                    let tf = self.time_formatter( &data_locale, length_time, )?;
                                     let date_string = tf.format_to_string( &time );
                                     string.push_str( date_string.as_str() );
                                 } else {
@@ -522,11 +437,7 @@ where
                                     let date: Date<Iso> = decompose_iso_date( date_time_strings[ 0 ] )?;
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
                                     let date_time = DateTime::<Iso>::new( date, time );
-                                    let dtf = DateTimeFormatter::try_new_unstable(
-                                        self.data_provider.data_provider().0,
-                                        &data_locale,
-                                        options.into(),
-                                    )?;
+                                    let dtf = self.date_time_formatter( &data_locale, options )?;
                                     let date_string = dtf.format_to_string( &date_time.to_any() )?;
                                     string.push_str( date_string.as_str() );
                                 }
@@ -534,11 +445,7 @@ where
 
                                 // date only
                                 let date: Date<Iso> = decompose_iso_date( date_time_strings[ 0 ] )?;
-                                let df = DateFormatter::try_new_with_length_unstable(
-                                    self.data_provider.data_provider().0,
-                                    &data_locale,
-                                    length_date,
-                                )?;
+                                let df = self.date_formatter( &data_locale, length_date )?;
                                 let date_string = df.format_to_string( &date.to_any() )?;
                                 string.push_str( date_string.as_str() );
                             }
@@ -558,10 +465,7 @@ where
                     let data_locale = DataLocale::from( Rc::as_ref( &self.locale ) );
                     match complex {
                         ComplexType::Plural => {
-                            let plurals = PluralRules::try_new_cardinal_unstable(
-                                self.data_provider.data_provider().0,
-                                &data_locale,
-                            )?;
+                            let plurals = self.plural_rules_cardinal( &data_locale )?;
                             match value {
                                 PlaceholderValue::FixedDecimal( number ) => self.find_number_sign(
                                     values,
@@ -612,10 +516,7 @@ where
                         ComplexType::Ordinal => {
 
                             // Only positive integers and zero are allowed.
-                            let plurals = PluralRules::try_new_ordinal_unstable(
-                                self.data_provider.data_provider().0,
-                                &data_locale,
-                            )?;
+                            let plurals = self.plural_rules_ordinal( &data_locale )?;
                             match value {
                                 PlaceholderValue::Unsigned( number ) => {
                                     let fixed_decimal = FixedDecimal::from( *number );
@@ -711,11 +612,7 @@ where
         let mut _named = String::new();
 
         // Format number using graphemes of the locale.
-        let fdf = FixedDecimalFormatter::try_new_unstable(
-            self.data_provider.data_provider().0,
-            data_locale,
-            Default::default(),
-        )?;
+        let fdf = self.fixed_decimal_formatter( data_locale, Default::default(), )?;
         let number_string = fdf.format( fixed_decimal ).to_string();
         let category = plural_category( plurals.category_for( fixed_decimal ) ).to_string();
 
@@ -790,6 +687,168 @@ where
         };
         *number_string_mut = number_string.to_string();
         Ok( () )
+    }
+
+    fn fixed_decimal_formatter(
+        &self,
+        _data_locale: &DataLocale,
+        _options: options::FixedDecimalFormatterOptions
+    ) -> Result<FixedDecimalFormatter, FormatterError> {
+        match self.data_provider.data_provider() {
+            #[cfg( feature = "compiled_data" )]
+            DataProvider::Internal => Ok( FixedDecimalFormatter::try_new( _data_locale, _options )? ),
+            #[cfg( feature = "blob" )]
+            DataProvider::Blob( provider ) => Ok( 
+                FixedDecimalFormatter::try_new_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _options,
+                )?
+            ),
+            #[cfg( feature = "fs" )]
+            DataProvider::Fs( provider ) => Ok( 
+                FixedDecimalFormatter::try_new_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _options,
+                )?
+            ),
+            #[allow( unreachable_patterns )]
+            _ => Err( FormatterError::NeverReached )
+        }
+    }
+
+    fn date_time_formatter(
+        &self,
+        _data_locale: &DataLocale, 
+        _options: Bag
+    ) -> Result<DateTimeFormatter, FormatterError> {
+        match self.data_provider.data_provider() {
+            #[cfg( feature = "compiled_data" )]
+            DataProvider::Internal => Ok( DateTimeFormatter::try_new( _data_locale, _options.into() )? ),
+            #[cfg( feature = "blob" )]
+            DataProvider::Blob( provider ) => Ok( 
+                DateTimeFormatter::try_new_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _options.into(),
+                )?
+            ),
+            #[cfg( feature = "fs" )]
+            DataProvider::Fs( provider ) => Ok( 
+                DateTimeFormatter::try_new_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _options.into(),
+                )?
+            ),
+            #[allow( unreachable_patterns )]
+            _ => Err( FormatterError::NeverReached )
+        }
+    }
+
+    fn date_formatter(
+        &self,
+        _data_locale: &DataLocale, 
+        _length_date: icu_datetime::options::length::Date
+    ) -> Result<DateFormatter, FormatterError> {
+        match self.data_provider.data_provider() {
+            #[cfg( feature = "compiled_data" )]
+            DataProvider::Internal => Ok( DateFormatter::try_new_with_length( _data_locale, _length_date )? ),
+            #[cfg( feature = "blob" )]
+            DataProvider::Blob( provider ) => Ok( 
+                DateFormatter::try_new_with_length_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _length_date,
+                )?
+            ),
+            #[cfg( feature = "fs" )]
+            DataProvider::Fs( provider ) => Ok( 
+                DateFormatter::try_new_with_length_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _length_date,
+                )?
+            ),
+            #[allow( unreachable_patterns )]
+            _ => Err( FormatterError::NeverReached )
+        }
+    }
+    
+    fn time_formatter(
+        &self,
+        _data_locale: &DataLocale, 
+        _length_time: icu_datetime::options::length::Time
+    ) -> Result<TimeFormatter, FormatterError> {
+        match self.data_provider.data_provider() {
+            #[cfg( feature = "compiled_data" )]
+            DataProvider::Internal => Ok( TimeFormatter::try_new_with_length( _data_locale, _length_time )? ),
+            #[cfg( feature = "blob" )]
+            DataProvider::Blob( provider ) => Ok( 
+                TimeFormatter::try_new_with_length_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _length_time,
+                )?
+            ),
+            #[cfg( feature = "fs" )]
+            DataProvider::Fs( provider ) => Ok( 
+                TimeFormatter::try_new_with_length_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                    _length_time,
+                )?
+            ),
+            #[allow( unreachable_patterns )]
+            _ => Err( FormatterError::NeverReached )
+        }
+    }
+    
+    fn plural_rules_cardinal( &self, _data_locale: &DataLocale ) -> Result<PluralRules, FormatterError> {
+        match self.data_provider.data_provider() {
+            #[cfg( feature = "compiled_data" )]
+            DataProvider::Internal => Ok( PluralRules::try_new_cardinal( _data_locale )? ),
+            #[cfg( feature = "blob" )]
+            DataProvider::Blob( provider ) => Ok( 
+                PluralRules::try_new_cardinal_with_buffer_provider(
+                    provider,
+                    _data_locale
+                )?
+            ),
+            #[cfg( feature = "fs" )]
+            DataProvider::Fs( provider ) => Ok( 
+                PluralRules::try_new_cardinal_with_buffer_provider(
+                    provider,
+                    _data_locale
+                )?
+            ),
+            #[allow( unreachable_patterns )]
+            _ => Err( FormatterError::NeverReached )
+        }
+    }
+    
+    fn plural_rules_ordinal( &self, _data_locale: &DataLocale ) -> Result<PluralRules, FormatterError> {
+        match self.data_provider.data_provider() {
+            #[cfg( feature = "compiled_data" )]
+            DataProvider::Internal => Ok( PluralRules::try_new_ordinal( _data_locale )? ),
+            #[cfg( feature = "blob" )]
+            DataProvider::Blob( provider ) => Ok( 
+                PluralRules::try_new_ordinal_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                )?
+            ),
+            #[cfg( feature = "fs" )]
+            DataProvider::Fs( provider ) => Ok( 
+                PluralRules::try_new_ordinal_with_buffer_provider(
+                    provider,
+                    _data_locale,
+                )?
+            ),
+            #[allow( unreachable_patterns )]
+            _ => Err( FormatterError::NeverReached )
+        }
     }
 }
 

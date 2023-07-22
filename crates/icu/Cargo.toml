@@ -27,7 +27,7 @@ blob = [
     "icu_provider?/deserialize_postcard_1",
 ]
 
- # Enable the use of file system storage at runtime.
+# Enable the use of file system storage at runtime.
  fs = [
     "buffer",
     "dep:icu_provider_fs",

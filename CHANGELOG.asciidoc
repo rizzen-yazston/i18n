@@ -23,6 +23,14 @@ Redesigning of `IcuDataProvider` to make use of new internal data feature in `ic
 
 ** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
 
+* Updated `i18n_pattern` crate:
+
+** Changed `Formatter::format()` to use the new `IcuDataProvider`.
+
+** Added 5 new helper functions to obtain the required ICU formatter instance. Allows for easier support for new data providers.
+
+** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+
 == i18n 0.6.1 (2023-07-06)
 
 * Enabling publishing for all crates.

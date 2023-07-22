@@ -19,27 +19,21 @@ use core::fmt::{ Display, Formatter, Result as FmtResult };
 /// # Examples
 /// 
 /// ```
-/// use i18n_icu::IcuDataProvider;
-/// use i18n_lexer::{Token, TokenType, tokenise};
-/// use i18n_pattern::{parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry};
-/// use icu_testdata::buffer;
-/// use icu_provider::serde::AsDeserializingBufferProvider;
+/// use i18n_icu::{ IcuDataProvider, DataProvider };
+/// use i18n_lexer::{ Token, TokenType, Lexer };
+/// use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry };
 /// use icu_locid::Locale;
 /// use std::collections::HashMap;
 /// use std::rc::Rc;
 /// use std::error::Error;
 /// 
 /// fn pattern_plural() -> Result<(), Box<dyn Error>> {
-///     let buffer_provider = buffer();
-///     let data_provider = buffer_provider.as_deserializing();
-///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( &data_provider )? );
-///     let tokens = tokenise(
-///         "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}",
-///         &vec![ '{', '}', '`', '#' ],
-///         &icu_data_provider,
-///     );
-///     let tree = parse( tokens.0 )?;
-///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse()? );
+///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+///     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
+///     let ( tokens, _lengths, _grammar ) =
+///         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );
+///     let tree = parse( tokens )?;
+///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
 ///     let language_tag = Rc::new( locale.to_string() );
 ///     let command_registry = Rc::new( CommandRegistry::new() );
 ///     let mut formatter = Formatter::try_new(
