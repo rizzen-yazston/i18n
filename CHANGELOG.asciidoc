@@ -37,7 +37,7 @@ Redesigning of `IcuDataProvider` to make use of new internal data feature in `ic
 
 * Updated `i18n_message` crate:
 
-** Changed ... to use new `IcuDataProvider` and new `Lexer`.
+** Changed `Message` to use new `IcuDataProvider` and new `Lexer`.
 
 ** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
 
@@ -45,7 +45,7 @@ Redesigning of `IcuDataProvider` to make use of new internal data feature in `ic
 
 * Updated `i18n_pattern` crate:
 
-** Changed ... to use new `IcuDataProvider` and new `Lexer`.
+** Changed `Formatter` to use new `IcuDataProvider` and new `Lexer`.
 
 ** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
 
