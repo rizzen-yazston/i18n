@@ -15,7 +15,7 @@ When data provider is not `Internal` and depending on the data provider used, th
 
 `IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` to prevent unnecessary duplication.
 
-## Features
+== Features
 
 Available features for `i18n_icu` crate:
  

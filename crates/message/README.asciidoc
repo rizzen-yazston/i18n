@@ -11,6 +11,16 @@ The message is capable of caching retrieved strings that are prepared for placeh
 
 The message system makes use of all the other component crates that make up the `i18n` project. Ideally one only needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
 
+== Features
+
+Available features for `i18n_icu` crate:
+ 
+* `compiled_data`: Allow for the internal data of the various ICU4X components.
+ 
+* `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
+ 
+* `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
@@ -27,43 +37,22 @@ i18n_provider-rizzen-yazston = "0.6.1"
 i18n_provider_sqlite3-rizzen-yazston = "0.6.1"
 i18n_utility-rizzen-yazston = "0.6.1"
 tree-rizzen-yazston = "0.4.0"
-icu_provider = "1.2.0"
-
-# These are required for the DataProvider.
-icu_properties = "1.2.0"
-icu_segmenter = "1.2.0"
-icu_plurals = "1.2.0"
-icu_decimal = "1.2.0"
-icu_calendar = "1.2.0"
-icu_datetime = "1.2.0"
-
-# This is required for the DataProvider.
-[dependencies.fixed_decimal]
-version = "0.5.3"
-# Needed for floating point support.
-features = [ "ryu" ]
 ```
 
 == Examples
 
 ```
-use i18n_icu::IcuDataProvider;
+use i18n_icu::{ IcuDataProvider, DataProvider };
 use i18n_registry::LanguageTagRegistry;
 use i18n_provider_sqlite3::ProviderSqlite3;
 use i18n_pattern::{PlaceholderValue, CommandRegistry};
 use i18n_message::Message;
-use icu_testdata::buffer;
-use icu_provider::serde::AsDeserializingBufferProvider;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::error::Error;
 
 fn message() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider = Rc::new(
-        IcuDataProvider::try_new( &data_provider )?
-    );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
     let lstring_provider = ProviderSqlite3::try_new(
         "./i18n/", &language_tag_registry

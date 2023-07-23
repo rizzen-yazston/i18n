@@ -19,6 +19,16 @@ This convenience meta crate contains selected available crates:
 
 - `i18n_utility-rizzen-yazston`: Contains the Language tag registry, and the LString type (language tagged string).
 
+== Features
+
+Available features for `i18n_icu` crate:
+ 
+* `compiled_data`: Allow for the internal data of the various ICU4X components.
+ 
+* `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
+ 
+* `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.

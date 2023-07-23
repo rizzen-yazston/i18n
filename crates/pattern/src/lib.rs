@@ -13,6 +13,16 @@
 //! 
 //! See `pattern strings.asciidoc` in `docs` of `pattern` for the pattern formatting specification.
 //! 
+//! # Features
+//! 
+//! Available features for `i18n_message` crate:
+//! 
+//! * `compiled_data`: Allow for the internal data of the various ICU4X components.
+//! 
+//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
+//! 
+//! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+//! 
 //! # Examples
 //! 
 //! ```
@@ -78,6 +88,8 @@
 //!     Ok( () )
 //! }
 //! ```
+//! 
+//! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
 pub mod types;
 pub use types::*;

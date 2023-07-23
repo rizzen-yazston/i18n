@@ -15,6 +15,23 @@ repository = "https://github.com/rizzen-yazston/i18n"
 keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]
 
+[features]
+
+# Enable the use of the internal data provider option.
+compiled_data = [
+    "i18n_icu-rizzen-yazston/compiled_data",
+] 
+
+# Enable the use of memory storage at runtime.
+blob = [
+    "i18n_icu-rizzen-yazston/blob",
+]
+
+# Enable the use of file system storage at runtime.
+fs = [
+    "i18n_icu-rizzen-yazston/fs",
+]
+
 [dependencies]
 i18n_icu-rizzen-yazston = { version = "0.6.1", path = "../icu" }
 i18n_lexer-rizzen-yazston = { version = "0.6.1", path = "../lexer" }

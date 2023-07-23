@@ -12,32 +12,36 @@
 //! The message system makes use of all the other component crates that make up the `i18n` project. Ideally one only
 //! needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
 //! 
+//! # Features
+//! 
+//! Available features for `i18n_message` crate:
+//! 
+//! * `compiled_data`: Allow for the internal data of the various ICU4X components.
+//! 
+//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
+//! 
+//! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+//! 
 //! # Examples
 //! 
 //! ```
-//! use i18n_icu::IcuDataProvider;
+//! use i18n_icu::{ IcuDataProvider, DataProvider };
 //! use i18n_utility::LanguageTagRegistry;
 //! use i18n_provider_sqlite3::ProviderSqlite3;
 //! use i18n_pattern::{ PlaceholderValue, CommandRegistry };
 //! use i18n_message::Message;
-//! use icu_testdata::buffer;
-//! use icu_provider::serde::AsDeserializingBufferProvider;
 //! use std::collections::HashMap;
 //! use std::rc::Rc;
 //! use std::error::Error;
 //! 
 //! fn message() -> Result<(), Box<dyn Error>> {
-//!     let buffer_provider = buffer();
-//!     let data_provider = buffer_provider.as_deserializing();
-//!     let icu_data_provider = Rc::new(
-//!         IcuDataProvider::try_new( &data_provider )?
-//!     );
+//!     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
 //!     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
 //!     let lstring_provider = ProviderSqlite3::try_new(
 //!         "./i18n/", &language_tag_registry
 //!     )?;
 //!     let command_registry = Rc::new( CommandRegistry::new() );
-//!     let message_system = Message::try_new(
+//!     let mut message_system = Message::try_new(
 //!         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
 //!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
@@ -68,6 +72,8 @@
 //!     Ok( () )
 //! }
 //! ```
+//! 
+//! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
 pub mod error;
 pub use error::*;

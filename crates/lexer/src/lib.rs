@@ -14,6 +14,16 @@
 //! Strings are tokenised using the method `tokenise()` taking string slice and a vector containing grammar syntax
 //! characters.
 //! 
+//! # Features
+//! 
+//! Available features for `i18n_lexer` crate:
+//! 
+//! * `compiled_data`: Allow for the internal data of the various ICU4X components.
+//! 
+//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
+//! 
+//! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+//! 
 //! # Examples
 //! 
 //! ```
@@ -47,6 +57,7 @@
 //! [Unicode Consortium]: https://home.unicode.org/
 //! [CLDR]: https://cldr.unicode.org/
 //! [ICU4X]: https://github.com/unicode-org/icu4x
+//! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
 pub mod lexer;
 pub use lexer::*;

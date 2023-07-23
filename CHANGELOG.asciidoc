@@ -7,13 +7,17 @@ WARNING: This update has API breaking changes for some `i18n` crates.
 
 Redesigning of `IcuDataProvider` to make use of new internal data feature in `icu` 1.3.0, and to resolve issue related to generic `DataProvider` issue with `main()`.
 
+* Updated `i18n_i18n` crate:
+
+** Adjusted `Cargo.toml` and documentation to reflect the changes.
+
 * Updated `i18n_icu` crate:
 
 ** Added new enum `DataProvider` to specify the supported data provider to use.
 
 ** Reworked `IcuDataProvider` to use new `DataProvider`. Also included sanity check to ensure that there is a data provider.
 
-** `i18n_icu.sqlite3` file: added 3 new translation strings.
+** Added Sqlite3 file for supported error language strings.
 
 ** Adjusted `Cargo.toml` and documentation to reflect the changes.
 
@@ -30,6 +34,30 @@ Redesigning of `IcuDataProvider` to make use of new internal data feature in `ic
 ** Added 5 new helper functions to obtain the required ICU formatter instance. Allows for easier support for new data providers.
 
 ** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+
+* Updated `i18n_message` crate:
+
+** Changed ... to use new `IcuDataProvider` and new `Lexer`.
+
+** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+
+** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
+
+* Updated `i18n_pattern` crate:
+
+** Changed ... to use new `IcuDataProvider` and new `Lexer`.
+
+** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+
+** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
+
+* Updated `i18n_provider_sqlite3` crate:
+
+** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
+
+* Updated `i18n_utility` crate:
+
+** Adjusted `Cargo.toml` to reflect the changes.
 
 == i18n 0.6.1 (2023-07-06)
 

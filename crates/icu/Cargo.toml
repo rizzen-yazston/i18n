@@ -28,7 +28,7 @@ blob = [
 ]
 
 # Enable the use of file system storage at runtime.
- fs = [
+fs = [
     "buffer",
     "dep:icu_provider_fs",
     "icu_provider?/deserialize_bincode_1",

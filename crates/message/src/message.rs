@@ -3,76 +3,28 @@
 
 use crate::MessageError;
 use i18n_icu::IcuDataProvider;
-use i18n_lexer::tokenise;
+use i18n_lexer::Lexer;
 use i18n_provider::{ LStringProvider, LStringProviderWrapper };
 use i18n_utility::{ LanguageTagRegistry, LString };
 use i18n_pattern::{ parse, Formatter, PlaceholderValue, CommandRegistry };
-use icu_provider::DataProvider;
-use icu_properties::{ provider::{ PatternSyntaxV1Marker, PatternWhiteSpaceV1Marker } };
-use icu_segmenter::provider::GraphemeClusterBreakDataV1Marker;
-use icu_plurals::provider::{ CardinalV1Marker, OrdinalV1Marker };
-use icu_decimal::provider::DecimalSymbolsV1Marker;
-use icu_datetime::provider::calendar::{
-    TimeSymbolsV1Marker,
-    TimeLengthsV1Marker,
-    GregorianDateLengthsV1Marker,
-    BuddhistDateLengthsV1Marker,
-    JapaneseDateLengthsV1Marker,
-    JapaneseExtendedDateLengthsV1Marker,
-    CopticDateLengthsV1Marker,
-    IndianDateLengthsV1Marker,
-    EthiopianDateLengthsV1Marker,
-    GregorianDateSymbolsV1Marker,
-    BuddhistDateSymbolsV1Marker,
-    JapaneseDateSymbolsV1Marker,
-    JapaneseExtendedDateSymbolsV1Marker,
-    CopticDateSymbolsV1Marker,
-    IndianDateSymbolsV1Marker,
-    EthiopianDateSymbolsV1Marker,
-};
-use icu_calendar::provider::{ WeekDataV1Marker, JapaneseErasV1Marker, JapaneseExtendedErasV1Marker };
 use std::{ rc::Rc, cell::RefCell, collections::HashMap };
 
-pub struct Message<'a, I, L>
+pub struct Message<'a, L>
 where
-    I: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
     L: ?Sized + LStringProvider,
 {
-    icu_data_provider: Rc<IcuDataProvider<'a, I>>,
+    icu_data_provider: Rc<IcuDataProvider>,
+    lexer: Lexer,
     language_tag_registry: Rc<LanguageTagRegistry>,
     lstring_provider: LStringProviderWrapper<'a, L>,
     command_registry: Rc<CommandRegistry>,
     fallback: bool,
     caching: bool,
-    cache: RefCell<HashMap<Rc<String>, HashMap<String, CacheData<'a, I>>>>,
-    grammar: Vec<char>,
+    cache: RefCell<HashMap<Rc<String>, HashMap<String, CacheData>>>,
 }
 
-impl<'a, I, L> Message<'a, I, L>
+impl<'a, L> Message<'a, L>
 where
-    I: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
     L: ?Sized + LStringProvider,
 {
 
@@ -88,29 +40,23 @@ where
     /// # Examples
     /// 
     /// ```
-    /// use i18n_icu::IcuDataProvider;
+    /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_message::Message;
-    /// use icu_testdata::buffer;
-    /// use icu_provider::serde::AsDeserializingBufferProvider;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
     /// 
     /// fn message() -> Result<(), Box<dyn Error>> {
-    ///     let buffer_provider = buffer();
-    ///     let data_provider = buffer_provider.as_deserializing();
-    ///     let icu_data_provider = Rc::new(
-    ///         IcuDataProvider::try_new( &data_provider )?
-    ///     );
+    ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
     ///     let lstring_provider = ProviderSqlite3::try_new(
     ///         "./i18n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let message_system = Message::try_new(
+    ///     let mut message_system = Message::try_new(
     ///         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
@@ -142,22 +88,22 @@ where
     /// }
     /// ```
     pub fn try_new(
-        icu_data_provider: &Rc<IcuDataProvider<'a, I>>,
+        icu_data_provider: &Rc<IcuDataProvider>,
         language_tag_registry: &Rc<LanguageTagRegistry>,
         lstring_provider: &'a L,
         command_registry: &Rc<CommandRegistry>,
-        fallback: bool, //true = fallback to default language
+        fallback: bool,
         caching: bool,
     ) -> Result<Self, MessageError> {
         Ok( Message {
             icu_data_provider: Rc::clone( icu_data_provider ),
+            lexer: Lexer::new( vec![ '{', '}', '`', '#' ], icu_data_provider ),
             language_tag_registry: Rc::clone( language_tag_registry ),
             lstring_provider: LStringProviderWrapper( lstring_provider ),
             command_registry: Rc::clone( command_registry ),
             fallback,
             caching,
-            cache: RefCell::new( HashMap::<Rc<String>, HashMap<String, CacheData<'a, I>>>::new() ),
-            grammar: vec![ '{', '}', '`', '#' ],
+            cache: RefCell::new( HashMap::<Rc<String>, HashMap<String, CacheData>>::new() ),
         } )
     }
 
@@ -169,29 +115,23 @@ where
     /// # Examples
     /// 
     /// ```
-    /// use i18n_icu::IcuDataProvider;
+    /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_message::Message;
-    /// use icu_testdata::buffer;
-    /// use icu_provider::serde::AsDeserializingBufferProvider;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
     /// 
     /// fn message() -> Result<(), Box<dyn Error>> {
-    ///     let buffer_provider = buffer();
-    ///     let data_provider = buffer_provider.as_deserializing();
-    ///     let icu_data_provider = Rc::new(
-    ///         IcuDataProvider::try_new( &data_provider )?
-    ///     );
+    ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
     ///     let lstring_provider = ProviderSqlite3::try_new(
     ///         "./i18n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let message_system = Message::try_new(
+    ///     let mut message_system = Message::try_new(
     ///         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
@@ -223,7 +163,7 @@ where
     /// }
     /// ```
     pub fn format<T: AsRef<str>>(
-        &self,
+        &mut self,
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
         language_tag: &Rc<String>,
@@ -282,13 +222,12 @@ where
         if caching.is_none() {
             caching = Some( self.caching );
         }
-        let ( tokens, grammar_found ) = tokenise(
-            lstring.as_str(), &self.grammar, &self.icu_data_provider
-        );
+        let ( tokens, _lengths, grammar_found ) = self.lexer.tokenise(
+            lstring.as_str() );
         if !grammar_found {
             if caching.unwrap() {
                 if !_language_entry {
-                    let mut data_entry = HashMap::<String, CacheData<'a, I>>::new();
+                    let mut data_entry = HashMap::<String, CacheData>::new();
                     data_entry.insert(
                         identifier.as_ref().to_string(),
                         CacheData::LSring( lstring.clone() )
@@ -328,7 +267,7 @@ where
         // Cache the `Formatter`.
         {
             if !_language_entry {
-                let mut data_entry = HashMap::<String, CacheData<'a, I>>::new();
+                let mut data_entry = HashMap::<String, CacheData/*<'a, I>*/>::new();
                 data_entry.insert(
                     identifier.as_ref().to_string(),
                     CacheData::Formatter( RefCell::new( formatter ) )
@@ -362,21 +301,7 @@ where
 
 // Internal structs, enums, etc
 
-enum CacheData<'a, I>
-where
-    I: ?Sized + DataProvider<PatternSyntaxV1Marker> + DataProvider<PatternWhiteSpaceV1Marker>
-        + DataProvider<GraphemeClusterBreakDataV1Marker> + DataProvider<CardinalV1Marker>
-        + DataProvider<OrdinalV1Marker> + DataProvider<DecimalSymbolsV1Marker> + DataProvider<TimeSymbolsV1Marker>
-        + DataProvider<TimeLengthsV1Marker> + DataProvider<WeekDataV1Marker>
-        + DataProvider<GregorianDateLengthsV1Marker> + DataProvider<BuddhistDateLengthsV1Marker>
-        + DataProvider<JapaneseDateLengthsV1Marker> + DataProvider<JapaneseExtendedDateLengthsV1Marker>
-        + DataProvider<CopticDateLengthsV1Marker> + DataProvider<IndianDateLengthsV1Marker>
-        + DataProvider<EthiopianDateLengthsV1Marker> + DataProvider<GregorianDateSymbolsV1Marker>
-        + DataProvider<BuddhistDateSymbolsV1Marker> + DataProvider<JapaneseDateSymbolsV1Marker>
-        + DataProvider<JapaneseExtendedDateSymbolsV1Marker> + DataProvider<CopticDateSymbolsV1Marker>
-        + DataProvider<IndianDateSymbolsV1Marker> + DataProvider<EthiopianDateSymbolsV1Marker>
-        + DataProvider<JapaneseErasV1Marker> + DataProvider<JapaneseExtendedErasV1Marker>,
-{
+enum CacheData {
     LSring( LString ),
-    Formatter( RefCell<Formatter<'a, I>> ),
+    Formatter( RefCell<Formatter> ),
 }

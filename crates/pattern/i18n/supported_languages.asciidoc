@@ -14,21 +14,6 @@ Example
 Suppose there exists two strings the database for `en-ZA` (being the original entries): "_The knight rides a black horse._" and "_The knight wears silver armour._" For the first string, the spelling of each word is the same for both `en-ZA` and `en-US` (American English), thus only one entry exists in the database for `en-ZA`, as this string will be retrieved also for `en-US`. For the second string, however there is a tiny difference between `en-ZA` and `en-US` where the word "_armour_" of the original string is spelt as "_armor_" in American English, thus there will be two entries in the database, the original for `en-ZA` and "_The knight wears silver armor._" for `en-US`. For British English `en-GB`, there would be no additional entries for these two entries, as these strings are identical for both `en-ZA` and `en-GB`, and the original strings for `en-ZA` would be retrieved for `en-GB`.
 ====
 
-*Default language tag:* en-ZA
+Within the `.sqlite3` file for the default language tag located in the `metadata` table with key `default_language_tag`.
 
-[%header,cols="1,1,1"]
-|===
-|Language Tag
-|Contributors
-|Can be used for
-
-|en-ZA
-|Rizzen Yazston
-|en, en-*
-
-|it
-|Stefano Angeleri
-|
-|===
-
-A wildcard `*` is used to indicate one or more subtags follows the matching tag(s), and that these language tags are similar enough to the Language Tag so that the entry can be used for all these language tags.
+The supported languages contributors are located in the `contributor` table. A wildcard `*` is used to indicate one or more subtags follows the matching tag(s), and that these language tags are similar enough to the Language Tag so that the entry can be used for all these language tags.

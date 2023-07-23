@@ -26,9 +26,21 @@
 //! For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficient to use the multilingual message
 //! system, though the individual crates can be selected individual if the entire `i18n` project is not required.
 //! 
+//! ## Features
+//! 
+//! Available features for `i18n_icu` crate:
+//! 
+//! * `compiled_data`: Allow for the internal data of the various ICU4X components.
+//! 
+//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
+//! 
+//! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+//! 
 //! ## Examples
 //! 
 //! See the various component crates for usage examples.
+//! 
+//! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
 pub use i18n_icu as icu;
 pub use i18n_lexer as lexer;

@@ -3,30 +3,24 @@
 
 //! Testing `Message`.
 
-use i18n_icu::IcuDataProvider;
+use i18n_icu::{ IcuDataProvider, DataProvider };
 use i18n_utility::LanguageTagRegistry;
 use i18n_provider_sqlite3::ProviderSqlite3;
 use i18n_pattern::{ PlaceholderValue, CommandRegistry };
 use i18n_message::Message;
-use icu_testdata::buffer;
-use icu_provider::serde::AsDeserializingBufferProvider;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::error::Error;
 
 #[test]
 fn message() -> Result<(), Box<dyn Error>> {
-    let buffer_provider = buffer();
-    let data_provider = buffer_provider.as_deserializing();
-    let icu_data_provider = Rc::new(
-        IcuDataProvider::try_new( &data_provider )?
-    );
+    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
     let lstring_provider = ProviderSqlite3::try_new(
         "./i18n/", &language_tag_registry
     )?;
     let command_registry = Rc::new( CommandRegistry::new() );
-    let message_system = Message::try_new(
+    let mut message_system = Message::try_new(
         &icu_data_provider,
         &language_tag_registry,
         &lstring_provider,
