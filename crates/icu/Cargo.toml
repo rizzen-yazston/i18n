@@ -34,7 +34,7 @@ fs = [
     "icu_provider?/deserialize_bincode_1",
 ]
 
-buffer = [ "dep:icu_provider", "icu_segmenter/serde", ]
+buffer = [ "dep:icu_provider", "icu_segmenter/serde", "icu_properties/serde" ]
 
 [dependencies]
 

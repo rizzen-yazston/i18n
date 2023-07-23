@@ -70,22 +70,16 @@ impl IcuDataProvider {
             #[cfg( feature = "blob" )]
             DataProvider::Blob( blob ) => {
                 grapheme_segmenter = Some( GraphemeClusterSegmenter::try_new_with_buffer_provider( &blob )? );
-                // Below left as comment until figured out how to use BufferProvider implementations for properties.
-                /*
                 let blob_provider = blob.as_deserializing();
-                syntax = Some( load_pattern_syntax( &blob_provider )? ); // <---- issue here
-                white_space = Some( load_pattern_white_space( &blob_provider )? ); // <---- issue here
-                */
+                syntax = Some( load_pattern_syntax( &blob_provider )? );
+                white_space = Some( load_pattern_white_space( &blob_provider )? );
             }
             #[cfg( feature = "fs" )]
             DataProvider::Fs( fs ) => {
                 grapheme_segmenter = Some( GraphemeClusterSegmenter::try_new_with_buffer_provider( &fs )? );
-                // Below left as comment until figured out how to use BufferProvider implementations for properties.
-                /*
                 let fs_provider = fs.as_deserializing();
-                syntax = Some( load_pattern_syntax( &fs_provider )? ); // <---- issue here
-                white_space = Some( load_pattern_white_space( &fs_provider )? ); // <---- issue here
-                */
+                syntax = Some( load_pattern_syntax( &fs_provider )? );
+                white_space = Some( load_pattern_white_space( &fs_provider )? );
             }
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => {

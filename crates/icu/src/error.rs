@@ -33,9 +33,9 @@ impl Display for IcuError {
             IcuError::Segmenter( ref error ) => return error.fmt( formatter ),
             #[cfg( feature = "buffer" )]
             IcuError::Data( ref error ) => return error.fmt( formatter ),
-            IcuError::Grapheme =>  write!( formatter, "No provider available for the ‘Grapheme Cluster Segmenter’." ),
-            IcuError::Syntax => write!( formatter, "No provider available for the ‘Pattern_Syntax’." ),
-            IcuError::WhiteSpace => write!( formatter, "No provider available for the ‘Pattern_White_Space’." ),
+            IcuError::Grapheme =>  write!( formatter, "No data provider is available for the ‘GraphemeClusterSegmenter’." ),
+            IcuError::Syntax => write!( formatter, "No data provider is available for the ‘Pattern_Syntax’." ),
+            IcuError::WhiteSpace => write!( formatter, "No data provider is available for the ‘Pattern_White_Space’." ),
         }
     }
 }
