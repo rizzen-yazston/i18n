@@ -15,6 +15,9 @@ repository = "https://github.com/rizzen-yazston/i18n"
 keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]
 
+[features]
+sync = [ "i18n_utility-rizzen-yazston/sync" ]
+
 [dependencies]
 i18n_utility-rizzen-yazston = { version = "0.6.1", path = "../../utility" }
 

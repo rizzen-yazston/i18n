@@ -1,12 +1,17 @@
 // This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
-use std::rc::Rc;
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
 
 /// Language string.
 /// 
 /// This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
-/// specific language ([`Rc`]`<String>`).
+/// specific language ([`Rc`]`<String>` or [`Arc`]`<String>`).
 /// 
 /// The specified language is expected to be a [BCP 47 Language Tag] string, though any identifier could be used.
 /// 
@@ -27,15 +32,17 @@ use std::rc::Rc;
 /// ```
 /// 
 /// [`Rc`]: std::rc::Rc
+/// [`Arc`]: std::sync::Arc
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 #[derive( PartialEq, Debug, Clone )]
 pub struct LString {
     string: String,
-    language_tag: Rc<String>,
+    language_tag: RefCount<String>,
 }
 
 impl LString {
-    /// Creates a `LString` from string slice [`str`] and a language tag as `&`[`Rc`]`<`[`String`]`>`.
+    /// Creates a `LString` from string slice [`str`] and a language tag as `&`[`Rc`]`<`[`String`]`>` or
+    /// `&`[`Arc`]`<String>`.
     /// 
     /// *WARNING:* No checks are done on the supplied language tag to see if it conforms to the [BCP 47 Language Tag]
     /// specification in terms of:
@@ -67,11 +74,18 @@ impl LString {
     /// 
     /// [`str`]: core::str
     /// [`Rc`]: std::rc::Rc
+    /// [`Arc`]: std::sync::Arc
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
     /// [`Locale`]: icu_locid::Locale
     /// [`icu_locid`]: icu_locid
-    pub fn new<T: Into<String>>( string: T, language_tag: &Rc<String> ) -> Self {
-        LString { string: string.into(), language_tag: Rc::clone( language_tag ) }
+    pub fn new<T: Into<String>>(
+        string: T,
+        language_tag: &RefCount<String>,
+    ) -> Self {
+        LString {
+            string: string.into(),
+            language_tag: RefCount::clone( language_tag ),
+        }
     }
 
     /// Returns a reference (`&`[`str`]) to the internal [`String`].
@@ -95,7 +109,7 @@ impl LString {
         &self.string
     }
 
-    /// Returns a reference to the language tag [`Rc`]`<`[`String`]`>`.
+    /// Returns a reference to the language tag [`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`.
     /// 
     /// # Examples
     /// 
@@ -111,7 +125,8 @@ impl LString {
     /// assert_eq!( lang_string.language_tag(), &tag, "Locale failed." );
     /// ```
     /// [`Rc`]: std::rc::Rc
-    pub fn language_tag( &self ) -> &Rc<String> {
+    /// [`Arc`]: std::sync::Arc
+    pub fn language_tag( &self ) -> &RefCount<String> {
         &self.language_tag
     }
 }
@@ -123,7 +138,7 @@ mod tests {
     #[test]
     fn string_with_language_tag() {
         let string = "This is a test string.";
-        let tag = Rc::new( "en-ZA".to_string() );
+        let tag = RefCount::new( "en-ZA".to_string() );
         let lang_string = LString::new( string, &tag );
         assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
         assert_eq!( lang_string.as_str(), string, "String failed." );

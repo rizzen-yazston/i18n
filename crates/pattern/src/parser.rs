@@ -5,12 +5,25 @@ use crate::ParserError;
 use crate::types::*;
 use i18n_lexer::{ Token, TokenType };
 use tree::{ Tree, ALLOW_CHILDREN, ALLOW_DATA };
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
 use std::collections::HashMap;
 use core::fmt::{ Display, Formatter, Result as FmtResult };
 
-/// Constructs a valid syntax tree [`Tree`] from the supplied [`Vec`]`<`[`Rc`]`<`[`Token`]`>>`. Any grammar error that
-/// occurs will result in an `Err()` result being returned.
+#[cfg( doc )]
+use std::sync::Arc;
+
+#[cfg( doc )]
+use std::rc::Rc;
+
+/// Constructs a valid syntax tree [`Tree`] from the supplied [`Vec`]`<`[`Rc`]`<`[`Token`]`>>` or
+/// `Vec<`[`Arc`]`<Token>>`. Any grammar error that occurs will result in an `Err()` result being returned.
 /// 
 /// Implicit syntax tokens and optional whitespace tokens are not included in syntax trees.
 /// 
@@ -49,7 +62,7 @@ use core::fmt::{ Display, Formatter, Result as FmtResult };
 ///     Ok( () )
 /// }
 /// ```
-pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
+pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
     let mut tree = Tree::new();
     if tokens.len() == 0 {
         return Ok( tree );
@@ -108,7 +121,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                         create_node( &mut tree, &mut parser, NodeType::NamedGroup, ALLOW_CHILDREN );
                         parser.state = ParserStates::NamedGroup;
                     } else {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                 } else {
                     add_token(
@@ -173,14 +186,14 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 2 {
                             return Err(
-                                ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) )
+                                ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) )
                             );
                         }
 
                         // Ends NamedString, and returns to NamedGroup
                         end_nested_state( &tree, &mut parser );
                     } else {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                 } else {
                     add_token(
@@ -207,13 +220,13 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                 } else if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string != "}" {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
 
                     // None (only identifier provide with default type of preformatted string)
                     end_nested_state( &tree, &mut parser );
                 } else {
-                    return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                    return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                 }
             },
             ParserStates::Keyword => {//  Valid tokens: PWS (separator - ignore), }, Identifier
@@ -231,13 +244,13 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                         return Err( ParserError::EndedAbruptly );
                     };
                     if token_next.string.as_str() != "#" {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                     let Some( token_next_2nd ) = iterator.next() else {
                         return Err( ParserError::EndedAbruptly );
                     };
                     if token_next_2nd.token_type != TokenType::Identifier {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                     add_token(
                         &mut tree,
@@ -254,7 +267,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                         end_nested_state( &tree, &mut parser );
                     }
                 } else {
-                    return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                    return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                 }
             },
             ParserStates::LiteralText => {//  Valid tokens: PWS, `, #, {, }, Identifier, Syntax
@@ -289,7 +302,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                         continue;
                     }
                 }
-                return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
             },
             ParserStates::Command => {//  Valid tokens: PWS (separator - ignore), `, }, #, Identifier
                 if token.token_type == TokenType::Identifier {
@@ -308,7 +321,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() < 1 {
                             return Err(
-                                ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) )
+                                ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) )
                             );
                         }
                         end_nested_state( &tree, &mut parser );
@@ -332,7 +345,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
                             return Err(
-                                ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) )
+                                ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) )
                             );
                         }
                         create_node_add_token(
@@ -343,11 +356,11 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                             token
                         );
                     } else {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else {
-                    return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                    return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                 }
             },
             ParserStates::NamedString => {//  Valid tokens: PWS (ignored - separator), `, #, {, Identifier, Syntax
@@ -390,7 +403,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                         parser.state = ParserStates::SubString;
                         continue;
                     }
-                    return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                    return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                 } else if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string == "#" {
@@ -399,7 +412,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
                             return Err(
-                                ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) )
+                                ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) )
                             );
                         }
                         create_node( &mut tree, &mut parser, NodeType::String, ALLOW_CHILDREN );
@@ -418,7 +431,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
                             return Err(
-                                ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) )
+                                ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) )
                             );
                         }
                         let mut iterator_peeking = iterator.clone();
@@ -441,7 +454,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                             *parser.current.as_ref().unwrap()
                         ).ok().as_ref().unwrap().len() != 1 {
                             return Err(
-                                ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) )
+                                ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) )
                             );
                         }
                         let mut iterator_peeking = iterator.clone();
@@ -459,7 +472,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                         );
                         iterator = iterator_peeking; // Skip over ` token.
                     } else {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                 } else if token.token_type == TokenType::Syntax {
 
@@ -467,7 +480,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                     if tree.children(
                         *parser.current.as_ref().unwrap()
                     ).ok().as_ref().unwrap().len() != 1 {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                     create_node( &mut tree, &mut parser, NodeType::String, ALLOW_CHILDREN );
                     parser.nested_states.push( ParserStates::NamedString );
@@ -484,16 +497,16 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                     if tree.children(
                         *parser.current.as_ref().unwrap()
                     ).ok().as_ref().unwrap().len() != 1 {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
                 } else {
-                    return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                    return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                 }
             },
             ParserStates::NamedGroup => {// Valid tokens: PWS (ignored - human readability), {
                 if token.token_type == TokenType::Grammar {
                     if token.string.as_str() != "{" {
-                        return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                        return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                     }
 
                     // start of NamedString
@@ -502,7 +515,7 @@ pub fn parse( tokens: Vec<Rc<Token>> ) -> Result<Tree, ParserError> {
                     parser.state = ParserStates::NamedString;
                 } else if token.token_type == TokenType::WhiteSpace {
                 } else {
-                    return Err( ParserError::InvalidToken( token.position_grapheme, Rc::clone( &token ) ) );
+                    return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
                 }
             }
         }
@@ -585,7 +598,7 @@ fn create_node_add_token(
     parser: &mut Parser,
     node_type: NodeType,
     features: u8,
-    token: &Rc<Token>
+    token: &RefCount<Token>
 ) {
     move_to_container( tree, parser );
     parser.current = tree.insert(
@@ -595,7 +608,7 @@ fn create_node_add_token(
         None,
     ).ok();
     tree.data_mut(
-        *parser.current.as_ref().unwrap() ).unwrap().push( Box::new( Rc::clone( &token ) )
+        *parser.current.as_ref().unwrap() ).unwrap().push( Box::new( RefCount::clone( &token ) )
     );
 }
 
@@ -607,13 +620,13 @@ fn add_token(
     parser: &mut Parser,
     node_type: NodeType,
     features: u8,
-    token: &Rc<Token>
+    token: &RefCount<Token>
 ) {
     let current = *parser.current.as_ref().unwrap();
     let node_type_ref = tree.node_type( current ).ok().unwrap().as_ref().unwrap();
     let node_type_is = node_type_ref.downcast_ref::<NodeType>().unwrap();
     if *node_type_is == node_type {
-        tree.data_mut( current ).ok().unwrap().push( Box::new( Rc::clone( &token ) ) );
+        tree.data_mut( current ).ok().unwrap().push( Box::new( RefCount::clone( &token ) ) );
     } else {
         create_node_add_token( tree, parser, node_type, features, token );
     }
@@ -632,7 +645,7 @@ fn end_nested_state( tree: &Tree, parser: &mut Parser ) {
 fn pattern_start(
     tree: &mut Tree,
     parser: &mut Parser,
-    token_next: &Rc<Token>,
+    token_next: &RefCount<Token>,
     patterns: &mut HashMap<String, usize>,
 ) -> Result<(), ParserError> {
     if token_next.token_type == TokenType::Identifier {
@@ -660,10 +673,10 @@ fn pattern_start(
             parser.nested_states.push( parser.state );
             parser.state = ParserStates::Command;
         } else {
-            return Err( ParserError::InvalidToken( token_next.position_grapheme, Rc::clone( &token_next ) ) );
+            return Err( ParserError::InvalidToken( token_next.position_grapheme, RefCount::clone( &token_next ) ) );
         }
     } else {
-        return Err( ParserError::InvalidToken( token_next.position_grapheme, Rc::clone( &token_next ) ) );
+        return Err( ParserError::InvalidToken( token_next.position_grapheme, RefCount::clone( &token_next ) ) );
     }
     Ok( () )
 }

@@ -15,13 +15,16 @@
 //! 
 //! # Features
 //! 
-//! Available features for `i18n_message` crate:
+//! Available features for `i18n_pattern` crate:
 //! 
 //! * `compiled_data`: Allow for the internal data of the various ICU4X components.
 //! 
 //! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
 //! 
 //! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+//! 
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
+//! [`RefCell`].
 //! 
 //! # Examples
 //! 
@@ -90,6 +93,15 @@
 //! ```
 //! 
 //! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
+
+#[cfg( doc )]
+use std::sync::{ Arc, Mutex };
+
+#[cfg( doc )]
+use std::rc::Rc;
+
+#[cfg( doc )]
+use std::cell::RefCell;
 
 pub mod types;
 pub use types::*;

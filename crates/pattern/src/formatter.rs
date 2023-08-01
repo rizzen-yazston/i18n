@@ -23,17 +23,24 @@ use icu_datetime::{
     DateTimeFormatter, DateFormatter, TimeFormatter
 };
 use std::collections::HashMap;
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
 use std::str::FromStr;
 
 pub struct Formatter {
-    data_provider: Rc<IcuDataProvider>,
-    language_tag: Rc<String>,
-    locale: Rc<Locale>,
+    data_provider: RefCount<IcuDataProvider>,
+    language_tag: RefCount<String>,
+    locale: RefCount<Locale>,
     patterns: HashMap<String, Vec<PatternPart>>,
     numbers: Vec<String>,
     selectors: Vec<HashMap<String, String>>,
-    command_registry: Rc<CommandRegistry>,
+    command_registry: RefCount<CommandRegistry>,
 }
 
 impl Formatter {
@@ -80,11 +87,11 @@ impl Formatter {
     /// 
     /// [`Tree`]: tree::Tree
     pub fn try_new(
-        data_provider: &Rc<IcuDataProvider>,
-        language_tag: &Rc<String>,
-        locale: &Rc<Locale>,
+        data_provider: &RefCount<IcuDataProvider>,
+        language_tag: &RefCount<String>,
+        locale: &RefCount<Locale>,
         tree: &Tree,
-        command_registry: &Rc<CommandRegistry>,
+        command_registry: &RefCount<CommandRegistry>,
     ) -> Result<Formatter, FormatterError> {
         let mut patterns = HashMap::<String, Vec<PatternPart>>::new();
         patterns.insert( "_".to_string(), Vec::<PatternPart>::new() ); // Insert empty main pattern.
@@ -92,13 +99,13 @@ impl Formatter {
         let mut selectors = Vec::<HashMap<String, String>>::new();
         if tree.len() == 0 {
             return Ok( Formatter {
-                data_provider: Rc::clone( data_provider ),
-                language_tag: Rc::clone( &language_tag ),
-                locale: Rc::clone( &locale ),
+                data_provider: RefCount::clone( data_provider ),
+                language_tag: RefCount::clone( &language_tag ),
+                locale: RefCount::clone( &locale ),
                 patterns,
                 numbers,
                 selectors,
-                command_registry: Rc::clone( command_registry ),
+                command_registry: RefCount::clone( command_registry ),
             } );
         }
         let option_selectors = OptionSelectors {
@@ -132,7 +139,7 @@ impl Formatter {
                         return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
                     };
                     let Some( identifier_token ) =
-                        identifier_data.first().unwrap().downcast_ref::<Rc<Token>>()
+                        identifier_data.first().unwrap().downcast_ref::<RefCount<Token>>()
                     else {
                         return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
                     };
@@ -212,13 +219,13 @@ impl Formatter {
         }
         patterns.insert( "_".to_string(), pattern );
         Ok( Formatter {
-            data_provider: Rc::clone( data_provider ),
-            language_tag: Rc::clone( &language_tag ),
-            locale: Rc::clone( &locale ),
+            data_provider: RefCount::clone( data_provider ),
+            language_tag: RefCount::clone( &language_tag ),
+            locale: RefCount::clone( &locale ),
             patterns,
             numbers,
             selectors,
-            command_registry: Rc::clone( command_registry ),
+            command_registry: RefCount::clone( command_registry ),
         } )
     }
 
@@ -273,12 +280,12 @@ impl Formatter {
     }
 
     /// Returns the locale used in creating the formatter.
-    pub fn locale( &self ) -> &Rc<Locale> {
+    pub fn locale( &self ) -> &RefCount<Locale> {
         &self.locale
     }
 
     /// Returns the language tag used in creating the formatter.
-    pub fn language_tag( &self ) -> &Rc<String> {
+    pub fn language_tag( &self ) -> &RefCount<String> {
         &self.language_tag
     }
 
@@ -333,7 +340,7 @@ impl Formatter {
                     let Some( value ) = values.get( placeholder ) else {
                         return Err( FormatterError::PlaceholderValue( "PatternDecimal".to_string() ) );
                     };
-                    let data_locale = DataLocale::from( Rc::as_ref( &self.locale ) );
+                    let data_locale = DataLocale::from( RefCount::as_ref( &self.locale ) );
                     let mut options: options::FixedDecimalFormatterOptions = Default::default();
                     if group.is_some() {
                         options.grouping_strategy = group.unwrap();
@@ -402,7 +409,7 @@ impl Formatter {
                         length_time,
                     );
                     let data_locale = match calendar {
-                        None => DataLocale::from( Rc::as_ref( &self.locale ) ),
+                        None => DataLocale::from( RefCount::as_ref( &self.locale ) ),
                         Some( locale ) => DataLocale::from( locale )
                     };
                     match value {
@@ -462,7 +469,7 @@ impl Formatter {
                         return Err( FormatterError::PlaceholderValue( "PatternComplex".to_string() ) );
                     };
                     let selectors_index = selectors;
-                    let data_locale = DataLocale::from( Rc::as_ref( &self.locale ) );
+                    let data_locale = DataLocale::from( RefCount::as_ref( &self.locale ) );
                     match complex {
                         ComplexType::Plural => {
                             let plurals = self.plural_rules_cardinal( &data_locale )?;
@@ -695,8 +702,10 @@ impl Formatter {
         _options: options::FixedDecimalFormatterOptions
     ) -> Result<FixedDecimalFormatter, FormatterError> {
         match self.data_provider.data_provider() {
+
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( FixedDecimalFormatter::try_new( _data_locale, _options )? ),
+
             #[cfg( feature = "blob" )]
             DataProvider::Blob( provider ) => Ok( 
                 FixedDecimalFormatter::try_new_with_buffer_provider(
@@ -705,6 +714,7 @@ impl Formatter {
                     _options,
                 )?
             ),
+
             #[cfg( feature = "fs" )]
             DataProvider::Fs( provider ) => Ok( 
                 FixedDecimalFormatter::try_new_with_buffer_provider(
@@ -713,8 +723,9 @@ impl Formatter {
                     _options,
                 )?
             ),
+
             #[allow( unreachable_patterns )]
-            _ => Err( FormatterError::NeverReached )
+            _ => Err( FormatterError::NoIcuProvider )
         }
     }
 
@@ -724,8 +735,10 @@ impl Formatter {
         _options: Bag
     ) -> Result<DateTimeFormatter, FormatterError> {
         match self.data_provider.data_provider() {
+
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( DateTimeFormatter::try_new( _data_locale, _options.into() )? ),
+
             #[cfg( feature = "blob" )]
             DataProvider::Blob( provider ) => Ok( 
                 DateTimeFormatter::try_new_with_buffer_provider(
@@ -734,6 +747,7 @@ impl Formatter {
                     _options.into(),
                 )?
             ),
+
             #[cfg( feature = "fs" )]
             DataProvider::Fs( provider ) => Ok( 
                 DateTimeFormatter::try_new_with_buffer_provider(
@@ -742,8 +756,9 @@ impl Formatter {
                     _options.into(),
                 )?
             ),
+
             #[allow( unreachable_patterns )]
-            _ => Err( FormatterError::NeverReached )
+            _ => Err( FormatterError::NoIcuProvider )
         }
     }
 
@@ -753,8 +768,10 @@ impl Formatter {
         _length_date: icu_datetime::options::length::Date
     ) -> Result<DateFormatter, FormatterError> {
         match self.data_provider.data_provider() {
+
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( DateFormatter::try_new_with_length( _data_locale, _length_date )? ),
+
             #[cfg( feature = "blob" )]
             DataProvider::Blob( provider ) => Ok( 
                 DateFormatter::try_new_with_length_with_buffer_provider(
@@ -763,6 +780,7 @@ impl Formatter {
                     _length_date,
                 )?
             ),
+
             #[cfg( feature = "fs" )]
             DataProvider::Fs( provider ) => Ok( 
                 DateFormatter::try_new_with_length_with_buffer_provider(
@@ -771,8 +789,9 @@ impl Formatter {
                     _length_date,
                 )?
             ),
+
             #[allow( unreachable_patterns )]
-            _ => Err( FormatterError::NeverReached )
+            _ => Err( FormatterError::NoIcuProvider )
         }
     }
     
@@ -782,8 +801,10 @@ impl Formatter {
         _length_time: icu_datetime::options::length::Time
     ) -> Result<TimeFormatter, FormatterError> {
         match self.data_provider.data_provider() {
+
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( TimeFormatter::try_new_with_length( _data_locale, _length_time )? ),
+
             #[cfg( feature = "blob" )]
             DataProvider::Blob( provider ) => Ok( 
                 TimeFormatter::try_new_with_length_with_buffer_provider(
@@ -792,6 +813,7 @@ impl Formatter {
                     _length_time,
                 )?
             ),
+
             #[cfg( feature = "fs" )]
             DataProvider::Fs( provider ) => Ok( 
                 TimeFormatter::try_new_with_length_with_buffer_provider(
@@ -800,15 +822,18 @@ impl Formatter {
                     _length_time,
                 )?
             ),
+
             #[allow( unreachable_patterns )]
-            _ => Err( FormatterError::NeverReached )
+            _ => Err( FormatterError::NoIcuProvider )
         }
     }
     
     fn plural_rules_cardinal( &self, _data_locale: &DataLocale ) -> Result<PluralRules, FormatterError> {
         match self.data_provider.data_provider() {
+
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( PluralRules::try_new_cardinal( _data_locale )? ),
+
             #[cfg( feature = "blob" )]
             DataProvider::Blob( provider ) => Ok( 
                 PluralRules::try_new_cardinal_with_buffer_provider(
@@ -816,6 +841,7 @@ impl Formatter {
                     _data_locale
                 )?
             ),
+
             #[cfg( feature = "fs" )]
             DataProvider::Fs( provider ) => Ok( 
                 PluralRules::try_new_cardinal_with_buffer_provider(
@@ -823,15 +849,18 @@ impl Formatter {
                     _data_locale
                 )?
             ),
+
             #[allow( unreachable_patterns )]
-            _ => Err( FormatterError::NeverReached )
+            _ => Err( FormatterError::NoIcuProvider )
         }
     }
     
     fn plural_rules_ordinal( &self, _data_locale: &DataLocale ) -> Result<PluralRules, FormatterError> {
         match self.data_provider.data_provider() {
+
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( PluralRules::try_new_ordinal( _data_locale )? ),
+
             #[cfg( feature = "blob" )]
             DataProvider::Blob( provider ) => Ok( 
                 PluralRules::try_new_ordinal_with_buffer_provider(
@@ -839,6 +868,7 @@ impl Formatter {
                     _data_locale,
                 )?
             ),
+
             #[cfg( feature = "fs" )]
             DataProvider::Fs( provider ) => Ok( 
                 PluralRules::try_new_ordinal_with_buffer_provider(
@@ -846,8 +876,9 @@ impl Formatter {
                     _data_locale,
                 )?
             ),
+            
             #[allow( unreachable_patterns )]
-            _ => Err( FormatterError::NeverReached )
+            _ => Err( FormatterError::NoIcuProvider )
         }
     }
 }
@@ -1033,7 +1064,7 @@ fn part_text(
         return Err( FormatterError::RetrieveNodeData( NodeType::Text ) );
     };
     for token_data in text_data.iter() {
-        let Some( token ) = token_data.downcast_ref::<Rc<Token>>() else {
+        let Some( token ) = token_data.downcast_ref::<RefCount<Token>>() else {
             return Err( FormatterError::RetrieveNodeToken( NodeType::Text ) );
         };
         string.push_str( token.string.as_str() );
@@ -1049,7 +1080,7 @@ fn part_pattern(
     index: usize,
     selectors: &mut Vec<HashMap<String, String>>,
     option_selectors: &OptionSelectors,
-    locale: &Rc<Locale>,
+    locale: &RefCount<Locale>,
 ) -> Result<(), FormatterError> {
     let Ok( children ) = tree.children( index ) else {
         return Err( FormatterError::RetrieveChildren( NodeType::Pattern ) );
@@ -1066,7 +1097,8 @@ fn part_pattern(
     let Ok( placeholder_data ) = tree.data_ref( *placeholder ) else {
         return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
     };
-    let Some( placeholder_token ) = placeholder_data.first().unwrap().downcast_ref::<Rc<Token>>() else {
+    let Some( placeholder_token ) = placeholder_data.first().unwrap().downcast_ref::<RefCount<Token>>()
+    else {
         return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
     };
 
@@ -1086,7 +1118,8 @@ fn part_pattern(
     let Ok( keyword_data ) = tree.data_ref( keyword ) else {
         return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
     };
-    let Some( keyword_token ) = keyword_data.first().unwrap().downcast_ref::<Rc<Token>>() else {
+    let Some( keyword_token ) = keyword_data.first().unwrap().downcast_ref::<RefCount<Token>>()
+    else {
         return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
     };
 
@@ -1289,7 +1322,7 @@ fn part_command(
     pattern: &mut Vec<PatternPart>,
     tree: &Tree,
     index: usize,
-    command_registry: &Rc<CommandRegistry>,
+    command_registry: &RefCount<CommandRegistry>,
 ) -> Result<(), FormatterError> {
     let mut delay = false;
     let mut parameters = Vec::<PlaceholderValue>::new();
@@ -1308,7 +1341,7 @@ fn part_command(
     let Ok( command_data ) = tree.data_ref( *command ) else {
         return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
     };
-    let Some( command_token ) = command_data.first().unwrap().downcast_ref::<Rc<Token>>() else {
+    let Some( command_token ) = command_data.first().unwrap().downcast_ref::<RefCount<Token>>() else {
         return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
     };
     parameters.push( PlaceholderValue::String( command_token.as_ref().string.to_string() ) );
@@ -1328,7 +1361,8 @@ fn part_command(
             let Ok( identifier_data ) = tree.data_ref( *parameter ) else {
                 return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
             };
-            let Some( identifier_token ) = identifier_data.first().unwrap().downcast_ref::<Rc<Token>>()
+            let Some( identifier_token ) =
+                identifier_data.first().unwrap().downcast_ref::<RefCount<Token>>()
             else {
                 return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
             };
@@ -1339,7 +1373,7 @@ fn part_command(
                 return Err( FormatterError::RetrieveNodeData( NodeType::Text ) );
             };
             for token_data in text_data.iter() {
-                let Some( token ) = token_data.downcast_ref::<Rc<Token>>() else {
+                let Some( token ) = token_data.downcast_ref::<RefCount<Token>>() else {
                     return Err( FormatterError::RetrieveNodeToken( NodeType::Text ) );
                 };
                 string.push_str( token.string.as_str() );
@@ -1385,7 +1419,7 @@ fn pattern_selectors(
         let Ok( first_data ) = tree.data_ref( first ) else {
             return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
         };
-        let Some( first_token ) = first_data.first().unwrap().downcast_ref::<Rc<Token>>() else {
+        let Some( first_token ) = first_data.first().unwrap().downcast_ref::<RefCount<Token>>() else {
             return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
         };
         let Ok( last ) = tree.last( *selector ) else {
@@ -1397,7 +1431,7 @@ fn pattern_selectors(
         let Ok( last_data ) = tree.data_ref( last ) else {
             return Err( FormatterError::RetrieveNodeData( NodeType::Identifier ) );
         };
-        let Some( last_token ) = last_data.first().unwrap().downcast_ref::<Rc<Token>>() else {
+        let Some( last_token ) = last_data.first().unwrap().downcast_ref::<RefCount<Token>>() else {
             return Err( FormatterError::RetrieveNodeToken( NodeType::Identifier ) );
         };
         pairs.insert( first_token.string.to_string(), last_token.string.to_string() );

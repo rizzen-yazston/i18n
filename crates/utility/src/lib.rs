@@ -9,7 +9,12 @@
 //! 
 //! * `lstring`: Simple tagged string type.
 //! 
-//!  
+//! # Features
+//! 
+//! Available features for `i18n_utility` crate:
+//! 
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+//! 
 //! # Registry for holding ICU4X `Locale` objects.
 //! 
 //! This module contains the `LanguageTagRegistry` type, to provide a simple container that caches the
@@ -42,9 +47,16 @@
 //! # Language string.
 //! 
 //! This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
-//! specific language ([`Rc`]`<String>`).
+//! specific language ([`Rc`]`<String>` or [`Arc`]`<String>`).
 //! 
 //! The specified language is expected to be a [BCP 47 Language Tag] string, though any identifier could be used.
+//! 
+//! # Features
+//! 
+//! Available features for `i18n_provider` crate:
+//! 
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
+//! [`RefCell`].
 //! 
 //! ## Examples
 //! 
@@ -73,7 +85,13 @@ use icu_locid::Locale;
 use icu_locid::LanguageIdentifier;
 
 #[cfg( doc )]
+use std::sync::{ Arc, Mutex };
+
+#[cfg( doc )]
 use std::rc::Rc;
+
+#[cfg( doc )]
+use std::cell::RefCell;
 
 pub mod lstring;
 pub use lstring::*;

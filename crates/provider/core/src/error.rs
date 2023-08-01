@@ -7,7 +7,7 @@ use std::error::Error;
 /// Contains the error that occurred within the provider.
 /// 
 /// Due to the nature of [`Box`]`<dyn `[`Error`]`>` opaquing the error type, the error type is stored as a
-/// `&'static `[`str`] in /// `error_type` to facilitate in downcasting the error to original error type for further
+/// `&'static `[`str`] in `error_type` to facilitate in downcasting the error to original error type for further
 /// processing.
 /// 
 /// [`Box`]: std::boxed::Box
@@ -20,8 +20,6 @@ pub struct ProviderError {
 }
 
 impl Display for ProviderError {
-
-    /// Simply call the display formatter of actual error.
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         self.source.fmt( formatter )
     }

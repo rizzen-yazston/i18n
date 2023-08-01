@@ -6,9 +6,18 @@ use i18n_utility::{ LanguageTagRegistry, LString };
 use i18n_provider::{ LStringProvider, ProviderError };
 use rusqlite::{ Connection, OpenFlags };
 use std::collections::HashMap;
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( not( feature = "sync" ) )]
+use std::cell::RefCell as MutCell;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::{ Arc as RefCount, Mutex as MutCell};
+
 use std::path::PathBuf;
-use core::cell::RefCell;
 
 /// `ProviderSqlite3` struct is an implementation of the [`LStringProvider`] trait, and uses Sqlite3 as the data store
 /// for language strings. As the directory path of the data store is embedded in the `ProviderSqlite3` struct upon
@@ -45,8 +54,8 @@ use core::cell::RefCell;
 /// [`LStringProvider`]: i18n_provider::LStringProvider
 pub struct ProviderSqlite3 {
     directory: PathBuf,
-    language_tag_registry: Rc<LanguageTagRegistry>,
-    connections: RefCell<HashMap<String, Connection>>,
+    language_tag_registry: RefCount<LanguageTagRegistry>,
+    connections: MutCell<HashMap<String, Connection>>,
 }
 
 impl ProviderSqlite3 {
@@ -63,7 +72,7 @@ impl ProviderSqlite3 {
     /// `.sqlite3` files.
     pub fn try_new<T: TryInto<PathBuf>>(
         directory_path: T,
-        language_tag_registry: &Rc<LanguageTagRegistry>
+        language_tag_registry: &RefCount<LanguageTagRegistry>
     ) -> Result<Self, ProviderSqlite3Error> {
         let Ok( directory ) = directory_path.try_into() else {
                 return Err( ProviderSqlite3Error::InvalidPath )
@@ -87,8 +96,8 @@ impl ProviderSqlite3 {
         }
         Ok( ProviderSqlite3 {
             directory,
-            language_tag_registry: Rc::clone( language_tag_registry ),
-            connections: RefCell::new( HashMap::<String, Connection>::new() ),
+            language_tag_registry: RefCount::clone( language_tag_registry ),
+            connections: MutCell::new( HashMap::<String, Connection>::new() ),
         } )
     }
 
@@ -103,7 +112,13 @@ impl ProviderSqlite3 {
                 | OpenFlags::SQLITE_OPEN_NO_MUTEX
                 | OpenFlags::SQLITE_OPEN_URI
         )?;
+
+        #[cfg( not( feature = "sync" ) )]
         self.connections.borrow_mut().insert( identifier.as_ref().to_string(), connection );
+
+        #[cfg( feature = "sync" )]
+        self.connections.lock().unwrap().insert( identifier.as_ref().to_string(), connection );
+
         Ok( () )
     }
 }
@@ -138,7 +153,7 @@ impl LStringProvider for ProviderSqlite3 {
     ///     let strings = provider.get(
     ///         "i18n_provider_sqlite3/invalid_path",
     ///         &tag
-    ///     )?;//.expect( "No string found for language tag." );
+    ///     )?;
     ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
     ///     assert_eq!( strings[ 0 ].as_str(), "Invalid path was provided.", "Not correct string." );
     ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
@@ -150,7 +165,7 @@ impl LStringProvider for ProviderSqlite3 {
     fn get<T: AsRef<str>>(
         &self,
         identifier: T,
-        language_tag: &Rc<String>
+        language_tag: &RefCount<String>
     ) -> Result<Vec<LString>, ProviderError> {
         let parts: Vec<&str> = identifier.as_ref().split( '/' ).collect();
         if parts.len() != 2 {
@@ -163,7 +178,13 @@ impl LStringProvider for ProviderSqlite3 {
         }
         let mut have = false;
         {
+            #[cfg( not( feature = "sync" ) )]
             if self.connections.borrow().contains_key( parts[ 0 ] ) {
+                have = true;
+            }
+
+            #[cfg( feature = "sync" )]
+            if self.connections.lock().unwrap().contains_key( parts[ 0 ] ) {
                 have = true;
             }
         }
@@ -180,7 +201,13 @@ impl LStringProvider for ProviderSqlite3 {
                 };
             }
         }
+
+        #[cfg( not( feature = "sync" ) )]
         let borrow = self.connections.borrow();
+
+        #[cfg( feature = "sync" )]
+        let borrow = self.connections.lock().unwrap();
+
         let connection = borrow.get( parts[ 0 ] ).unwrap();
         let mut stmt = match connection.prepare(
             "SELECT string, languageTag FROM pattern WHERE identifier = ?1 AND languageTag like ?2"
@@ -274,7 +301,7 @@ impl LStringProvider for ProviderSqlite3 {
     ///     let strings = provider.get(
     ///         "i18n_provider_sqlite3/invalid_path",
     ///         &tag
-    ///     )?;//.expect( "No string found for language tag." );
+    ///     )?;
     ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
     ///     assert_eq!( strings[ 0 ].as_str(), "Invalid path was provided.", "Not correct string." );
     ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
@@ -286,7 +313,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// [`ProviderError`]: i18n_provider::ProviderError
     fn get_one<T: AsRef<str>>(
         &self, identifier: T,
-        language_tag: &Rc<String>
+        language_tag: &RefCount<String>
     ) -> Result<Option<LString>, ProviderError> {
         let mut result = self.get( identifier, language_tag )?;
         //temp for now, TODO: try to return string closest to the language tag, by match language length
@@ -327,7 +354,13 @@ impl LStringProvider for ProviderSqlite3 {
     fn default_language_tag<T: AsRef<str>>( &self, identifier: T ) -> Result<Option<String>, ProviderError> {
         let mut have = false;
         {
-            if self.connections.borrow().contains_key( identifier.as_ref() ) {
+            #[cfg( not( feature = "sync" ) )]
+                if self.connections.borrow().contains_key( identifier.as_ref() ) {
+                have = true;
+            }
+
+            #[cfg( feature = "sync" )]
+                if self.connections.lock().unwrap().contains_key( identifier.as_ref() ) {
                 have = true;
             }
         }
@@ -344,7 +377,13 @@ impl LStringProvider for ProviderSqlite3 {
                 };
             }
         }
+
+        #[cfg( not( feature = "sync" ) )]
         let borrow = self.connections.borrow();
+
+        #[cfg( feature = "sync" )]
+        let borrow = self.connections.lock().unwrap();
+
         let connection = borrow.get( identifier.as_ref() ).unwrap();
         let mut stmt = match connection.prepare(
             "SELECT value FROM metadata WHERE key = 'default_language_tag'"

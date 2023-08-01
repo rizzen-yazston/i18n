@@ -6,12 +6,20 @@
 use i18n_provider::LStringProvider;
 use i18n_provider_sqlite3::ProviderSqlite3;
 use i18n_utility::LanguageTagRegistry;
-use std::{ rc::Rc, error::Error };
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
+use std::error::Error;
 
 #[test]
 fn get_for_en() -> Result<(), Box<dyn Error>> {
     let path = "./i18n/";
-    let registry = Rc::new( LanguageTagRegistry::new() );
+    let registry = RefCount::new( LanguageTagRegistry::new() );
     let tag = registry.get_language_tag( "en" )?;
     let provider = ProviderSqlite3::try_new(
         path,
@@ -29,7 +37,7 @@ fn get_for_en() -> Result<(), Box<dyn Error>> {
 #[test]
 fn get_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
     let path = "./i18n/";
-    let registry = Rc::new( LanguageTagRegistry::new() );
+    let registry = RefCount::new( LanguageTagRegistry::new() );
     let tag = registry.get_language_tag( "en-ZA-u-ca-julian" )?;
     let provider = ProviderSqlite3::try_new(
         path,
@@ -47,7 +55,7 @@ fn get_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
 #[test]
 fn default_language_tag() -> Result<(), Box<dyn Error>> {
     let path = "./i18n/";
-    let registry = Rc::new( LanguageTagRegistry::new() );
+    let registry = RefCount::new( LanguageTagRegistry::new() );
     let provider = ProviderSqlite3::try_new(
         path,
         &registry

@@ -6,12 +6,19 @@
 use i18n_icu::{ IcuDataProvider, DataProvider };
 use i18n_lexer::Lexer;
 use i18n_pattern::parse;
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
 use std::error::Error;
 
 #[test]
 fn decimal() -> Result<(), Box<dyn Error>> {
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
     let ( tokens, _lengths, _grammar ) =
         lexer.tokenise( "String contains a {placeholder decimal sign#negative}." );
@@ -22,7 +29,7 @@ fn decimal() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn plural() -> Result<(), Box<dyn Error>> {
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
     let ( tokens, _lengths, _grammar ) =
         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );

@@ -6,8 +6,24 @@
 //! A trait for providing language strings in the form of [`Vec`]`<`[`LString`]`>`, and obtaining the default language
 //! tag used for the crate's messages.
 //! 
+//! # Features
+//! 
+//! Available features for `i18n_provider` crate:
+//! 
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
+//! [`RefCell`].
+//! 
 //! For an implementation example, see the `i18n_provider_sqlite3-rizzen-yazston` crate, which uses Sqlite3 for its
 //! data store.
+
+#[cfg( doc )]
+use std::sync::{ Arc, Mutex };
+
+#[cfg( doc )]
+use std::rc::Rc;
+
+#[cfg( doc )]
+use std::cell::RefCell;
 
 #[cfg( doc )]
 use i18n_utility::LString;

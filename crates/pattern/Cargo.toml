@@ -16,29 +16,26 @@ keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]
 
 [features]
-
-# Enable the use of the internal data provider option.
-compiled_data = [
-    "i18n_icu-rizzen-yazston/compiled_data",
-] 
-
-# Enable the use of memory storage at runtime.
+compiled_data = [ "i18n_icu-rizzen-yazston/compiled_data", ] 
 blob = [
     "buffer",
     "i18n_icu-rizzen-yazston/blob",
 ]
-
-# Enable the use of file system storage at runtime.
 fs = [
     "buffer",
     "i18n_icu-rizzen-yazston/fs",
 ]
-
 buffer = [
     "icu_provider/serde",
     "icu_decimal/serde",
     "icu_datetime/serde",
     "icu_plurals/serde"
+]
+sync = [
+    "i18n_icu-rizzen-yazston/sync",
+    "i18n_lexer-rizzen-yazston/sync",
+    "i18n_utility-rizzen-yazston/sync",
+    "icu_provider/sync",
 ]
 
 [dependencies]

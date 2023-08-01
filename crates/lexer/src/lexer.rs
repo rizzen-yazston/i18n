@@ -4,6 +4,18 @@
 // FUTURE: Look into storing &str instead of String, perhaps original string can live long enough for Token existence.
 
 use i18n_icu::IcuDataProvider;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
+#[cfg( doc )]
+use std::sync::Arc;
+
+#[cfg( doc )]
 use std::rc::Rc;
 
 /// String lexer and token types.
@@ -51,7 +63,7 @@ pub struct Length {
 /// locale independent data such as Pattern_Syntax and Pattern_White_Space properties, and the Grapheme Cluster
 /// Segmenter.
 pub struct Lexer{
-    data_provider: Rc<IcuDataProvider>,
+    data_provider: RefCount<IcuDataProvider>,
     grammar: Vec<char>,
     length_bytes: usize,
     length_characters: usize,
@@ -66,7 +78,8 @@ pub struct Lexer{
 
 impl Lexer {
 
-    /// Create a `Lexer` instance initiated with a `&`[`Rc`]`<`[`IcuDataProvider`]`>` and grammar syntax vector.
+    /// Create a `Lexer` instance initiated with a `&`[`Rc`]`<`[`IcuDataProvider`]`>` or `&`[`Arc`]`<IcuDataProvider>`
+    /// and grammar syntax vector.
     /// 
     /// The `grammar` parameter contain of a simple [`Vec`]`<`[`char`]`>` containing all the characters that are used
     /// as grammar syntax characters within a parser. Each grammar syntax character is placed in its own `Token` of
@@ -74,9 +87,9 @@ impl Lexer {
     /// 
     /// Note: Only single character graphemes are supported for grammar syntax characters. 
     /// 
-    pub fn new( grammar: Vec<char>, data_provider: &Rc<IcuDataProvider>, ) -> Self {
+    pub fn new( grammar: Vec<char>, data_provider: &RefCount<IcuDataProvider>, ) -> Self {
         Lexer {
-            data_provider: Rc::clone( data_provider ),
+            data_provider: RefCount::clone( data_provider ),
             grammar,
             length_bytes: 0,
             length_characters: 0,
@@ -90,8 +103,8 @@ impl Lexer {
         }       
     }
 
-    /// Tokenise a string (as [`&str`]) into a vector of tokens ([`Vec`]`<`[`Rc`]`<Token>>`). The lexer is reset before
-    /// tokenising the string.
+    /// Tokenise a string (as [`&str`]) into a vector of tokens ([`Vec`]`<`[`Rc`]`<Token>>` or
+    /// `Vec<`[`Arc`]`<Token>>`). The lexer is reset before tokenising the string.
     /// 
     /// Non-grammar syntax characters are simply made into `Syntax` tokens for the parser to handle.
     /// 
@@ -127,8 +140,8 @@ impl Lexer {
     /// }
     /// ```
     /// [`&str`]: core::str
-    pub fn tokenise<T: AsRef<str>>( &mut self, string: T ) -> ( Vec<Rc<Token>>, Length, bool ) {
-        let mut tokens = Vec::<Rc<Token>>::new();
+    pub fn tokenise<T: AsRef<str>>( &mut self, string: T ) -> ( Vec<RefCount<Token>>, Length, bool ) {
+        let mut tokens = Vec::<RefCount<Token>>::new();
         let mut has_grammar = false;
         self.length_bytes = 0;
         self.length_characters = 0;
@@ -232,7 +245,7 @@ impl Lexer {
     // Create a token for slice starting at the byte position after the previous token until current byte position.
     fn add_previous_characters<T: AsRef<str>>(
         &mut self,
-        tokens: &mut Vec::<Rc<Token>>,
+        tokens: &mut Vec::<RefCount<Token>>,
         token: TokenType,
         string: T,
     ) {
@@ -241,7 +254,7 @@ impl Lexer {
             let len_bytes = self.position_byte - self.token_position_byte;
             let len_characters = self.position_character - self.token_position_character;
             let len_graphemes = self.data_provider.grapheme_segmenter().as_ref().unwrap().segment_str( slice ).count() - 1;
-            tokens.push( Rc::new(
+            tokens.push( RefCount::new(
                 Token {
                     token_type: token,
                     string: slice.to_string(),

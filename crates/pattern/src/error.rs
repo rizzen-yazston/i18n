@@ -10,7 +10,14 @@ use icu_datetime::DateTimeError;
 use icu_plurals::Error as PluralError;
 use fixed_decimal::Error as FixedDecimalError;
 use std::num::ParseIntError;
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
@@ -19,7 +26,7 @@ use core::fmt::{ Display, Formatter, Result };
 pub enum ParserError {
     EndedAbruptly,
     UniqueNamed( String ),
-    InvalidToken( usize, Rc<Token> ),
+    InvalidToken( usize, RefCount<Token> ),
     MultiNumberSign( usize ),
     UniquePattern( String ),
 }
@@ -31,13 +38,25 @@ impl Display for ParserError {
         match self {
             ParserError::EndedAbruptly => write!( formatter, "The string ended abruptly." ),
             ParserError::UniqueNamed( identifier) =>
-                write!( formatter, "Named substrings must have unique identifiers. The identifier ‘{}’ already exists.", identifier ),
+                write!( formatter,
+                    "Named substrings must have unique identifiers. The identifier ‘{}’ already exists.",
+                    identifier
+                ),
             ParserError::InvalidToken( position, token ) =>
-                write!( formatter, "Invalid token ‘{}’ was found at the position {} of the string.", token.string, position ),
+                write!(
+                    formatter,
+                    "Invalid token ‘{}’ was found at the position {} of the string.",
+                    token.string,
+                    position
+                ),
             ParserError::MultiNumberSign( position ) =>
                 write!( formatter, "Found sequential number signs at the position {} of the string.", position ),
             ParserError::UniquePattern( identifier) =>
-                write!( formatter, "Pattern identifiers must be unique. The identifier ‘{}’ already exists.", identifier ),
+                write!(
+                    formatter,
+                    "Pattern identifiers must be unique. The identifier ‘{}’ already exists.",
+                    identifier
+                ),
         }
     }
 }
@@ -104,6 +123,7 @@ pub enum FormatterError {
     FixedDecimal( FixedDecimalError ),
     NamedStringIdentifier( String ),
     Command( CommandError ),
+    NoIcuProvider,
     NeverReached,
 }
 
@@ -197,8 +217,12 @@ impl Display for FormatterError {
                     identifier
                 ),
             FormatterError::Command( ref error ) => error.fmt( formatter ),
+            FormatterError::NoIcuProvider => write!(
+                formatter,
+                "Build error: At least one ICU4X data provider must be specified for the crate ‘i18n_icu’ using the crate's features."
+            ),
             FormatterError::NeverReached =>
-                write!( formatter, "Should never have reached this match branch." ),
+                write!( formatter, "Build error: Should never have reached this match branch." ),
         }
     }
 }

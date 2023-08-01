@@ -12,7 +12,12 @@ This crate consists of two modules:
 
 * `lstring`: Simple tagged string type.
 
- 
+== Features
+
+Available features for `i18n_provider` crate:
+
+* `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+
 == Registry for holding _ICU4X_ `Locale` objects.
 
 This module contains the `LanguageTagRegistry` type, to provide a simple container that caches the {BCP_47_Language_Tag}[BCP 47 Language Tag] strings and the `Locale` type for querying language tags. The purpose of the registry is to reduce the need of parsing language tags repeatedly, by storing the result `Locale` for querying language tag in the registry, and uses the existing `Locale` for the querying language tag when requested.
@@ -21,24 +26,25 @@ The `Locale` type can be provided by either the `icu_locid` crate or the `icu` m
 
 This crate makes use of the `Locale` type instead of the `LanguageIdentifier` type due to that the `Locale` type supports the entire BCP 47 Language Tag specification, where as the `LanguageIdentifier` type excludes the *extension* subtags of the BCP 47 Language Tag specification.
 
-
 == Language string.
 
-This crate contains the `LString` type (aka LanguageString), for associating a text string (`String`) to a
-specific language (`Rc<String>`).
+This crate contains the `LString` type (aka LanguageString), for associating a text string (`String`) to a specific language (`Rc<String>` or `Arc<String>`).
 
 The specified language is expected to be a {BCP_47_Language_Tag}[BCP 47 Language Tag] string, though any identifier could be used.
 
+== Features
+
+Available features for `i18n_provider` crate:
+
+* `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
 
 == Acknowledgements
 
 Stefano Angeleri for advice on various design aspects of implementing the library of the Internationalisation project, and also providing the Italian translation of error message strings.
 
-
 == Usage
 
 Simply include the `i18n_utility-rizzen-yazston` crate in the `Cargo.toml` to make it available to the application or library.
-
 
 === Cargo.toml
 
@@ -47,7 +53,6 @@ Simply include the `i18n_utility-rizzen-yazston` crate in the `Cargo.toml` to ma
 i18n_utility-rizzen-yazston = "0.6.1"
 icu_locid = "1.2.0"
 ```
-
 
 === Examples
 

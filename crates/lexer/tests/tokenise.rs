@@ -5,12 +5,19 @@
 
 use i18n_icu::{ IcuDataProvider, DataProvider };
 use i18n_lexer::{ Lexer, TokenType };
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
 use std::error::Error;
 
 #[test]
 fn tokenise_single_byte_character_string() -> Result<(), Box<dyn Error>> {
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let mut lexer = Lexer::new( vec![ '{', '}' ], &icu_data_provider );
     let ( tokens, lengths, grammar ) =
         lexer.tokenise( "String contains a {placeholder}." );
@@ -31,7 +38,7 @@ fn tokenise_single_byte_character_string() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn tokenise_multi_byte_character_string() -> Result<(), Box<dyn Error>> {
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let mut lexer = Lexer::new( vec![ '{', '}' ], &icu_data_provider );
     let ( tokens, lengths, grammar ) =
         lexer.tokenise( "Earth = \u{1F30D}. 각" );

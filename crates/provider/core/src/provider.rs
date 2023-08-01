@@ -3,7 +3,13 @@
 
 use crate::ProviderError;
 use i18n_utility::LString;
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
 
 /// A trait for providing language strings in the form of [`Vec`]`<`[`LString`]`>`, and obtaining the default language
 /// tag used for the crate's messages.
@@ -20,7 +26,7 @@ pub trait LStringProvider {
     /// Return of `ProviderError` indicates there was an error, usually in the data store.
     fn get<T: AsRef<str>>(
         &self, identifier: T,
-        language_tag: &Rc<String>
+        language_tag: &RefCount<String>
     ) -> Result<Vec<LString>, ProviderError>;
 
     /// Similar to `get()` method, except that `get_one()` will only return a single [`LString`] if multiple strings
@@ -29,7 +35,7 @@ pub trait LStringProvider {
     /// `None` is returned when there is no strings available for the language tag.
     fn get_one<T: AsRef<str>>(
         &self, identifier: T,
-        language_tag: &Rc<String>
+        language_tag: &RefCount<String>
     ) -> Result<Option<LString>, ProviderError>;
 
     /// Retrieve the default language tag of the crate's data store.

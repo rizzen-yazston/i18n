@@ -3,8 +3,17 @@
 
 use crate::RegistryError;
 use icu_locid::Locale;
-use std::cell::RefCell;
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::cell::RefCell as MutCell;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::{ Arc as RefCount, Mutex as MutCell};
+
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
@@ -44,11 +53,11 @@ use std::iter::FromIterator;
 /// [`LanguageIdentifier`]: icu_locid::LanguageIdentifier
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 pub struct LanguageTagRegistry {
-    bcp47: RefCell<HashMap<String, ( Rc<String>, Rc<Locale> )>>,
+    bcp47: MutCell<HashMap<String, ( RefCount<String>, RefCount<Locale> )>>,
     
     // Well-formed, but with deprecated subtag(s), incorrect case used for subtag(s), and/or underscore (_) used
     // instead of hyphen (-).
-    deprecated: RefCell<HashMap<String, ( Rc<String>, Rc<Locale> )>>,
+    deprecated: MutCell<HashMap<String, ( RefCount<String>, RefCount<Locale> )>>,
 }
 
 impl LanguageTagRegistry {
@@ -70,13 +79,13 @@ impl LanguageTagRegistry {
     /// ```
     pub fn new() -> Self {
         LanguageTagRegistry {
-            bcp47: RefCell::new( HashMap::<String, ( Rc<String>, Rc<Locale> )>::new() ),
-            deprecated: RefCell::new( HashMap::<String, ( Rc<String>, Rc<Locale> )>::new() )
+            bcp47: MutCell::new( HashMap::<String, ( RefCount<String>, RefCount<Locale> )>::new() ),
+            deprecated: MutCell::new( HashMap::<String, ( RefCount<String>, RefCount<Locale> )>::new() ),
         }
     }
 
     /// Obtain a tuple pair of referenced counted language tag and ICU4X locale
-    /// `( `[`Rc`]`<`[`String`]`>, Rc<`[`Locale`]`> )`.
+    /// `( `[`Rc`]`<`[`String`]`>, Rc<`[`Locale`]`> )` or `( `[`Arc`]`<String>, Arc<Locale> )`.
     /// 
     /// An error will be returned if the querying tag is malformed, that is does not conform to the
     /// [BCP 47 Language Tag] specification for being _Well-formed_. 
@@ -103,41 +112,84 @@ impl LanguageTagRegistry {
     /// 
     /// [`Rc`]: std::rc::Rc
     /// [`Locale`]: icu_locid::Locale
+    /// [`Arc`]: std::sync::Arc
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get<T: AsRef<str>>( &self, language_tag: T ) -> Result<( Rc<String>, Rc<Locale> ), RegistryError> {
+    pub fn get<T: AsRef<str>>( &self, language_tag: T )
+        -> Result<( RefCount<String>, RefCount<Locale> ), RegistryError>
+    {
+        #[cfg( not( feature = "sync" ) )]
         if let Some( result ) = self.bcp47.borrow().get( language_tag.as_ref() ) {
-            return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
+            return Ok( ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) ) );
         }
+
+        #[cfg( feature = "sync" )]
+        if let Some( result ) = self.bcp47.lock().unwrap().get( language_tag.as_ref() ) {
+            return Ok( ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) ) );
+        }
+
+        #[cfg( not( feature = "sync" ) )]
         if let Some( result ) = self.deprecated.borrow().get( language_tag.as_ref() ) {
-            return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
+            return Ok( ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) ) );
+        }
+
+        #[cfg( feature = "sync" )]
+        if let Some( result ) = self.deprecated.lock().unwrap().get( language_tag.as_ref() ) {
+            return Ok( ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) ) );
         }
         let new_locale = Locale::try_from_bytes( language_tag.as_ref().as_bytes() )?;
         let new_tag = new_locale.to_string();
         {
+            #[cfg( not( feature = "sync" ) )]
             if let Some( result ) = self.bcp47.borrow().get( &new_tag ) {
                 self.deprecated.borrow_mut().insert(
                     language_tag.as_ref().to_string(),
-                    ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) )
+                    ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) )
                 );
-                return Ok( ( Rc::clone( &result.0 ), Rc::clone( &result.1 ) ) );
+                return Ok( ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) ) );
+            }
+
+            #[cfg( feature = "sync" )]
+            if let Some( result ) = self.bcp47.lock().unwrap().get( &new_tag ) {
+                self.deprecated.lock().unwrap().insert(
+                    language_tag.as_ref().to_string(),
+                    ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) )
+                );
+                return Ok( ( RefCount::clone( &result.0 ), RefCount::clone( &result.1 ) ) );
             }
         }
-        let rc_new_locale = Rc::new( new_locale );
-        let rc_new_tag = Rc::new( new_tag );
+        let rc_new_locale = RefCount::new( new_locale );
+        let rc_new_tag = RefCount::new( new_tag );
         if language_tag.as_ref() != rc_new_tag.as_str() {
+
+            #[cfg( not( feature = "sync" ) )]
             self.deprecated.borrow_mut().insert(
                 language_tag.as_ref().to_string(),
-                ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) )
+                ( RefCount::clone( &rc_new_tag ), RefCount::clone( &rc_new_locale ) )
+            );
+
+            #[cfg( feature = "sync" )]
+            self.deprecated.lock().unwrap().insert(
+                language_tag.as_ref().to_string(),
+                ( RefCount::clone( &rc_new_tag ), RefCount::clone( &rc_new_locale ) )
             );
         }
+
+        #[cfg( not( feature = "sync" ) )]
         self.bcp47.borrow_mut().insert(
             rc_new_tag.as_str().to_string(),
-            ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) )
+            ( RefCount::clone( &rc_new_tag ), RefCount::clone( &rc_new_locale ) )
         );
-        return Ok( ( Rc::clone( &rc_new_tag ), Rc::clone( &rc_new_locale ) ) );
+
+        #[cfg( feature = "sync" )]
+        self.bcp47.lock().unwrap().insert(
+            rc_new_tag.as_str().to_string(),
+            ( RefCount::clone( &rc_new_tag ), RefCount::clone( &rc_new_locale ) )
+        );
+
+        return Ok( ( RefCount::clone( &rc_new_tag ), RefCount::clone( &rc_new_locale ) ) );
     }
 
-    /// Obtain a referenced counted language tag [`Rc`]`<`[`String`]`>`.
+    /// Obtain a referenced counted language tag [`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`.
     /// 
     /// An error will be returned if the querying tag is malformed, that is does not conform to the
     /// [BCP 47 Language Tag] specification for being _Well-formed_. 
@@ -163,14 +215,15 @@ impl LanguageTagRegistry {
     /// ```
     /// 
     /// [`Rc`]: std::rc::Rc
+    /// [`Arc`]: std::sync::Arc
     /// [`Locale`]: icu_locid::Locale
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_language_tag<T: AsRef<str>>( &self, language_tag: T ) -> Result<Rc<String>, RegistryError> {
+    pub fn get_language_tag<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<String>, RegistryError> {
         let result = self.get( language_tag.as_ref() )?;
         Ok( result.0 )
     }
 
-    /// Obtain a ICU4X locale [`Rc`]`<`[`Locale`]`>`.
+    /// Obtain a ICU4X locale [`Rc`]`<`[`Locale`]`>` or [`Arc`]`<Locale>`.
     /// 
     /// An error will be returned if the querying tag is malformed, that is does not conform to the
     /// [BCP 47 Language Tag] specification for being _Well-formed_. 
@@ -197,8 +250,9 @@ impl LanguageTagRegistry {
     /// 
     /// [`Rc`]: std::rc::Rc
     /// [`Locale`]: icu_locid::Locale
+    /// [`Arc`]: std::sync::Arc
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_locale<T: AsRef<str>>( &self, language_tag: T ) -> Result<Rc<Locale>, RegistryError> {
+    pub fn get_locale<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<Locale>, RegistryError> {
         let result = self.get( language_tag.as_ref() )?;
         Ok( result.1 )
     }
@@ -222,7 +276,12 @@ impl LanguageTagRegistry {
     /// 
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
     pub fn list( &self ) -> Vec<String> {
-        Vec::from_iter( self.bcp47.borrow().keys().map( |x| x.to_string() ) )
+
+        #[cfg( not( feature = "sync" ) )]
+        return Vec::from_iter( self.bcp47.borrow().keys().map( |x| x.to_string() ) );
+
+        #[cfg( feature = "sync" )]
+        Vec::from_iter( self.bcp47.lock().unwrap().keys().map( |x| x.to_string() ) )
     }
 
     /// Returns a vector list of all the registered language tags of deprecated specification.
@@ -242,7 +301,12 @@ impl LanguageTagRegistry {
     /// assert_eq!( deprecated_tags, 1, "Supposed to be 2 entries: en_ZA." )
     /// ```
     pub fn list_deprecated( &self ) -> Vec<String> {
-        Vec::from_iter( self.deprecated.borrow().keys().map( |x| x.to_string() ) )
+
+        #[cfg( not( feature = "sync" ) )]
+        return Vec::from_iter( self.deprecated.borrow().keys().map( |x| x.to_string() ) );
+
+        #[cfg( feature = "sync" )]
+        Vec::from_iter( self.deprecated.lock().unwrap().keys().map( |x| x.to_string() ) )
     }
 
     /// Returns a vector list of all the registered language tags.
@@ -267,10 +331,23 @@ impl LanguageTagRegistry {
     /// 
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
     pub fn list_all( &self ) -> Vec<String> {
+
+        #[cfg( not( feature = "sync" ) )]
         let mut list = Vec::from_iter( self.bcp47.borrow().keys().map( |x| x.to_string() ) );
+
+        #[cfg( feature = "sync" )]
+        let mut list = Vec::from_iter( self.bcp47.lock().unwrap().keys().map( |x| x.to_string() ) );
+
+        #[cfg( not( feature = "sync" ) )]
         let mut deprecated = Vec::from_iter(
             self.deprecated.borrow().keys().map( |x| x.to_string() )
         );
+
+        #[cfg( feature = "sync" )]
+        let mut deprecated = Vec::from_iter(
+            self.deprecated.lock().unwrap().keys().map( |x| x.to_string() )
+        );
+        
         list.append( &mut deprecated );
         list
     }

@@ -7,6 +7,13 @@
 //! is used at the time of creating a `ProviderSqlite3` object, it means that an application can have multiple data
 //! stores for both application language strings, and also for data packages' language strings.
 //! 
+//! # Features
+//! 
+//! Available features for `i18n_provider_sqlite3` crate:
+//! 
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
+//! [`RefCell`].
+//! 
 //! # Examples
 //! 
 //! ```
@@ -34,6 +41,15 @@
 //!     Ok( () )
 //! }
 //! ```
+
+#[cfg( doc )]
+use std::sync::{ Arc, Mutex };
+
+#[cfg( doc )]
+use std::rc::Rc;
+
+#[cfg( doc )]
+use std::cell::RefCell;
 
 #[cfg( doc )]
 use i18n_utility::LString;

@@ -7,20 +7,37 @@ use i18n_lexer::Lexer;
 use i18n_provider::{ LStringProvider, LStringProviderWrapper };
 use i18n_utility::{ LanguageTagRegistry, LString };
 use i18n_pattern::{ parse, Formatter, PlaceholderValue, CommandRegistry };
-use std::{ rc::Rc, cell::RefCell, collections::HashMap };
+
+#[cfg( not( feature = "sync" ) )]
+use std::cell::RefCell as MutCell;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::{ Arc as RefCount, Mutex as MutCell};
+
+use std::collections::HashMap;
+
+#[cfg( doc )]
+use std::sync::Arc;
+
+#[cfg( doc )]
+use std::rc::Rc;
 
 pub struct Message<'a, L>
 where
     L: ?Sized + LStringProvider,
 {
-    icu_data_provider: Rc<IcuDataProvider>,
+    icu_data_provider: RefCount<IcuDataProvider>,
     lexer: Lexer,
-    language_tag_registry: Rc<LanguageTagRegistry>,
+    language_tag_registry: RefCount<LanguageTagRegistry>,
     lstring_provider: LStringProviderWrapper<'a, L>,
-    command_registry: Rc<CommandRegistry>,
+    command_registry: RefCount<CommandRegistry>,
     fallback: bool,
     caching: bool,
-    cache: RefCell<HashMap<Rc<String>, HashMap<String, CacheData>>>,
+    cache: MutCell<HashMap<RefCount<String>, HashMap<String, CacheData>>>,
 }
 
 impl<'a, L> Message<'a, L>
@@ -29,9 +46,10 @@ where
 {
 
     /// Create a new `Message` instance, that is connected to a language string provider [`LStringProvider`]. A
-    /// reference to the language tag registry [`Rc`]`<`[`LanguageTagRegistry`]`>` instance and reference to the ICU
-    /// data provider [`Rc`]`<`[`IcuDataProvider`]`>` are stored within the `Message` to facilitate the parsing of
-    /// language string patterns, and for formatting strings.
+    /// reference to the language tag registry [`Rc`]`<`[`LanguageTagRegistry`]`>` or [`Arc`]`<LanguageTagRegistry>`
+    /// instance and reference to the ICU data provider `Rc<`[`IcuDataProvider`]`>` or `Arc<IcuDataProvider>`
+    /// are stored within the `Message` to facilitate the parsing of language string patterns, and for formatting
+    /// strings.
     /// 
     /// Two boolean flags `fallback` and `caching` are also set to be the defaults of the `Message` instance. These
     /// flags govern whether parsed strings are cached for reuse, and if no string is found for the specified language
@@ -88,22 +106,22 @@ where
     /// }
     /// ```
     pub fn try_new(
-        icu_data_provider: &Rc<IcuDataProvider>,
-        language_tag_registry: &Rc<LanguageTagRegistry>,
+        icu_data_provider: &RefCount<IcuDataProvider>,
+        language_tag_registry: &RefCount<LanguageTagRegistry>,
         lstring_provider: &'a L,
-        command_registry: &Rc<CommandRegistry>,
+        command_registry: &RefCount<CommandRegistry>,
         fallback: bool,
         caching: bool,
     ) -> Result<Self, MessageError> {
         Ok( Message {
-            icu_data_provider: Rc::clone( icu_data_provider ),
+            icu_data_provider: RefCount::clone( icu_data_provider ),
             lexer: Lexer::new( vec![ '{', '}', '`', '#' ], icu_data_provider ),
-            language_tag_registry: Rc::clone( language_tag_registry ),
+            language_tag_registry: RefCount::clone( language_tag_registry ),
             lstring_provider: LStringProviderWrapper( lstring_provider ),
-            command_registry: Rc::clone( command_registry ),
+            command_registry: RefCount::clone( command_registry ),
             fallback,
             caching,
-            cache: RefCell::new( HashMap::<Rc<String>, HashMap<String, CacheData>>::new() ),
+            cache: MutCell::new( HashMap::<RefCount<String>, HashMap<String, CacheData>>::new() ),
         } )
     }
 
@@ -166,20 +184,30 @@ where
         &mut self,
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
-        language_tag: &Rc<String>,
+        language_tag: &RefCount<String>,
         mut fallback: Option<bool>, // true = fallback to default language, None = use the Message default.
         mut caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<LString, MessageError> {
         let mut _language_entry = false;
         {
+            #[cfg( not( feature = "sync" ) )]
             let binding = self.cache.borrow();
+
+            #[cfg( feature = "sync" )]
+            let binding = self.cache.lock().unwrap();
+
             if let Some( result ) = binding.get( language_tag ) {
                 _language_entry = true;
                 if let Some( result2 ) = result.get( identifier.as_ref() ) {
                     return match result2 {
                         CacheData::LSring( lstring) => Ok( lstring.clone() ),
-                        CacheData::Formatter( formatter ) =>
-                            Ok( formatter.borrow_mut().format( values )? )
+
+                        #[cfg( not( feature = "sync" ) )]
+                        CacheData::Formatter( formatter ) => 
+                            Ok( formatter.borrow_mut().format( values )? ),
+
+                        #[cfg( feature = "sync" )]
+                        CacheData::Formatter( formatter ) => Ok( formatter.lock().unwrap().format( values )? )
                     }
                 }
             }
@@ -232,12 +260,25 @@ where
                         identifier.as_ref().to_string(),
                         CacheData::LSring( lstring.clone() )
                     );
+
+                    #[cfg( not( feature = "sync" ) )]
                     self.cache.borrow_mut().insert(
-                        Rc::clone( language_tag ),
+                        RefCount::clone( language_tag ),
+                        data_entry
+                    );
+
+                    #[cfg( feature = "sync" )]
+                    self.cache.lock().unwrap().insert(
+                        RefCount::clone( language_tag ),
                         data_entry
                     );
                 } else {
+                    #[cfg( not( feature = "sync" ) )]
                     let mut binding = self.cache.borrow_mut();
+
+                    #[cfg( feature = "sync" )]
+                    let mut binding = self.cache.lock().unwrap();
+
                     let data_entry = binding.get_mut( language_tag );
                     data_entry.unwrap().insert(
                         identifier.as_ref().to_string(),
@@ -270,30 +311,53 @@ where
                 let mut data_entry = HashMap::<String, CacheData/*<'a, I>*/>::new();
                 data_entry.insert(
                     identifier.as_ref().to_string(),
-                    CacheData::Formatter( RefCell::new( formatter ) )
+                    CacheData::Formatter( MutCell::new( formatter ) )
                 );
+
+                #[cfg( not( feature = "sync" ) )]
                 self.cache.borrow_mut().insert(
-                    Rc::clone( language_tag ),
+                    RefCount::clone( language_tag ),
+                    data_entry
+                );
+
+                #[cfg( feature = "sync" )]
+                self.cache.lock().unwrap().insert(
+                    RefCount::clone( language_tag ),
                     data_entry
                 );
             } else {
+                #[cfg( not( feature = "sync" ) )]
                 let mut binding = self.cache.borrow_mut();
+
+                #[cfg( feature = "sync" )]
+                let mut binding = self.cache.lock().unwrap();
+
                 let data_entry = binding.get_mut( language_tag );
                 data_entry.unwrap().insert(
                     identifier.as_ref().to_string(),
-                    CacheData::Formatter( RefCell::new( formatter ) )
+                    CacheData::Formatter( MutCell::new( formatter ) )
                 );
             }
         }
 
         // Get `Formatter` and use it to get the LString.
+        #[cfg( not( feature = "sync" ) )]
         let binding = self.cache.borrow();
+
+        #[cfg( feature = "sync" )]
+        let binding = self.cache.lock().unwrap();
+
         let result = binding.get( language_tag ).unwrap();
         let result2 = result.get( identifier.as_ref() ).unwrap();
         match result2 {
             CacheData::LSring( lstring) => Ok( lstring.clone() ),
-            CacheData::Formatter( formatter ) =>
-                Ok( formatter.borrow_mut().format( values )? )
+
+            #[cfg( not( feature = "sync" ) )]
+            CacheData::Formatter( formatter ) => 
+                Ok( formatter.borrow_mut().format( values )? ),
+
+            #[cfg( feature = "sync" )]
+            CacheData::Formatter( formatter ) => Ok( formatter.lock().unwrap().format( values )? )
         }
     }
 
@@ -303,5 +367,5 @@ where
 
 enum CacheData {
     LSring( LString ),
-    Formatter( RefCell<Formatter> ),
+    Formatter( MutCell<Formatter> ),
 }

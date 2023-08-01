@@ -9,17 +9,24 @@ use i18n_provider_sqlite3::ProviderSqlite3;
 use i18n_pattern::{ PlaceholderValue, CommandRegistry };
 use i18n_message::Message;
 use std::collections::HashMap;
-use std::rc::Rc;
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
 use std::error::Error;
 
 #[test]
 fn message() -> Result<(), Box<dyn Error>> {
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
-    let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
     let lstring_provider = ProviderSqlite3::try_new(
         "./i18n/", &language_tag_registry
     )?;
-    let command_registry = Rc::new( CommandRegistry::new() );
+    let command_registry = RefCount::new( CommandRegistry::new() );
     let mut message_system = Message::try_new(
         &icu_data_provider,
         &language_tag_registry,

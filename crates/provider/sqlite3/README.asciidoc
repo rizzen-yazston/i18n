@@ -9,6 +9,12 @@ Sqlite3 provider for `LString`s.
 
 This crate implements `LStringProvider` using Sqlite3 as the data store for language strings. As a directory path is used at the time of creating a `ProviderSqlite3` object, it means that an application can have multiple data stores for both application language strings, and also for data packages' language strings.
 
+== Features
+
+Available features for `i18n_provider_sqlite3` crate:
+
+* `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.

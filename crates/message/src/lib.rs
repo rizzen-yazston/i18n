@@ -22,6 +22,9 @@
 //! 
 //! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
 //! 
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
+//! [`RefCell`].
+//! 
 //! # Examples
 //! 
 //! ```
@@ -74,6 +77,15 @@
 //! ```
 //! 
 //! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
+
+#[cfg( doc )]
+use std::sync::{ Arc, Mutex };
+
+#[cfg( doc )]
+use std::rc::Rc;
+
+#[cfg( doc )]
+use std::cell::RefCell;
 
 pub mod error;
 pub use error::*;

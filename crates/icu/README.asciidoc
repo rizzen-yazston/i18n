@@ -13,7 +13,7 @@ The `IcuDataProvider` type contains the `DataProvider` enum of supported impleme
 
 When data provider is not `Internal` and depending on the data provider used, the `IcuDataProvider` may contain non-locale based data, such as the grapheme cluster segmenter and the selected character properties set data.
 
-`IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` to prevent unnecessary duplication.
+`IcuDataProvider` type is used within the `Rc` type as `Rc<IcuDataProvider>` or `Arc` type as `Arc<IcuDataProvider>` to prevent unnecessary duplication.
 
 == Features
 
@@ -24,6 +24,8 @@ Available features for `i18n_icu` crate:
 * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
  
 * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+
+* `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
 
 == Acknowledgement
 

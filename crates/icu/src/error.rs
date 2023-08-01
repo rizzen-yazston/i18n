@@ -3,10 +3,13 @@
 
 #[cfg( feature = "buffer" )]
 use icu_properties::PropertiesError;
+
 #[cfg( feature = "buffer" )]
 use icu_segmenter::SegmenterError;
+
 #[cfg( feature = "buffer" )]
 use icu_provider::DataError;
+
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
@@ -15,10 +18,13 @@ use core::fmt::{ Display, Formatter, Result };
 pub enum IcuError {
     #[cfg( feature = "buffer" )]
     Properties( PropertiesError ),
+
     #[cfg( feature = "buffer" )]
     Segmenter( SegmenterError ),
+
     #[cfg( feature = "buffer" )]
     Data( DataError ),
+
     Grapheme,
     Syntax,
     WhiteSpace,
@@ -29,10 +35,13 @@ impl Display for IcuError {
         match self {
             #[cfg( feature = "buffer" )]
             IcuError::Properties( ref error ) => return error.fmt( formatter ),
+
             #[cfg( feature = "buffer" )]
             IcuError::Segmenter( ref error ) => return error.fmt( formatter ),
+
             #[cfg( feature = "buffer" )]
             IcuError::Data( ref error ) => return error.fmt( formatter ),
+            
             IcuError::Grapheme =>  write!( formatter, "No data provider is available for the ‘GraphemeClusterSegmenter’." ),
             IcuError::Syntax => write!( formatter, "No data provider is available for the ‘Pattern_Syntax’." ),
             IcuError::WhiteSpace => write!( formatter, "No data provider is available for the ‘Pattern_White_Space’." ),
