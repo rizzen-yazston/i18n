@@ -4,7 +4,7 @@
 use crate::MessageError;
 use i18n_icu::IcuDataProvider;
 use i18n_lexer::Lexer;
-use i18n_provider::{ LStringProvider, LStringProviderWrapper };
+use i18n_provider::LStringProvider;
 use i18n_utility::{ LanguageTagRegistry, LString };
 use i18n_pattern::{ parse, Formatter, PlaceholderValue, CommandRegistry };
 
@@ -26,23 +26,23 @@ use std::sync::Arc;
 #[cfg( doc )]
 use std::rc::Rc;
 
-pub struct Message<'a, L>
+pub struct Message<L>
 where
-    L: ?Sized + LStringProvider,
+    L: LStringProvider,
 {
     icu_data_provider: RefCount<IcuDataProvider>,
     lexer: Lexer,
     language_tag_registry: RefCount<LanguageTagRegistry>,
-    lstring_provider: LStringProviderWrapper<'a, L>,
+    lstring_provider: L,
     command_registry: RefCount<CommandRegistry>,
     fallback: bool,
     caching: bool,
     cache: MutCell<HashMap<RefCount<String>, HashMap<String, CacheData>>>,
 }
 
-impl<'a, L> Message<'a, L>
+impl<L> Message<L>
 where
-    L: ?Sized + LStringProvider,
+    L: LStringProvider,
 {
 
     /// Create a new `Message` instance, that is connected to a language string provider [`LStringProvider`]. A
@@ -75,7 +75,7 @@ where
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
+    ///         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -114,16 +114,16 @@ where
     pub fn try_new(
         icu_data_provider: &RefCount<IcuDataProvider>,
         language_tag_registry: &RefCount<LanguageTagRegistry>,
-        lstring_provider: &'a L,
+        lstring_provider: L,
         command_registry: &RefCount<CommandRegistry>,
         fallback: bool,
         caching: bool,
-    ) -> Result<Self, MessageError> {
+    ) -> Result<Message<L>, MessageError> {
         Ok( Message {
             icu_data_provider: RefCount::clone( icu_data_provider ),
             lexer: Lexer::new( vec![ '{', '}', '`', '#' ], icu_data_provider ),
             language_tag_registry: RefCount::clone( language_tag_registry ),
-            lstring_provider: LStringProviderWrapper( lstring_provider ),
+            lstring_provider,
             command_registry: RefCount::clone( command_registry ),
             fallback,
             caching,
@@ -156,7 +156,7 @@ where
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
+    ///         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -228,7 +228,7 @@ where
 
         // Not in cache.
         // Get pattern string for specified language, though returned `LString` may be for another language.
-        let lstring = match self.lstring_provider.0.get_one(
+        let lstring = match self.lstring_provider.get_one(
             component.as_ref().to_string(), identifier.as_ref().to_string(), language_tag
         )? {
             Some( result ) => result,
@@ -244,13 +244,13 @@ where
                         false
                     ) );
                 }
-                let default_language = match self.lstring_provider.0.default_language_tag(
+                let default_language = match self.lstring_provider.default_language_tag(
                     identifier.as_ref()
                 )? {
                     None => return Err( MessageError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
                     Some( result ) => result
                 };
-                match self.lstring_provider.0.get_one(
+                match self.lstring_provider.get_one(
                     component.as_ref().to_string(),
                     identifier.as_ref().to_string(),
                     &default_language
@@ -329,7 +329,7 @@ where
         // Cache the `Formatter`.
         {
             if !_language_entry {
-                let mut data_entry = HashMap::<String, CacheData/*<'a, I>*/>::new();
+                let mut data_entry = HashMap::<String, CacheData>::new();
                 data_entry.insert(
                     identifier.as_ref().to_string(),
                     CacheData::Formatter( MutCell::new( formatter ) )

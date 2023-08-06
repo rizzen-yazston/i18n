@@ -45,7 +45,7 @@
 //!     )?;
 //!     let command_registry = Rc::new( CommandRegistry::new() );
 //!     let mut message_system = Message::try_new(
-//!         &icu_data_provider, &language_tag_registry, &lstring_provider, &command_registry, true, true
+//!         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true
 //!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
 //!     values.insert(
