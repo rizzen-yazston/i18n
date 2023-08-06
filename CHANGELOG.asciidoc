@@ -9,7 +9,9 @@ Redesigning of `IcuDataProvider` to make use of new internal data feature in `ic
 
 Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that `i18n` depends on. 
 
-* Updated `i18n_i18n` crate:
+Redesigned of `LStringProvider` for clearer usage, and added information methods for the data repository. There may be additional methods in the future. `LStringProviderSqlite3` updated to implement the changes, and implement new required methods.
+
+* Updated `i18n` crate:
 
 ** Adjusted `Cargo.toml` and documentation to reflect the changes.
 
@@ -35,7 +37,7 @@ Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` a
 
 ** Added 5 new helper functions to obtain the required ICU formatter instance. Allows for easier support for new data providers.
 
-** Updated `.sqlite3`: add missing language strings for `NeverReach` error, and languages strings for new error `NoIcuProvider` (spearated from `NeverReach` error) for easier error distinction.
+** Updated `.sqlite3`: add missing language strings for `NeverReach` error, and languages strings for new error `NoIcuProvider` (separated from `NeverReach` error) for easier error distinction.
 
 ** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
 
@@ -51,11 +53,15 @@ Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` a
 
 * Updated `i18n_provider` crate:
 
-** Added new method to retrieve data on supported languages.
+** Updated existing methods signatures, to have separate `component` and `identifier`.
+
+** Added new method signatures to retrieve information on the data repository.
 
 ** Adjusted `Cargo.toml` and documentation to reflect the changes.
 
 * Updated `i18n_provider_sqlite3` crate:
+
+** Added implementations of the new methods to retrieve information on the data repository.
 
 ** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
 

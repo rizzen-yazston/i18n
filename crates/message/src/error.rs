@@ -14,8 +14,8 @@ pub enum MessageError {
     Parser( ParserError ),
     Formatter( FormatterError ),
     Provider( ProviderError ),
-    StringNotFound( String, String, bool ), // identifier, language_tag, fallback
-    NoDefaultLanguageTag( String ),
+    StringNotFound( String, String, String, bool ), // component, identifier, language_tag, fallback
+    NoDefaultLanguageTag( String ), // component
 }
 
 impl Display for MessageError {
@@ -25,21 +25,25 @@ impl Display for MessageError {
             MessageError::Parser( ref error ) => error.fmt( formatter ),
             MessageError::Formatter( ref error ) => error.fmt( formatter ),
             MessageError::Provider( ref error ) => error.fmt( formatter ),
-            MessageError::StringNotFound( identifier, language_tag, fallback ) => {
+            MessageError::StringNotFound(
+                component, identifier, language_tag, fallback
+            ) => {
                 let string = match fallback {
                     true => "True".to_string(),
                     false => "False".to_string()
                 };
                 write!(
                     formatter,
-                    "No string was found for the identifier ‘{}’ and the language tag ‘{}’. Fallback was used: {}.",
+                    "No string was found for the component ‘{}’ with identifier ‘{}’ and the language tag \
+                        ‘{}’. Fallback was used: {}.",
+                    component,
                     identifier,
                     language_tag,
                     string,
                 )
             },
-            MessageError::NoDefaultLanguageTag( identifier ) =>
-                write!( formatter, "No default language tag was found for the identifier ‘{}’.", identifier )
+            MessageError::NoDefaultLanguageTag( component ) =>
+                write!( formatter, "No default language tag was found for the component ‘{}’.", component )
         }
     }
 }

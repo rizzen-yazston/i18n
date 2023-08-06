@@ -3,8 +3,10 @@
 
 //! [`LString`] provider.
 //! 
-//! A trait for providing language strings in the form of [`Vec`]`<`[`LString`]`>`, and obtaining the default language
-//! tag used for the crate's messages.
+//! A trait for retrieving localisation language strings from a data repository via a provider that implements the
+//! trait methods: `get()` and `get_one()`. In addition, there are other trait methods for retrieve the default
+//! language for a component, and supported languages for entire data repository, component and identifier
+//! respectively.
 //! 
 //! # Features
 //! 

@@ -24,7 +24,7 @@
 //! use std::error::Error;
 //! 
 //! fn main() -> Result<(), Box<dyn Error>> {
-//!     let path = "./i18n/";
+//!     let path = "./l10n/";
 //!     let registry = Rc::new( LanguageTagRegistry::new() );
 //!     let tag = registry.get_language_tag( "en" )?;
 //!     let provider = ProviderSqlite3::try_new(
@@ -32,11 +32,12 @@
 //!         &registry
 //!     )?;
 //!     let strings = provider.get(
-//!         "i18n_provider_sqlite3/invalid_path",
-//!         &tag
+//!         "i18n_provider_sqlite3",
+//!         "path_conversion",
+//!         &tag,
 //!     )?;
 //!     assert_eq!( strings.len(), 1, "There should be 1 string." );
-//!     assert_eq!( strings[ 0 ].as_str(), "Invalid path was provided.", "Not correct string." );
+//!     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
 //!     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
 //!     Ok( () )
 //! }

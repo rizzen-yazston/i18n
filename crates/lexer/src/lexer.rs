@@ -38,10 +38,13 @@ pub struct Token {
 }
 
 /// The available token types:
-/// - WhiteSpace contains only white space characters;
-/// - Identifier contains only characters, that are not white space or syntax;
+/// - WhiteSpace contains only white space (Pattern_White_Space ([UAX #31])) characters;
+/// - Identifier contains only characters, that are not white space or grammar;
 /// - Grammar contains a single syntax character: any of the valid grammar syntax characters;
-/// - Syntax contains only syntax characters, which generally consists of punctuation and control characters.
+/// - Syntax contains only syntax (Pattern_Syntax (UAX #31)) characters, which generally consists of punctuation and
+/// control characters, and not including grammar syntax characters.
+/// 
+/// [UAX #31]: https://www.unicode.org/reports/tr31/
 #[derive( Debug, PartialEq )]
 pub enum TokenType {
     WhiteSpace, // Just Pattern_White_Space characters (UAX #31).

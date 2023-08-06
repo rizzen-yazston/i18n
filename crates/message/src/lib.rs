@@ -41,7 +41,7 @@
 //!     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
 //!     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
 //!     let lstring_provider = ProviderSqlite3::try_new(
-//!         "./i18n/", &language_tag_registry
+//!         "./l10n/", &language_tag_registry
 //!     )?;
 //!     let command_registry = Rc::new( CommandRegistry::new() );
 //!     let mut message_system = Message::try_new(
@@ -49,8 +49,12 @@
 //!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
 //!     values.insert(
+//!         "component".to_string(),
+//!         PlaceholderValue::String( "i18n_message".to_string() )
+//!     );
+//!     values.insert(
 //!         "identifier".to_string(),
-//!         PlaceholderValue::String( "i18n_message/string_not_found".to_string() )
+//!         PlaceholderValue::String( "string_not_found".to_string() )
 //!     );
 //!     values.insert(
 //!         "language_tag".to_string(),
@@ -61,7 +65,8 @@
 //!         PlaceholderValue::String( "true".to_string() )
 //!     );
 //!     let lstring = message_system.format(
-//!         "i18n_message/string_not_found",
+//!         "i18n_message",
+//!         "string_not_found",
 //!         &values,
 //!         &language_tag_registry.get_language_tag( "en-ZA" ).unwrap(),
 //!         None,
@@ -69,7 +74,8 @@
 //!     )?;
 //!     assert_eq!(
 //!         lstring.as_str(),
-//!         "No string was found for identifier ‘i18n_message/string_not_found’ and language tag ‘en-ZA’. Fallback used: True.",
+//!         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ and the language \
+//!             tag ‘en-ZA’. Fallback was used: True.",
 //!         "Check placeholder values."
 //!     );
 //!     Ok( () )

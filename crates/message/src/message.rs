@@ -71,7 +71,7 @@ where
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
     ///     let lstring_provider = ProviderSqlite3::try_new(
-    ///         "./i18n/", &language_tag_registry
+    ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
@@ -79,8 +79,12 @@ where
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
+    ///         "component".to_string(),
+    ///         PlaceholderValue::String( "i18n_message".to_string() )
+    ///     );
+    ///     values.insert(
     ///         "identifier".to_string(),
-    ///         PlaceholderValue::String( "i18n_message/string_not_found".to_string() )
+    ///         PlaceholderValue::String( "string_not_found".to_string() )
     ///     );
     ///     values.insert(
     ///         "language_tag".to_string(),
@@ -91,7 +95,8 @@ where
     ///         PlaceholderValue::String( "true".to_string() )
     ///     );
     ///     let lstring = message_system.format(
-    ///         "i18n_message/string_not_found",
+    ///         "i18n_message",
+    ///         "string_not_found",
     ///         &values,
     ///         &language_tag_registry.get_language_tag( "en-ZA" ).unwrap(),
     ///         None,
@@ -99,7 +104,8 @@ where
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No string was found for identifier ‘i18n_message/string_not_found’ and language tag ‘en-ZA’. Fallback used: True.",
+    ///         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ and the \
+    ///             language tag ‘en-ZA’. Fallback was used: True.",
     ///         "Check placeholder values."
     ///     );
     ///     Ok( () )
@@ -146,7 +152,7 @@ where
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
     ///     let lstring_provider = ProviderSqlite3::try_new(
-    ///         "./i18n/", &language_tag_registry
+    ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
@@ -154,8 +160,12 @@ where
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
+    ///         "component".to_string(),
+    ///         PlaceholderValue::String( "i18n_message".to_string() )
+    ///     );
+    ///     values.insert(
     ///         "identifier".to_string(),
-    ///         PlaceholderValue::String( "i18n_message/string_not_found".to_string() )
+    ///         PlaceholderValue::String( "string_not_found".to_string() )
     ///     );
     ///     values.insert(
     ///         "language_tag".to_string(),
@@ -166,7 +176,8 @@ where
     ///         PlaceholderValue::String( "true".to_string() )
     ///     );
     ///     let lstring = message_system.format(
-    ///         "i18n_message/string_not_found",
+    ///         "i18n_message",
+    ///         "string_not_found",
     ///         &values,
     ///         &language_tag_registry.get_language_tag( "en-ZA" ).unwrap(),
     ///         None,
@@ -174,7 +185,8 @@ where
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No string was found for identifier ‘i18n_message/string_not_found’ and language tag ‘en-ZA’. Fallback used: True.",
+    ///         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ and the \
+    ///             language tag ‘en-ZA’. Fallback was used: True.",
     ///         "Check placeholder values."
     ///     );
     ///     Ok( () )
@@ -182,6 +194,7 @@ where
     /// ```
     pub fn format<T: AsRef<str>>(
         &mut self,
+        component: T,
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
         language_tag: &RefCount<String>,
@@ -216,7 +229,7 @@ where
         // Not in cache.
         // Get pattern string for specified language, though returned `LString` may be for another language.
         let lstring = match self.lstring_provider.0.get_one(
-            identifier.as_ref().to_string(), language_tag
+            component.as_ref().to_string(), identifier.as_ref().to_string(), language_tag
         )? {
             Some( result ) => result,
             None => {
@@ -225,21 +238,29 @@ where
                 }
                 if !fallback.unwrap() {
                     return Err( MessageError::StringNotFound(
-                        identifier.as_ref().to_string(), language_tag.as_str().to_owned(), false
+                        component.as_ref().to_string(),
+                        identifier.as_ref().to_string(),
+                        language_tag.as_str().to_string(),
+                        false
                     ) );
                 }
                 let default_language = match self.lstring_provider.0.default_language_tag(
-                    identifier.as_ref().to_string()
+                    identifier.as_ref()
                 )? {
-                    None => return Err( MessageError::NoDefaultLanguageTag( identifier.as_ref().to_string() ) ),
-                    Some( result ) => self.language_tag_registry.get_language_tag( result )?
+                    None => return Err( MessageError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
+                    Some( result ) => result
                 };
                 match self.lstring_provider.0.get_one(
-                    identifier.as_ref().to_string(), &default_language
+                    component.as_ref().to_string(),
+                    identifier.as_ref().to_string(),
+                    &default_language
                 )? {
                     Some( result ) => result,
                     None => return Err( MessageError::StringNotFound(
-                        identifier.as_ref().to_string(), language_tag.as_str().to_owned(), true
+                        component.as_ref().to_string(),
+                        identifier.as_ref().to_string(),
+                        language_tag.as_str().to_owned(),
+                        true
                     ) )
                 }
             }

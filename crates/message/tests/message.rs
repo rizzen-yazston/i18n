@@ -24,7 +24,7 @@ fn message() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
     let lstring_provider = ProviderSqlite3::try_new(
-        "./i18n/", &language_tag_registry
+        "./l10n/", &language_tag_registry
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
     let mut message_system = Message::try_new(
@@ -37,8 +37,12 @@ fn message() -> Result<(), Box<dyn Error>> {
     )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
+        "component".to_string(),
+        PlaceholderValue::String( "i18n_message".to_string() )
+    );
+    values.insert(
         "identifier".to_string(),
-        PlaceholderValue::String( "i18n_message/string_not_found".to_string() )
+        PlaceholderValue::String( "string_not_found".to_string() )
     );
     values.insert(
         "language_tag".to_string(),
@@ -49,7 +53,8 @@ fn message() -> Result<(), Box<dyn Error>> {
         PlaceholderValue::String( "true".to_string() )
     );
     let lstring = message_system.format(
-        "i18n_message/string_not_found",
+        "i18n_message",
+        "string_not_found",
         &values,
         &language_tag_registry.get_language_tag( "en-ZA" ).unwrap(),
         None,
@@ -57,7 +62,8 @@ fn message() -> Result<(), Box<dyn Error>> {
     )?;
     assert_eq!(
         lstring.as_str(),
-        "No string was found for the identifier ‘i18n_message/string_not_found’ and the language tag ‘en-ZA’. Fallback was used: True.",
+        "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ and the language \
+            tag ‘en-ZA’. Fallback was used: True.",
         "Check placeholder values."
     );
     Ok( () )

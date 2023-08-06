@@ -15,9 +15,11 @@ pub enum ProviderSqlite3Error {
     Sqlite3( Sqlite3Error ),
     NotDirectory( PathBuf ),
     NoSqlite3Files( PathBuf ),
-    MissingIdentifierPart( String ),
+//    MissingIdentifierPart( String ),
     LanguageTagRegistry( RegistryError ),
-    InvalidPath,
+    PathConversion,
+    DefaultLanguage( String ),
+    DefaultLanguageCount( String, String ),
 }
 
 impl Display for ProviderSqlite3Error {
@@ -29,11 +31,18 @@ impl Display for ProviderSqlite3Error {
                 write!( formatter, "Provided path ‘{}’ is not a directory.", path.display() ),
             ProviderSqlite3Error::NoSqlite3Files( ref path ) =>
                 write!( formatter, "No ‘.sqlite3’ files was found in ‘{}’.", path.display() ),
-            ProviderSqlite3Error::MissingIdentifierPart( ref string ) =>
-                write!( formatter, "Missing either the string or the crate identifier part for ‘{}’.", string ),
+//            ProviderSqlite3Error::MissingIdentifierPart( ref string ) =>
+//                write!( formatter, "Missing either the string or the crate identifier part for ‘{}’.", string ),
             ProviderSqlite3Error::LanguageTagRegistry( ref error ) => error.fmt( formatter ),
-            ProviderSqlite3Error::InvalidPath =>
-                write!( formatter, "Invalid path was provided." ),
+            ProviderSqlite3Error::PathConversion => write!( formatter, "Conversion to PathBuf error." ),
+            ProviderSqlite3Error::DefaultLanguage( ref component ) =>
+                write!( formatter, "The default language tag is missing for the component ‘{}’.", component ),
+            ProviderSqlite3Error::DefaultLanguageCount( ref component, ref language ) => write!(
+                formatter,
+                "There are no localisation strings in the component ‘{}’ for the default language tag ‘{}’.",
+                component,
+                language,
+            ),
         }
     }
 }
