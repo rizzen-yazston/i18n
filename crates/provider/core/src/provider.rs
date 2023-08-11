@@ -90,7 +90,14 @@ pub trait LStringProvider {
     /// Return of `ProviderError` indicates there was an error, usually from within the data repository.
     fn repository_language_tags( &self ) -> Result<Vec<RefCount<String>>, ProviderError>;
 
-    // FUTURE: Idea to retrieve contributor list for a language of a component in the data repository.
+    // FUTURE: Idea to retrieve list of components in the data repository.
+    /*
+    fn components<T: AsRef<str>>(
+        &self,
+    ) -> Result<Vec<String>, ProviderError>; 
+     */ 
+
+     // FUTURE: Idea to retrieve contributor list for a language of a component in the data repository.
     /*
     fn component_contributors<T: AsRef<str>>(
         &self,

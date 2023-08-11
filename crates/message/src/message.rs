@@ -201,6 +201,9 @@ where
         mut fallback: Option<bool>, // true = fallback to default language, None = use the Message default.
         mut caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<LString, MessageError> {
+        let mut combined = component.as_ref().to_string();
+        combined.push( '/' );
+        combined.push_str( identifier.as_ref() );
         let mut _language_entry = false;
         {
             #[cfg( not( feature = "sync" ) )]
@@ -211,7 +214,7 @@ where
 
             if let Some( result ) = binding.get( language_tag ) {
                 _language_entry = true;
-                if let Some( result2 ) = result.get( identifier.as_ref() ) {
+                if let Some( result2 ) = result.get( &combined ) {
                     return match result2 {
                         CacheData::LSring( lstring) => Ok( lstring.clone() ),
 
@@ -245,7 +248,7 @@ where
                     ) );
                 }
                 let default_language = match self.lstring_provider.default_language_tag(
-                    identifier.as_ref()
+                    component.as_ref()
                 )? {
                     None => return Err( MessageError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
                     Some( result ) => result
@@ -302,7 +305,7 @@ where
 
                     let data_entry = binding.get_mut( language_tag );
                     data_entry.unwrap().insert(
-                        identifier.as_ref().to_string(),
+                        combined.clone(),
                         CacheData::LSring( lstring.clone() )
                     );
                 }
@@ -331,7 +334,7 @@ where
             if !_language_entry {
                 let mut data_entry = HashMap::<String, CacheData>::new();
                 data_entry.insert(
-                    identifier.as_ref().to_string(),
+                    combined.clone(),
                     CacheData::Formatter( MutCell::new( formatter ) )
                 );
 
@@ -355,7 +358,7 @@ where
 
                 let data_entry = binding.get_mut( language_tag );
                 data_entry.unwrap().insert(
-                    identifier.as_ref().to_string(),
+                    combined.clone(),
                     CacheData::Formatter( MutCell::new( formatter ) )
                 );
             }
@@ -369,7 +372,7 @@ where
         let binding = self.cache.lock().unwrap();
 
         let result = binding.get( language_tag ).unwrap();
-        let result2 = result.get( identifier.as_ref() ).unwrap();
+        let result2 = result.get( &combined ).unwrap();
         match result2 {
             CacheData::LSring( lstring) => Ok( lstring.clone() ),
 

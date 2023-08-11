@@ -34,7 +34,7 @@ impl Display for MessageError {
                 };
                 write!(
                     formatter,
-                    "No string was found for the component ‘{}’ with identifier ‘{}’ and the language tag \
+                    "No string was found for the component ‘{}’ with identifier ‘{}’ for the language tag \
                         ‘{}’. Fallback was used: {}.",
                     component,
                     identifier,

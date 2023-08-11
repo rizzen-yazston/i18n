@@ -15,7 +15,7 @@ use std::cell::RefCell as MutCell;
 
 #[cfg( feature = "sync" )]
 #[cfg( target_has_atomic = "ptr" )]
-use std::sync::{ Arc as RefCount, Mutex as MutCell};
+use std::sync::{ Arc as RefCount, Mutex as MutCell };
 
 use std::path::PathBuf;
 
@@ -237,15 +237,10 @@ impl LStringProvider for ProviderSqlite3 {
                     }
                 )
             };
-            tag.push( '%' );
             while tag.len() > 0 {
-                let rows = match stmt.query_map(
-                    [ component.as_ref(), identifier.as_ref(), tag.as_str() ],
-                    |row| {
-                        let string: String = row.get( 0 )?;
-                        let tag: String = row.get( 1 )?;
-                        Ok( ( string, tag ) )
-                    }
+                tag.push( '%' );
+                let mut rows = match stmt.query(
+                    [ component.as_ref(), identifier.as_ref(), tag.as_str() ]
                 ) {
                     Ok( result ) => result,
                     Err( error ) => return Err(
@@ -255,8 +250,25 @@ impl LStringProvider for ProviderSqlite3 {
                         }
                     )
                 };
-                for row in rows {
-                    let ( string, tag_raw ) = match row {
+                while let Some( row ) = match rows.next() {
+                    Ok( result ) => result,
+                    Err( error ) => return Err(
+                        ProviderError {
+                            error_type: "ProviderSqlite3Error",
+                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
+                        }
+                    )
+                } {
+                    let string: String = match row.get( 0 ) {
+                        Ok( result ) => result,
+                        Err( error ) => return Err(
+                            ProviderError {
+                                error_type: "ProviderSqlite3Error",
+                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
+                            }
+                        )
+                    };
+                    let tag_raw: String = match row.get( 1 ) {
                         Ok( result ) => result,
                         Err( error ) => return Err(
                             ProviderError {
@@ -280,11 +292,10 @@ impl LStringProvider for ProviderSqlite3 {
                 if result.len() > 0 {
                     return Ok( result );
                 }
-                let Some( parts ) = tag.rsplit_once( '-' ) else {
-                    return Ok( result );
+                tag = match tag.rsplit_once( '-' ) {
+                    None => String::new(),
+                    Some( value ) => value.0.to_owned(),
                 };
-                tag = parts.0.to_owned();
-                tag.push( '%' );
             }
         }
 
@@ -333,15 +344,10 @@ impl LStringProvider for ProviderSqlite3 {
                 }
             )
         };
-        tag.push( '%' );
         while tag.len() > 0 {
-            let rows = match stmt.query_map(
-                [ identifier.as_ref(), tag.as_str() ],
-                |row| {
-                    let string: String = row.get( 0 )?;
-                    let tag: String = row.get( 1 )?;
-                    Ok( ( string, tag ) )
-                }
+            tag.push( '%' );
+            let mut rows = match stmt.query(
+                [ identifier.as_ref(), tag.as_str() ]
             ) {
                 Ok( result ) => result,
                 Err( error ) => return Err(
@@ -351,8 +357,25 @@ impl LStringProvider for ProviderSqlite3 {
                     }
                 )
             };
-            for row in rows {
-                let ( string, tag_raw ) = match row {
+            while let Some( row ) = match rows.next() {
+                Ok( result ) => result,
+                Err( error ) => return Err(
+                    ProviderError {
+                        error_type: "ProviderSqlite3Error",
+                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
+                    }
+                )
+            } {
+                let string: String = match row.get( 0 ) {
+                    Ok( result ) => result,
+                    Err( error ) => return Err(
+                        ProviderError {
+                            error_type: "ProviderSqlite3Error",
+                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
+                        }
+                    )
+                };
+                let tag_raw: String = match row.get( 1 ) {
                     Ok( result ) => result,
                     Err( error ) => return Err(
                         ProviderError {
@@ -376,11 +399,10 @@ impl LStringProvider for ProviderSqlite3 {
             if result.len() > 0 {
                 return Ok( result );
             }
-            let Some( parts ) = tag.rsplit_once( '-' ) else {
-                return Ok( result );
+            tag = match tag.rsplit_once( '-' ) {
+                None => String::new(),
+                Some( value ) => value.0.to_owned(),
             };
-            tag = parts.0.to_owned();
-            tag.push( '%' );
         }
         Ok( result )
     }

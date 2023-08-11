@@ -62,7 +62,7 @@ fn message() -> Result<(), Box<dyn Error>> {
     )?;
     assert_eq!(
         lstring.as_str(),
-        "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ and the language \
+        "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ for the language \
             tag ‘en-ZA’. Fallback was used: True.",
         "Check placeholder values."
     );
