@@ -7,9 +7,13 @@ WARNING: This update has API breaking changes for all `i18n` crates.
 
 Redesigning of `IcuDataProvider` to make use of new internal data feature in `icu` 1.3.0, and to resolve issue related to generic `DataProvider` issue with `main()`.
 
-Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that `i18n` depends on. 
+Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that `i18n` depends on.
 
-Redesigned of `LStringProvider` for clearer usage, and added information methods for the data repository. There may be additional methods in the future. `LStringProviderSqlite3` updated to implement the changes, and implement new required methods.
+Changed `LString` to `TaggedString` considering it is a string being tagged to some identifier, and is generic in design to be used outside of the project, where tagged strings are required.
+
+Changed method `get_language_tag` of `LanguageTagRegistry` to `get_tag`.
+
+Redesigned of `LStringProvider` for clearer usage including name changing to `LanguageStringProvider`, and added information methods for the data repository. There may be additional methods in the future. `LStringProviderSqlite3` updated to implement the changes, and implement new required methods.
 
 * Updated `i18n` crate:
 
@@ -45,11 +49,15 @@ Redesigned of `LStringProvider` for clearer usage, and added information methods
 
 ** Changed `Message` to use new `IcuDataProvider` and new `Lexer`.
 
-** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+** Added a default language field to `Message` and parameter for `new()`.
+
+** Added 3 new methods to obtain language strings: `format_with_defaults`, `get`, and `get_with_defaults`, and change the type of `language_tag` parameter of `format` to `AsRef<&str>`.
+
+** Added new method for setting the defaults.
 
 ** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
 
-** Adjusted `Cargo.toml` and documentation to reflect the changes.
+** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
 
 * Updated `i18n_provider` crate:
 
@@ -65,9 +73,13 @@ Redesigned of `LStringProvider` for clearer usage, and added information methods
 
 ** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
 
-** Adjusted `Cargo.toml` and documentation to reflect the changes.
+** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
 
 * Updated `i18n_utility` crate:
+
+** Renamed `lstring.rs` to `taggedstring.rs`.
+
+** Renamed `LString` to `TaggedString`, and `language_tag()` to `tag()`.
 
 ** Adjusted `Cargo.toml` and documentation to reflect the changes.
 

@@ -7,7 +7,7 @@ use crate::{ NodeType, FormatterError, PlaceholderValue, CommandRegistry };
 #[allow( unused_imports )]
 use i18n_icu::{ IcuDataProvider, DataProvider };
 use i18n_lexer::Token;
-use i18n_utility::LString;
+use i18n_utility::TaggedString;
 use tree::Tree;
 use icu_provider::prelude::DataLocale;
 use icu_locid::Locale;
@@ -268,15 +268,15 @@ impl Formatter {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn format( &mut self, values: &HashMap<String, PlaceholderValue> ) -> Result<LString, FormatterError> {
+    pub fn format( &mut self, values: &HashMap<String, PlaceholderValue> ) -> Result<TaggedString, FormatterError> {
         if self.patterns.get( "_" ).unwrap().len() == 0 {
-            return Ok( LString::new( String::new(), &self.language_tag ) );
+            return Ok( TaggedString::new( String::new(), &self.language_tag ) );
         }
         let pattern_string = self.format_pattern(
             values,
             &"_".to_string(),
         )?;
-        Ok( LString::new( pattern_string, &self.language_tag ) )
+        Ok( TaggedString::new( pattern_string, &self.language_tag ) )
     }
 
     /// Returns the locale used in creating the formatter.
@@ -285,7 +285,7 @@ impl Formatter {
     }
 
     /// Returns the language tag used in creating the formatter.
-    pub fn language_tag( &self ) -> &RefCount<String> {
+    pub fn tag( &self ) -> &RefCount<String> {
         &self.language_tag
     }
 
@@ -328,7 +328,7 @@ impl Formatter {
                     };
                     match value {
                         PlaceholderValue::String( value ) => string.push_str( value ),
-                        PlaceholderValue::LString( value) => string.push_str( value.as_str() ),
+                        PlaceholderValue::TaggedString( value) => string.push_str( value.as_str() ),
                         _ => return Err( FormatterError::InvalidValue( "PatternString 378".to_string() ) )
                     }
                 },
@@ -549,7 +549,7 @@ impl Formatter {
                                         *selectors_index,
                                     )?;
                                 },
-                                PlaceholderValue::LString( value ) => {
+                                PlaceholderValue::TaggedString( value ) => {
 
                                     // Locale is not used, and LSring is just treated as String for the selector
                                     self.select(

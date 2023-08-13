@@ -20,7 +20,7 @@ use std::sync::Arc as RefCount;
 use std::error::Error;
 
 #[test]
-fn message() -> Result<(), Box<dyn Error>> {
+fn format() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
     let lstring_provider = ProviderSqlite3::try_new(
@@ -33,7 +33,8 @@ fn message() -> Result<(), Box<dyn Error>> {
         lstring_provider,
         &command_registry,
         true,
-        true
+        true,
+        "en-ZA",
     )?;
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
@@ -56,7 +57,7 @@ fn message() -> Result<(), Box<dyn Error>> {
         "i18n_message",
         "string_not_found",
         &values,
-        &language_tag_registry.get_language_tag( "en-ZA" ).unwrap(),
+        &language_tag_registry.get_tag( "en-ZA" ).unwrap(),
         None,
         None
     )?;
@@ -64,6 +65,103 @@ fn message() -> Result<(), Box<dyn Error>> {
         lstring.as_str(),
         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ for the language \
             tag ‘en-ZA’. Fallback was used: True.",
+        "Check placeholder values."
+    );
+    Ok( () )
+}
+
+
+#[test]
+fn format_with_defaults() -> Result<(), Box<dyn Error>> {
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
+    let lstring_provider = ProviderSqlite3::try_new(
+        "./l10n/", &language_tag_registry
+    )?;
+    let command_registry = RefCount::new( CommandRegistry::new() );
+    let mut message_system = Message::try_new(
+        &icu_data_provider,
+        &language_tag_registry,
+        lstring_provider,
+        &command_registry,
+        true,
+        true,
+        "en-ZA",
+    )?;
+    let mut values = HashMap::<String, PlaceholderValue>::new();
+    values.insert(
+        "component".to_string(),
+        PlaceholderValue::String( "i18n_message".to_string() )
+    );
+    let lstring = message_system.format_with_defaults(
+        "i18n_message",
+        "no_default_language_tag",
+        &values,
+    )?;
+    assert_eq!(
+        lstring.as_str(),
+        "No default language tag was found for the component ‘i18n_message’.",
+        "Check placeholder values."
+    );
+    Ok( () )
+}
+
+#[test]
+fn get() -> Result<(), Box<dyn Error>> {
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
+    let lstring_provider = ProviderSqlite3::try_new(
+        "./l10n/", &language_tag_registry
+    )?;
+    let command_registry = RefCount::new( CommandRegistry::new() );
+    let mut message_system = Message::try_new(
+        &icu_data_provider,
+        &language_tag_registry,
+        lstring_provider,
+        &command_registry,
+        true,
+        true,
+        "en-ZA",
+    )?;
+    let lstring = message_system.get(
+        "i18n_message",
+        "no_default_language_tag",
+        "en-ZA",
+        None,
+        None
+    )?;
+    assert_eq!(
+        lstring.as_str(),
+        "No default language tag was found for the component ‘{component}’.",
+        "Check placeholder values."
+    );
+    Ok( () )
+}
+
+#[test]
+fn get_with_defaults() -> Result<(), Box<dyn Error>> {
+    let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
+    let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
+    let lstring_provider = ProviderSqlite3::try_new(
+        "./l10n/", &language_tag_registry
+    )?;
+    let command_registry = RefCount::new( CommandRegistry::new() );
+    let mut message_system = Message::try_new(
+        &icu_data_provider,
+        &language_tag_registry,
+        lstring_provider,
+        &command_registry,
+        true,
+        true,
+        "en-ZA",
+    )?;
+    let lstring = message_system.get_with_defaults(
+        "i18n_message",
+        "no_default_language_tag",
+    )?;
+    assert_eq!(
+        lstring.as_str(),
+        "No default language tag was found for the component ‘{component}’.",
         "Check placeholder values."
     );
     Ok( () )

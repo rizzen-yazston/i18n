@@ -8,83 +8,69 @@ use std::rc::Rc as RefCount;
 #[cfg( target_has_atomic = "ptr" )]
 use std::sync::Arc as RefCount;
 
-/// Language string.
+/// Tagged string.
 /// 
-/// This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
-/// specific language ([`Rc`]`<String>` or [`Arc`]`<String>`).
+/// The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<String>` or [`Arc`]`<String>`) to a
+/// text string ([`String`]).
 /// 
-/// The specified language is expected to be a [BCP 47 Language Tag] string, though any identifier could be used.
+/// In the context of the `i18n` project, the identifier tag is expected to be a [BCP 47 Language Tag] string, even
+/// though any identifier could be used.
 /// 
 /// # Examples
 /// 
 /// ```
 /// use icu_locid::Locale;
 /// use std::rc::Rc;
-/// use i18n_utility::LString;
+/// use i18n_utility::TaggedString;
 /// 
 /// let string = "This is a test string.";
 /// let tag = Rc::new(
 ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
 /// );
-/// let lang_string = LString::new( string, &tag );
+/// let lang_string = TaggedString::new( string, &tag );
 /// assert_eq!( lang_string.as_str(), string, "String failed." );
-/// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
+/// assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
 /// ```
 /// 
 /// [`Rc`]: std::rc::Rc
 /// [`Arc`]: std::sync::Arc
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 #[derive( PartialEq, Debug, Clone )]
-pub struct LString {
+pub struct TaggedString {
     string: String,
-    language_tag: RefCount<String>,
+    tag: RefCount<String>,
 }
 
-impl LString {
-    /// Creates a `LString` from string slice [`str`] and a language tag as `&`[`Rc`]`<`[`String`]`>` or
+impl TaggedString {
+    /// Creates a `TaggedString` from string slice [`str`] and an identifier tag as `&`[`Rc`]`<`[`String`]`>` or
     /// `&`[`Arc`]`<String>`.
     /// 
-    /// *WARNING:* No checks are done on the supplied language tag to see if it conforms to the [BCP 47 Language Tag]
-    /// specification in terms of:
-    /// 
-    /// * _well-formed_ - syntactically correct,
-    /// 
-    /// * _valid_ - well-formed and only uses registered language subtags, extensions, keywords, types…,
-    /// 
-    /// * _canonical_ - valid and no deprecated codes or structure.
-    /// 
-    /// If required the [`Locale`]`::canonicalize()` function of [`icu_locid`] crate can be used to perform the
-    /// conformance checks.
-    /// 
-    /// # Examples
+   /// # Examples
     /// 
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::LString;
+    /// use i18n_utility::TaggedString;
     /// 
     /// let string = "This is a test string.";
     /// let tag = Rc::new(
     ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
     /// );
-    /// let lang_string = LString::new( string, &tag );
+    /// let lang_string = TaggedString::new( string, &tag );
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
-    /// assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
+    /// assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
     /// ```
     /// 
     /// [`str`]: core::str
     /// [`Rc`]: std::rc::Rc
     /// [`Arc`]: std::sync::Arc
-    /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    /// [`Locale`]: icu_locid::Locale
-    /// [`icu_locid`]: icu_locid
     pub fn new<T: Into<String>>(
         string: T,
-        language_tag: &RefCount<String>,
+        tag: &RefCount<String>,
     ) -> Self {
-        LString {
+        TaggedString {
             string: string.into(),
-            language_tag: RefCount::clone( language_tag ),
+            tag: RefCount::clone( tag ),
         }
     }
 
@@ -95,13 +81,13 @@ impl LString {
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::LString;
+    /// use i18n_utility::TaggedString;
     /// 
     /// let string = "This is a test string.";
     /// let tag = Rc::new(
     ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
     /// );
-    /// let lang_string = LString::new( string, &tag );
+    /// let lang_string = TaggedString::new( string, &tag );
     /// assert_eq!( lang_string.as_str(), string, "String failed." );
     /// ```
     /// [`str`]: core::str
@@ -109,25 +95,25 @@ impl LString {
         &self.string
     }
 
-    /// Returns a reference to the language tag [`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`.
+    /// Returns a reference to the tag [`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`.
     /// 
     /// # Examples
     /// 
     /// ```
     /// use icu_locid::Locale;
     /// use std::rc::Rc;
-    /// use i18n_utility::LString;
+    /// use i18n_utility::TaggedString;
     /// 
     /// let tag = Rc::new(
     ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
     /// );
-    /// let lang_string = LString::new( "This is a test string.", &tag );
-    /// assert_eq!( lang_string.language_tag(), &tag, "Locale failed." );
+    /// let lang_string = TaggedString::new( "This is a test string.", &tag );
+    /// assert_eq!( lang_string.tag(), &tag, "Locale failed." );
     /// ```
     /// [`Rc`]: std::rc::Rc
     /// [`Arc`]: std::sync::Arc
-    pub fn language_tag( &self ) -> &RefCount<String> {
-        &self.language_tag
+    pub fn tag( &self ) -> &RefCount<String> {
+        &self.tag
     }
 }
 
@@ -136,11 +122,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn string_with_language_tag() {
+    fn string_with_tag() {
         let string = "This is a test string.";
         let tag = RefCount::new( "en-ZA".to_string() );
-        let lang_string = LString::new( string, &tag );
-        assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
+        let lang_string = TaggedString::new( string, &tag );
+        assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
         assert_eq!( lang_string.as_str(), string, "String failed." );
     }
 }

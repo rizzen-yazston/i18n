@@ -5,19 +5,21 @@ Rizzen Yazston
 
 This convenience meta crate contains selected available crates:
 
-- `i18n_icu-rizzen-yazston`: Contains ICU4X data provider helper,
+- `i18n_icu`: Contains ICU4X data provider helper,
 
-- `i18n_lexer-rizzen-yazston`: A simple lexer to tokenise a string,
+- `i18n_lexer`: A simple lexer to tokenise a string,
 
-- `i18n_message-rizzen-yazston`: The multilingual messaging system,
+- `i18n_message`: The multilingual messaging system,
 
-- `i18n_pattern-rizzen-yazston`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
+- `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
 
-- `i18n_provider-rizzen-yazston`: Trait for providing language strings, and error struct,
+- `i18n_provider`: Trait for providing language strings, and error struct,
 
-- `i18n_provider_sqlite3-rizzen-yazston`: Implementation of `i18n_provider` using Sqlite3 as its data store,
+- `i18n_provider_sqlite3`: Implementation of `i18n_provider` using Sqlite3 as its data store,
 
-- `i18n_utility-rizzen-yazston`: Contains the Language tag registry, and the LString type (language tagged string).
+- `i18n_utility`: Contains the `LanguageTagRegistry``, and the `TaggedString` type.
+
+NOTE: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from internationalisation crates created by other authors.
 
 == Features
 

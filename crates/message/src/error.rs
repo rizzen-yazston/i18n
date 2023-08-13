@@ -16,6 +16,7 @@ pub enum MessageError {
     Provider( ProviderError ),
     StringNotFound( String, String, String, bool ), // component, identifier, language_tag, fallback
     NoDefaultLanguageTag( String ), // component
+    CacheEntry( String, String ),
 }
 
 impl Display for MessageError {
@@ -43,7 +44,15 @@ impl Display for MessageError {
                 )
             },
             MessageError::NoDefaultLanguageTag( component ) =>
-                write!( formatter, "No default language tag was found for the component ‘{}’.", component )
+                write!( formatter, "No default language tag was found for the component ‘{}’.", component ),
+            MessageError::CacheEntry( component, identifier ) =>
+                write!(
+                    formatter,
+                    "Unable to get the string for the component ‘{}’ with the identifier ‘{}’ as the cache entry \
+                        requires values for formatting.",
+                    component,
+                    identifier
+                ),
         }
     }
 }

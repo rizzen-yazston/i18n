@@ -2,8 +2,8 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
 use crate::ProviderSqlite3Error;
-use i18n_utility::{ LanguageTagRegistry, LString };
-use i18n_provider::{ LStringProvider, ProviderError, LanguageData };
+use i18n_utility::{ LanguageTagRegistry, TaggedString };
+use i18n_provider::{ LanguageStringProvider, ProviderError, LanguageData };
 use rusqlite::{ Connection, OpenFlags };
 use std::collections::HashMap;
 
@@ -19,7 +19,7 @@ use std::sync::{ Arc as RefCount, Mutex as MutCell };
 
 use std::path::PathBuf;
 
-/// `ProviderSqlite3` struct is an implementation of the [`LStringProvider`] trait, and uses Sqlite3 as the data store
+/// `ProviderSqlite3` struct is an implementation of the [`LanguageStringProvider`] trait, and uses Sqlite3 as the data store
 /// for localisation data repository. As the directory path of the data store is embedded in the `ProviderSqlite3`
 /// struct upon creation, one can have multiple `ProviderSqlite3` instances representing the application itself,
 /// application plugin module, and for various data packages that supports internationalisation.
@@ -40,14 +40,14 @@ use std::path::PathBuf;
 /// 
 /// ```
 /// use i18n_provider_sqlite3::ProviderSqlite3;
-/// use i18n_provider::LStringProvider;
+/// use i18n_provider::LanguageStringProvider;
 /// use i18n_utility::LanguageTagRegistry;
 /// use std::rc::Rc;
 /// use std::error::Error;
 /// fn main() -> Result<(), Box<dyn Error>> {
 ///     let path = "./l10n/";
 ///     let registry = Rc::new( LanguageTagRegistry::new() );
-///     let tag = registry.get_language_tag( "en" )?;
+///     let tag = registry.get_tag( "en" )?;
 ///     let provider = ProviderSqlite3::try_new(
 ///         path,
 ///         &registry
@@ -59,12 +59,12 @@ use std::path::PathBuf;
 ///     )?;
 ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
 ///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
+///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
 ///     Ok( () )
 /// }
 /// ```
 /// 
-/// [`LStringProvider`]: i18n_provider::LStringProvider
+/// [`LanguageStringProvider`]: i18n_provider::LanguageStringProvider
 pub struct ProviderSqlite3 {
     directory: PathBuf,
     language_tag_registry: RefCount<LanguageTagRegistry>,
@@ -167,13 +167,13 @@ impl ProviderSqlite3 {
     }
 }
 
-impl LStringProvider for ProviderSqlite3 {
+impl LanguageStringProvider for ProviderSqlite3 {
 
-    /// Retrieve a vector of possible [`LString`] for requested identifier that matches a language tag.
+    /// Retrieve a vector of possible [`TaggedString`] for requested identifier that matches a language tag.
     /// 
     /// Ideally a single exact match should be returned, yet may not be for the requested language tag. If no strings
     /// is found for the requested tag, the right most subtag is removed sequentially until there are no more subtags.
-    /// Multiple [`LString`]s may be returned when there are multiple entries of language tags having additional
+    /// Multiple [`TaggedString`]s may be returned when there are multiple entries of language tags having additional
     /// subtags than the requested language tag.
     /// 
     /// Return of `ProviderSqlite3Errore` indicates there was a Sqlite3 error.
@@ -182,14 +182,14 @@ impl LStringProvider for ProviderSqlite3 {
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LStringProvider;
+    /// use i18n_provider::LanguageStringProvider;
     /// use i18n_utility::LanguageTagRegistry;
     /// use std::rc::Rc;
     /// use std::error::Error;
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let path = "./l10n/";
     ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let tag = registry.get_language_tag( "en" )?;
+    ///     let tag = registry.get_tag( "en" )?;
     ///     let provider = ProviderSqlite3::try_new(
     ///         path,
     ///         &registry
@@ -201,19 +201,19 @@ impl LStringProvider for ProviderSqlite3 {
     ///     )?;
     ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
     ///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
     ///     Ok( () )
     /// }
     /// ```
     /// 
-    /// [`LString`]: i18n_utility::LString
+    /// [`TaggedString`]: i18n_utility::TaggedString
     fn get<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
         language_tag: &RefCount<String>
-    ) -> Result<Vec<LString>, ProviderError> {
-        let mut result = Vec::<LString>::new();
+    ) -> Result<Vec<TaggedString>, ProviderError> {
+        let mut result = Vec::<TaggedString>::new();
         let mut tag = language_tag.to_string();
 
         // Check if all_in_one has component.
@@ -278,7 +278,7 @@ impl LStringProvider for ProviderSqlite3 {
                         )
                     };
                     let language = match
-                        self.language_tag_registry.as_ref().get_language_tag( tag_raw ) {
+                        self.language_tag_registry.as_ref().get_tag( tag_raw ) {
                         Ok( result ) => result,
                         Err( error ) => return Err(
                             ProviderError {
@@ -287,7 +287,7 @@ impl LStringProvider for ProviderSqlite3 {
                             }
                         )
                     };
-                    result.push( LString::new( string, &language ) );
+                    result.push( TaggedString::new( string, &language ) );
                 }
                 if result.len() > 0 {
                     return Ok( result );
@@ -385,7 +385,7 @@ impl LStringProvider for ProviderSqlite3 {
                     )
                 };
                 let language = match
-                    self.language_tag_registry.as_ref().get_language_tag( tag_raw ) {
+                    self.language_tag_registry.as_ref().get_tag( tag_raw ) {
                     Ok( result ) => result,
                     Err( error ) => return Err(
                         ProviderError {
@@ -394,7 +394,7 @@ impl LStringProvider for ProviderSqlite3 {
                         }
                     )
                 };
-                result.push( LString::new( string, &language ) );
+                result.push( TaggedString::new( string, &language ) );
             }
             if result.len() > 0 {
                 return Ok( result );
@@ -407,7 +407,7 @@ impl LStringProvider for ProviderSqlite3 {
         Ok( result )
     }
 
-    /// Similar to `get()` method, except that `get_one()` will only return a single [`LString`] if multiple strings
+    /// Similar to `get()` method, except that `get_one()` will only return a single [`TaggedString`] if multiple strings
     /// are available. 
     /// 
     /// `None` is returned when there is no strings available for the language tag.
@@ -418,7 +418,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LStringProvider;
+    /// use i18n_provider::LanguageStringProvider;
     /// use i18n_utility::LanguageTagRegistry;
     /// use core::cell::RefCell;
     /// use std::rc::Rc;
@@ -426,7 +426,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let path = "./l10n/";
     ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let tag = registry.get_language_tag( "en" )?;
+    ///     let tag = registry.get_tag( "en" )?;
     ///     let provider = ProviderSqlite3::try_new(
     ///         path,
     ///         &registry
@@ -438,19 +438,19 @@ impl LStringProvider for ProviderSqlite3 {
     ///     )?;
     ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
     ///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    ///     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
     ///     Ok( () )
     /// }
     /// ```
     /// 
-    /// [`LString`]: i18n_utility::LString
+    /// [`TaggedString`]: i18n_utility::TaggedString
     /// [`ProviderError`]: i18n_provider::ProviderError
     fn get_one<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
         language_tag: &RefCount<String>
-    ) -> Result<Option<LString>, ProviderError> {
+    ) -> Result<Option<TaggedString>, ProviderError> {
         let mut result = self.get( component, identifier, language_tag )?;
         //temp for now, TODO: try to return string closest to the language tag, by match language length
         Ok( result.pop() )
@@ -466,7 +466,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LStringProvider;
+    /// use i18n_provider::LanguageStringProvider;
     /// use i18n_utility::LanguageTagRegistry;
     /// use core::cell::RefCell;
     /// use std::rc::Rc;
@@ -478,7 +478,7 @@ impl LStringProvider for ProviderSqlite3 {
     ///         path,
     ///         &registry
     ///     )?;
-    ///     let tag = provider.default_language_tag(
+    ///     let tag = provider.default_language(
     ///         "i18n_provider_sqlite3",
     ///     )?.expect( "No default language tag found." );
     ///     assert_eq!( tag.as_str(), "en-ZA", "Must be en-ZA." );
@@ -487,7 +487,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// ```
     /// 
     /// [`ProviderError`]: i18n_provider::ProviderError
-    fn default_language_tag<T: AsRef<str>>( &self, component: T ) -> Result<Option<RefCount<String>>, ProviderError> {
+    fn default_language<T: AsRef<str>>( &self, component: T ) -> Result<Option<RefCount<String>>, ProviderError> {
 
         // Check if all_in_one has component.
         if self.all_in_one {
@@ -534,7 +534,7 @@ impl LStringProvider for ProviderSqlite3 {
                 };
             }
             if !string.is_empty() {
-                match self.language_tag_registry.get_language_tag( string ) {
+                match self.language_tag_registry.get_tag( string ) {
                     Ok( result ) => return Ok( Some( result ) ),
                     Err( error ) => return Err(
                         ProviderError {
@@ -616,7 +616,7 @@ impl LStringProvider for ProviderSqlite3 {
             };
         }
         if !string.is_empty() {
-            match self.language_tag_registry.get_language_tag( string ) {
+            match self.language_tag_registry.get_tag( string ) {
                 Ok( result ) => return Ok( Some( result ) ),
                 Err( error ) => return Err(
                     ProviderError {
@@ -637,7 +637,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LStringProvider;
+    /// use i18n_provider::LanguageStringProvider;
     /// use i18n_utility::LanguageTagRegistry;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -648,7 +648,7 @@ impl LStringProvider for ProviderSqlite3 {
     ///         path,
     ///         &registry
     ///     )?;
-    ///     let tags = provider.identifier_language_tags(
+    ///     let tags = provider.identifier_languages(
     ///         "i18n_provider_sqlite3",
     ///         "path_conversion",
     ///     )?;
@@ -656,7 +656,7 @@ impl LStringProvider for ProviderSqlite3 {
     ///     Ok( () )
     /// }
     /// ```
-    fn identifier_language_tags<T: AsRef<str>>(
+    fn identifier_languages<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
@@ -705,7 +705,7 @@ impl LStringProvider for ProviderSqlite3 {
                         }
                     )
                 };
-                let language = match self.language_tag_registry.get_language_tag( string ) {
+                let language = match self.language_tag_registry.get_tag( string ) {
                     Ok( result ) => result,
                     Err( error ) => return Err(
                         ProviderError {
@@ -786,7 +786,7 @@ impl LStringProvider for ProviderSqlite3 {
                     }
                 )
             };
-            let language = match self.language_tag_registry.get_language_tag( string ) {
+            let language = match self.language_tag_registry.get_tag( string ) {
                 Ok( result ) => result,
                 Err( error ) => return Err(
                     ProviderError {
@@ -808,7 +808,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LStringProvider;
+    /// use i18n_provider::LanguageStringProvider;
     /// use i18n_utility::LanguageTagRegistry;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -819,24 +819,24 @@ impl LStringProvider for ProviderSqlite3 {
     ///         path,
     ///         &registry
     ///     )?;
-    ///     let tags = provider.component_language_tags(
+    ///     let tags = provider.component_languages(
     ///         "i18n_provider_sqlite3",
     ///     )?;
     ///     for tag in tags {
-    ///         if tag.language == registry.get_language_tag( "en-ZA" ).unwrap() {
+    ///         if tag.language == registry.get_tag( "en-ZA" ).unwrap() {
     ///             assert_eq!( tag.ratio, 1.0, "Ratio ust be 1.0 for en-ZA." );
     ///         }
     ///     }
     ///     Ok( () )
     /// }
     /// ```
-    fn component_language_tags<T: AsRef<str>>(
+    fn component_languages<T: AsRef<str>>(
         &self,
         component: T,
     ) -> Result<Vec<LanguageData>, ProviderError> {
         let mut list = Vec::<LanguageData>::new();
         let mut default_count = 0usize;
-        let Some( default_language ) = self.default_language_tag( component.as_ref() )? else {
+        let Some( default_language ) = self.default_language( component.as_ref() )? else {
             return Err(
                 ProviderError {
                     error_type: "ProviderSqlite3Error",
@@ -890,7 +890,7 @@ impl LStringProvider for ProviderSqlite3 {
                         }
                     )
                 };
-                let language = match self.language_tag_registry.get_language_tag( string ) {
+                let language = match self.language_tag_registry.get_tag( string ) {
                     Ok( result ) => result,
                     Err( error ) => return Err(
                         ProviderError {
@@ -1043,7 +1043,7 @@ impl LStringProvider for ProviderSqlite3 {
                     }
                 )
             };
-            let language = match self.language_tag_registry.get_language_tag( string ) {
+            let language = match self.language_tag_registry.get_tag( string ) {
                 Ok( result ) => result,
                 Err( error ) => return Err(
                     ProviderError {
@@ -1134,7 +1134,7 @@ impl LStringProvider for ProviderSqlite3 {
     /// 
     /// ```
     /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LStringProvider;
+    /// use i18n_provider::LanguageStringProvider;
     /// use i18n_utility::LanguageTagRegistry;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -1145,12 +1145,12 @@ impl LStringProvider for ProviderSqlite3 {
     ///         path,
     ///         &registry
     ///     )?;
-    ///     let tags = provider.repository_language_tags()?;
+    ///     let tags = provider.repository_languages()?;
     ///     assert_eq!( tags.iter().count(), 2, "Must be 2 languages." );
     ///     Ok( () )
     /// }
     /// ```
-    fn repository_language_tags( &self ) -> Result<Vec<RefCount<String>>, ProviderError> {
+    fn repository_languages( &self ) -> Result<Vec<RefCount<String>>, ProviderError> {
         let mut list = Vec::<RefCount<String>>::new();
 
         // Check if all_in_one has component.
@@ -1198,7 +1198,7 @@ impl LStringProvider for ProviderSqlite3 {
                         }
                     )
                 };
-                let language = match self.language_tag_registry.get_language_tag( string ) {
+                let language = match self.language_tag_registry.get_tag( string ) {
                     Ok( result ) => result,
                     Err( error ) => return Err(
                         ProviderError {
@@ -1305,7 +1305,7 @@ impl LStringProvider for ProviderSqlite3 {
                                 }
                             )
                         };
-                        let language = match self.language_tag_registry.get_language_tag( string ) {
+                        let language = match self.language_tag_registry.get_tag( string ) {
                             Ok( result ) => result,
                             Err( error ) => return Err(
                                 ProviderError {
@@ -1335,17 +1335,17 @@ impl LStringProvider for ProviderSqlite3 {
 
 // The next 3 items (struct, trait, and impl) is implementing the concept of storing an `impl Trait` into a struct as
 // a member, has been taken from the `icu_provider` crate, particular the serde module.
-pub struct LStringProviderSqlite3<'a, P: ?Sized>( &'a P );
+pub struct LanguageStringProviderSqlite3<'a, P: ?Sized>( &'a P );
 
-pub trait AsLStringProviderSqlite3 {
-    fn as_lstring_provider( &self ) -> LStringProviderSqlite3<Self>;
+pub trait AsLanguageStringProviderSqlite3 {
+    fn as_lstring_provider( &self ) -> LanguageStringProviderSqlite3<Self>;
 }
 
-impl<P> AsLStringProviderSqlite3 for P
+impl<P> AsLanguageStringProviderSqlite3 for P
 where
-    P: LStringProvider + ?Sized,
+    P: LanguageStringProvider + ?Sized,
 {
-    fn as_lstring_provider( &self ) -> LStringProviderSqlite3<Self> {
-        LStringProviderSqlite3( self )
+    fn as_lstring_provider( &self ) -> LanguageStringProviderSqlite3<Self> {
+        LanguageStringProviderSqlite3( self )
     }
 }

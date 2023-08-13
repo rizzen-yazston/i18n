@@ -44,16 +44,17 @@
 //! assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
 //! ```
 //! 
-//! # Language string.
+//! # Tagged string.
 //! 
-//! This crate contains the `LString` type (aka LanguageString), for associating a text string ([`String`]) to a
-//! specific language ([`Rc`]`<String>` or [`Arc`]`<String>`).
+//! The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<String>` or [`Arc`]`<String>`) to a
+//! text string ([`String`]).
 //! 
-//! The specified language is expected to be a [BCP 47 Language Tag] string, though any identifier could be used.
+//! In the context of the `i18n` project, the identifier tag is expected to be a [BCP 47 Language Tag] string, even
+//! though any identifier could be used.
 //! 
 //! # Features
 //! 
-//! Available features for `i18n_provider` crate:
+//! Available features for `i18n_utility` crate:
 //! 
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
 //! [`RefCell`].
@@ -63,15 +64,15 @@
 //! ```
 //! use icu_locid::Locale;
 //! use std::rc::Rc;
-//! use i18n_utility::LString;
+//! use i18n_utility::TaggedString;
 //! 
 //! let string = "This is a test string.";
 //! let tag = Rc::new(
 //!     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
 //! );
-//! let lang_string = LString::new( string, &tag );
+//! let lang_string = TaggedString::new( string, &tag );
 //! assert_eq!( lang_string.as_str(), string, "String failed." );
-//! assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
+//! assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
 //! ```
 //! 
 //! [`ICU4X`]: https://github.com/unicode-org/icu4x
@@ -93,8 +94,8 @@ use std::rc::Rc;
 #[cfg( doc )]
 use std::cell::RefCell;
 
-pub mod lstring;
-pub use lstring::*;
+pub mod taggedstring;
+pub use taggedstring::*;
 pub mod registry;
 pub use registry::*;
 pub mod error;

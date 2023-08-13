@@ -23,7 +23,7 @@ The repository contains the following crates:
 
 - `i18n_provider_sqlite3`: Implementation of `i18n_provider` using Sqlite3 as its data store,
 
-- `i18n_utility`: Contains the Language tag registry, and the LString type (language tagged string).
+- `i18n_utility`: Contains the `LanguageTagRegistry``, and the `TaggedString` type.
 
 NOTE: All these crates on `crates.io` have the names appended with the suffix `-rizzen-yazston` to distinguish them from internationalisation crates created by other authors.
 

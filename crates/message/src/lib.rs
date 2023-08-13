@@ -45,7 +45,7 @@
 //!     )?;
 //!     let command_registry = Rc::new( CommandRegistry::new() );
 //!     let mut message_system = Message::try_new(
-//!         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true
+//!         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA",
 //!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
 //!     values.insert(
@@ -68,13 +68,13 @@
 //!         "i18n_message",
 //!         "string_not_found",
 //!         &values,
-//!         &language_tag_registry.get_language_tag( "en-ZA" ).unwrap(),
+//!         "en-ZA",
 //!         None,
 //!         None
 //!     )?;
 //!     assert_eq!(
 //!         lstring.as_str(),
-//!         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ and the language \
+//!         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ for the language \
 //!             tag ‘en-ZA’. Fallback was used: True.",
 //!         "Check placeholder values."
 //!     );

@@ -1,7 +1,7 @@
 // This file is part of `i18n_provider-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider-rizzen-yazston` crate.
 
-//! [`LString`] provider.
+//! A language string provider.
 //! 
 //! A trait for retrieving localisation language strings from a data repository via a provider that implements the
 //! trait methods: `get()` and `get_one()`. In addition, there are other trait methods for retrieve the default
@@ -28,7 +28,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 #[cfg( doc )]
-use i18n_utility::LString;
+use i18n_utility::TaggedString;
 
 pub mod provider;
 pub use provider::*;

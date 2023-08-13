@@ -1,9 +1,9 @@
 // This file is part of `i18n_provider_sqlite3-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
-//! Sqlite3 provider for [`LString`]s.
+//! Sqlite3 provider for language strings.
 //! 
-//! This crate implements [`LStringProvider`] using Sqlite3 as the data store for language strings. As a directory path
+//! This crate implements [`LanguageStringProvider`] using Sqlite3 as the data store for language strings. As a directory path
 //! is used at the time of creating a `ProviderSqlite3` object, it means that an application can have multiple data
 //! stores for both application language strings, and also for data packages' language strings.
 //! 
@@ -18,7 +18,7 @@
 //! 
 //! ```
 //! use i18n_provider_sqlite3::ProviderSqlite3;
-//! use i18n_provider::LStringProvider;
+//! use i18n_provider::LanguageStringProvider;
 //! use i18n_utility::LanguageTagRegistry;
 //! use std::rc::Rc;
 //! use std::error::Error;
@@ -26,7 +26,7 @@
 //! fn main() -> Result<(), Box<dyn Error>> {
 //!     let path = "./l10n/";
 //!     let registry = Rc::new( LanguageTagRegistry::new() );
-//!     let tag = registry.get_language_tag( "en" )?;
+//!     let tag = registry.get_tag( "en" )?;
 //!     let provider = ProviderSqlite3::try_new(
 //!         path,
 //!         &registry
@@ -38,7 +38,7 @@
 //!     )?;
 //!     assert_eq!( strings.len(), 1, "There should be 1 string." );
 //!     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-//!     assert_eq!( strings[ 0 ].language_tag().as_str(), "en-ZA", "Must be en-ZA." );
+//!     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
 //!     Ok( () )
 //! }
 //! ```
@@ -53,10 +53,10 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 #[cfg( doc )]
-use i18n_utility::LString;
+use i18n_utility::TaggedString;
 
 #[cfg( doc )]
-use i18n_provider::LStringProvider;
+use i18n_provider::LanguageStringProvider;
 
 pub mod provider;
 pub use provider::*;

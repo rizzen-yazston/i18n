@@ -26,15 +26,15 @@ The `Locale` type can be provided by either the `icu_locid` crate or the `icu` m
 
 This crate makes use of the `Locale` type instead of the `LanguageIdentifier` type due to that the `Locale` type supports the entire BCP 47 Language Tag specification, where as the `LanguageIdentifier` type excludes the *extension* subtags of the BCP 47 Language Tag specification.
 
-== Language string.
+== Tagged string.
 
-This crate contains the `LString` type (aka LanguageString), for associating a text string (`String`) to a specific language (`Rc<String>` or `Arc<String>`).
+The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<String>` or [`Arc`]`<String>`) to a text string ([`String`]).
 
-The specified language is expected to be a {BCP_47_Language_Tag}[BCP 47 Language Tag] string, though any identifier could be used.
+In the context of the `i18n` project, the identifier tag is expected to be a {BCP_47_Language_Tag}[BCP 47 Language Tag] string, even though any identifier could be used.
 
 == Features
 
-Available features for `i18n_provider` crate:
+Available features for `i18n_utility` crate:
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
 
@@ -70,17 +70,17 @@ assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 f
 assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
 ```
 
-==== `LString`
+==== `TaggedString`
 ```
 use icu_locid::Locale;
 use std::rc::Rc;
-use i18n_utility::LString;
+use i18n_utility::TaggedString;
 
 let string = "This is a test string.";
 let tag = Rc::new(
     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
 );
-let lang_string = LString::new( string, &tag );
+let lang_string = TaggedString::new( string, &tag );
 assert_eq!( lang_string.as_str(), string, "String failed." );
-assert_eq!( lang_string.language_tag(), &tag, "Language tag failed." );
+assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
 ```

@@ -2,7 +2,7 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider-rizzen-yazston` crate.
 
 use crate::ProviderError;
-use i18n_utility::LString;
+use i18n_utility::TaggedString;
 
 #[cfg( not( feature = "sync" ) )]
 use std::rc::Rc as RefCount;
@@ -30,11 +30,11 @@ use std::sync::Arc as RefCount;
 /// data store.
 /// 
 /// [UAX #31]: https://www.unicode.org/reports/tr31/
-pub trait LStringProvider {
+pub trait LanguageStringProvider {
 
     /// Ideally a single exact match should be returned, yet may not be the case for the requested language tag. If no
     /// strings are found for the requested tag, the provider must remove the right most subtag sequentially until
-    /// there are no more subtags. Multiple [`LString`]'s may be returned when there are multiple entries of language
+    /// there are no more subtags. Multiple [`TaggedString`]'s may be returned when there are multiple entries of language
     /// tags having additional subtags than the requested language tag.
     /// 
     /// Return of `ProviderError` indicates there was an error, usually from within the data repository.
@@ -43,9 +43,9 @@ pub trait LStringProvider {
         component: T,
         identifier: T,
         language_tag: &RefCount<String>,
-    ) -> Result<Vec<LString>, ProviderError>;
+    ) -> Result<Vec<TaggedString>, ProviderError>;
 
-    /// Similar to `get()` method, except that `get_one()` will only return a single [`LString`] if multiple strings
+    /// Similar to `get()` method, except that `get_one()` will only return a single [`TaggedString`] if multiple strings
     /// are available.
     /// 
     /// `None` is returned when there is no strings available for the language tag.
@@ -56,14 +56,14 @@ pub trait LStringProvider {
         component: T,
         identifier: T,
         language_tag: &RefCount<String>,
-    ) -> Result<Option<LString>, ProviderError>;
+    ) -> Result<Option<TaggedString>, ProviderError>;
 
     /// Retrieve the default language tag of the component in the data repository.
     /// 
     /// Return of `None` indicates no default language tag was found for the component.
     /// 
     /// Return of `ProviderError` indicates there was an error, usually from within the data repository.
-    fn default_language_tag<T: AsRef<str>>(
+    fn default_language<T: AsRef<str>>(
         &self,
         component: T,
     ) -> Result<Option<RefCount<String>>, ProviderError>;
@@ -71,7 +71,7 @@ pub trait LStringProvider {
     /// Obtain a list of all the supported languages for a specific identifier.
     /// 
     /// Return of `ProviderError` indicates there was an error, usually from within the data repository.
-    fn identifier_language_tags<T: AsRef<str>>(
+    fn identifier_languages<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
@@ -80,7 +80,7 @@ pub trait LStringProvider {
     /// Obtain a list of all the supported languages for a specific component.
     /// 
     /// Return of `ProviderError` indicates there was an error, usually from within the data repository.
-    fn component_language_tags<T: AsRef<str>>(
+    fn component_languages<T: AsRef<str>>(
         &self,
         component: T,
     ) -> Result<Vec<LanguageData>, ProviderError>; 
@@ -88,7 +88,7 @@ pub trait LStringProvider {
     /// Obtain a list of all the languages having localisation pattern string in the entire repository.
     /// 
     /// Return of `ProviderError` indicates there was an error, usually from within the data repository.
-    fn repository_language_tags( &self ) -> Result<Vec<RefCount<String>>, ProviderError>;
+    fn repository_languages( &self ) -> Result<Vec<RefCount<String>>, ProviderError>;
 
     // FUTURE: Idea to retrieve list of components in the data repository.
     /*
@@ -106,9 +106,9 @@ pub trait LStringProvider {
      */ 
 }
 
-/// A wrapper struct tuple to hold a reference to an `impl LStringProvider`, so that the Provider can be stored in
+/// A wrapper struct tuple to hold a reference to an `impl LanguageStringProvider`, so that the Provider can be stored in
 /// structs.
-pub struct LStringProviderWrapper<'a, P: ?Sized>( pub &'a P );
+pub struct LanguageStringProviderWrapper<'a, P: ?Sized>( pub &'a P );
 
 /// Data about a specific language for a component in the provider's repository.
 /// `language` is the language tag.

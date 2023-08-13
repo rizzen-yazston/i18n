@@ -207,7 +207,7 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let tag = registry.get_language_tag( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// let tag = registry.get_tag( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
     /// assert_eq!( tag.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -218,7 +218,7 @@ impl LanguageTagRegistry {
     /// [`Arc`]: std::sync::Arc
     /// [`Locale`]: icu_locid::Locale
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_language_tag<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<String>, RegistryError> {
+    pub fn get_tag<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<String>, RegistryError> {
         let result = self.get( language_tag.as_ref() )?;
         Ok( result.0 )
     }
@@ -367,9 +367,9 @@ mod tests {
     }
 
     #[test]
-    fn get_language_tag() -> Result<(), Box<dyn Error>> {
+    fn get_tag() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        let tag = registry.get_language_tag( "en_ZA" )?;
+        let tag = registry.get_tag( "en_ZA" )?;
         assert_eq!( tag.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
         Ok( () )
     }
@@ -410,9 +410,9 @@ mod tests {
     }
 
     #[test]
-    fn invalid_language_tag() -> Result<(), Box<dyn Error>> {
+    fn invalid_tag() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        match registry.get_language_tag( "hnfg_lku" ) {
+        match registry.get_tag( "hnfg_lku" ) {
             Ok( _ ) => panic!( "Must fail as tag is invalid." ),
             Err( _ ) => Ok( () )
         }
