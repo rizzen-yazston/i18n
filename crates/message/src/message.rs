@@ -452,37 +452,52 @@ where
         )
     }
 
-    /// Reset the defaults of `Message` instance.
+    /// Change the defaults of `Message` instance.
     /// 
     /// The following can be reset:
     /// 
-    /// * `fallback`: bool
+    /// * `language_tag`: Option<&str>
     /// 
-    /// * `caching`: bool
+    /// * `fallback`: Option<bool>
     /// 
-    /// * `language_tag`: &str
+    /// * `caching`: Option<bool>
+    /// 
+    /// A value of `None` indicates no change.
     pub fn defaults<T: AsRef<str>>(
         &mut self,
-        fallback: bool,
-        caching: bool,
-        language_tag: T
+        language_tag: Option<T>,
+        fallback: Option<bool>,
+        caching: Option<bool>,
     ) -> Result<(), MessageError> {
-        let tag = self.language_tag_registry.get_tag( language_tag )?;
+        if language_tag.is_some() {
+            let tag = self.language_tag_registry.get_tag( language_tag.unwrap() )?;
 
-        #[cfg( not( feature = "sync" ) )]
-        {
+            #[cfg( not( feature = "sync" ) )]
             self.language_tag.replace( tag );
-            self.fallback.replace( fallback );
-            self.caching.replace( caching );
+    
+            #[cfg( feature = "sync" )]
+            {
+                *self.language_tag.get_mut().unwrap() = tag;
+            }
         }
-
-        #[cfg( feature = "sync" )]
-        {
-            *self.language_tag.get_mut().unwrap() = tag;
-            *self.fallback.get_mut().unwrap() = fallback;
-            *self.caching.get_mut().unwrap() = caching;
+        if fallback.is_some() {
+            #[cfg( not( feature = "sync" ) )]
+            self.fallback.replace( fallback.unwrap() );
+    
+            #[cfg( feature = "sync" )]
+            {
+                *self.fallback.get_mut().unwrap() = fallback.unwrap();
+            }
         }
-
+        if caching.is_some() {
+            #[cfg( not( feature = "sync" ) )]
+            self.caching.replace( caching.unwrap() );
+    
+            #[cfg( feature = "sync" )]
+            {
+                *self.caching.get_mut().unwrap() = caching.unwrap();
+            }
+        }
         Ok( () )
     }
 
