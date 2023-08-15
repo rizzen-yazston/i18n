@@ -35,10 +35,10 @@ where
     language_tag_registry: RefCount<LanguageTagRegistry>,
     lstring_provider: L,
     command_registry: RefCount<CommandRegistry>,
-    fallback: bool,
-    caching: bool,
+    fallback: MutCell<bool>,
+    caching: MutCell<bool>,
     cache: MutCell<HashMap<RefCount<String>, HashMap<String, CacheData>>>,
-    language_tag: RefCount<String>,
+    language_tag: MutCell<RefCount<String>>,
 }
 
 impl<L> Message<L>
@@ -131,10 +131,10 @@ where
             language_tag_registry: RefCount::clone( language_tag_registry ),
             lstring_provider,
             command_registry: RefCount::clone( command_registry ),
-            fallback,
-            caching,
+            fallback: MutCell::new( fallback ),
+            caching: MutCell::new( caching ),
             cache: MutCell::new( HashMap::<RefCount<String>, HashMap<String, CacheData>>::new() ),
-            language_tag: tag,
+            language_tag: MutCell::new( tag ),
         } )
     }
 
@@ -209,13 +209,26 @@ where
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, MessageError> {
         let tag = self.language_tag_registry.get_tag( language_tag )?;
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_fallback = fallback.unwrap_or( self.fallback.borrow().clone() );
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_caching = caching.unwrap_or( self.caching.borrow().clone() );
+ 
+        #[cfg( feature = "sync" )]
+        let bool_fallback = fallback.unwrap_or( self.fallback.lock().unwrap().clone() );
+
+        #[cfg( feature = "sync" )]
+        let bool_caching = caching.unwrap_or( self.caching.lock().unwrap().clone() );
+       
         self.actual_format(
             component,
             identifier,
             values,
             &tag,
-            fallback.unwrap_or( self.fallback ),
-            caching.unwrap_or( self.caching ),
+            bool_fallback,
+            bool_caching,
         )
     }
 
@@ -270,13 +283,32 @@ where
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
     ) -> Result<TaggedString, MessageError> {
+
+        #[cfg( not( feature = "sync" ) )]
+        let tag = &RefCount::clone( &self.language_tag.borrow() );
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_fallback = self.fallback.borrow().clone();
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_caching = self.caching.borrow().clone();
+
+        #[cfg( feature = "sync" )]
+        let tag = &RefCount::clone( &self.language_tag.lock().unwrap() );
+ 
+        #[cfg( feature = "sync" )]
+        let bool_fallback = self.fallback.lock().unwrap().clone();
+
+        #[cfg( feature = "sync" )]
+        let bool_caching = self.caching.lock().unwrap().clone();
+
         self.actual_format(
             component,
             identifier,
             values,
-            &RefCount::clone( &self.language_tag ),
-            self.fallback,
-            self.caching,
+            tag,
+            bool_fallback,
+            bool_caching,
         )
     }
 
@@ -328,12 +360,25 @@ where
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, MessageError> {
         let tag = self.language_tag_registry.get_tag( language_tag )?;
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_fallback = fallback.unwrap_or( self.fallback.borrow().clone() );
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_caching = caching.unwrap_or( self.caching.borrow().clone() );
+ 
+        #[cfg( feature = "sync" )]
+        let bool_fallback = fallback.unwrap_or( self.fallback.lock().unwrap().clone() );
+
+        #[cfg( feature = "sync" )]
+        let bool_caching = caching.unwrap_or( self.caching.lock().unwrap().clone() );
+
         self.actual_get(
             component,
             identifier,
             &tag,
-            fallback.unwrap_or( self.fallback ),
-            caching.unwrap_or( self.caching ),
+            bool_fallback,
+            bool_caching,
         )
     }
 
@@ -379,12 +424,31 @@ where
         component: T,
         identifier: T,
     ) -> Result<TaggedString, MessageError> {
+
+        #[cfg( not( feature = "sync" ) )]
+        let tag = &RefCount::clone( &self.language_tag.borrow() );
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_fallback = self.fallback.borrow().clone();
+
+        #[cfg( not( feature = "sync" ) )]
+        let bool_caching = self.caching.borrow().clone();
+
+        #[cfg( feature = "sync" )]
+        let tag = &RefCount::clone( &self.language_tag.lock().unwrap() );
+ 
+        #[cfg( feature = "sync" )]
+        let bool_fallback = self.fallback.lock().unwrap().clone();
+
+        #[cfg( feature = "sync" )]
+        let bool_caching = self.caching.lock().unwrap().clone();
+
         self.actual_get(
             component,
             identifier,
-            &RefCount::clone( &self.language_tag ),
-            self.fallback,
-            self.caching,
+            tag,
+            bool_fallback,
+            bool_caching,
         )
     }
 
@@ -403,9 +467,22 @@ where
         caching: bool,
         language_tag: T
     ) -> Result<(), MessageError> {
-        self.language_tag = self.language_tag_registry.get_tag( language_tag )?;
-        self.fallback = fallback;
-        self.caching = caching;
+        let tag = self.language_tag_registry.get_tag( language_tag )?;
+
+        #[cfg( not( feature = "sync" ) )]
+        {
+            self.language_tag.replace( tag );
+            self.fallback.replace( fallback );
+            self.caching.replace( caching );
+        }
+
+        #[cfg( feature = "sync" )]
+        {
+            *self.language_tag.get_mut().unwrap() = tag;
+            *self.fallback.get_mut().unwrap() = fallback;
+            *self.caching.get_mut().unwrap() = caching;
+        }
+
         Ok( () )
     }
 
