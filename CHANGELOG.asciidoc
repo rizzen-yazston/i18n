@@ -5,17 +5,21 @@ Rizzen Yazston
 
 WARNING: This update has API breaking changes for all `i18n` crates.
 
-Redesigning of `IcuDataProvider` to make use of new internal data feature in `icu` 1.3.0, and to resolve issue related to generic `DataProvider` issue with `main()`.
+* Redesigning of `IcuDataProvider` to make use of new internal data feature in `icu` 1.3.0, and to resolve issue related to generic `DataProvider` issue with `main()`.
 
-Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that `i18n` depends on.
+* Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that `i18n` depends on.
 
-Changed `LString` to `TaggedString` considering it is a string being tagged to some identifier, and is generic in design to be used outside of the project, where tagged strings are required.
+* Changed `LString` to `TaggedString` considering it is a string being tagged to some identifier, and is generic in design to be used outside of the project, where tagged strings are required.
 
-Changed method `get_language_tag` of `LanguageTagRegistry` to `get_tag`.
+* Changed method `get_language_tag` of `LanguageTagRegistry` to `get_tag`.
 
-Redesigned of `LStringProvider` for clearer usage including name changing to `LanguageStringProvider`, and added information methods for the data repository. There may be additional methods in the future. `LStringProviderSqlite3` updated to implement the changes, and implement new required methods.
+* Redesigned of `LStringProvider` for clearer usage including name changing to `LanguageStringProvider`, and added information methods for the data repository. There may be additional methods in the future. `LStringProviderSqlite3` updated to implement the changes, and implement new required methods.
+
+* Added log support to various crates.
 
 * Updated `i18n` crate:
+
+** Added new features of various crates.
 
 ** Adjusted `Cargo.toml` and documentation to reflect the changes.
 
@@ -26,6 +30,8 @@ Redesigned of `LStringProvider` for clearer usage including name changing to `La
 ** Reworked `IcuDataProvider` to use new `DataProvider`. Also included sanity check to ensure that there is a data provider.
 
 ** Added Sqlite3 file for supported error language strings.
+
+** Added logging.
 
 ** Adjusted `Cargo.toml` and documentation to reflect the changes.
 

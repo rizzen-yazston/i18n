@@ -15,11 +15,11 @@ pub enum ProviderSqlite3Error {
     Sqlite3( Sqlite3Error ),
     NotDirectory( PathBuf ),
     NoSqlite3Files( PathBuf ),
-//    MissingIdentifierPart( String ),
     LanguageTagRegistry( RegistryError ),
     PathConversion,
     DefaultLanguage( String ),
     DefaultLanguageCount( String, String ),
+    NotExists( PathBuf ),
 }
 
 impl Display for ProviderSqlite3Error {
@@ -31,8 +31,6 @@ impl Display for ProviderSqlite3Error {
                 write!( formatter, "Provided path ‘{}’ is not a directory.", path.display() ),
             ProviderSqlite3Error::NoSqlite3Files( ref path ) =>
                 write!( formatter, "No ‘.sqlite3’ files was found in ‘{}’.", path.display() ),
-//            ProviderSqlite3Error::MissingIdentifierPart( ref string ) =>
-//                write!( formatter, "Missing either the string or the crate identifier part for ‘{}’.", string ),
             ProviderSqlite3Error::LanguageTagRegistry( ref error ) => error.fmt( formatter ),
             ProviderSqlite3Error::PathConversion => write!( formatter, "Conversion to PathBuf error." ),
             ProviderSqlite3Error::DefaultLanguage( ref component ) =>
@@ -43,6 +41,8 @@ impl Display for ProviderSqlite3Error {
                 component,
                 language,
             ),
+            ProviderSqlite3Error::NotExists( ref path ) =>
+                write!( formatter, "Provided path ‘{}’ does not exist.", path.display() ),
         }
     }
 }

@@ -29,6 +29,7 @@ fs = [
 ]
 buffer = [ "dep:icu_provider", "icu_segmenter/serde", "icu_properties/serde" ]
 sync = [ "icu_provider?/sync" ]
+log = [ "dep:log" ]
 
 [dependencies]
 
@@ -43,6 +44,7 @@ icu_provider_fs = { git = "https://github.com/unicode-org/icu4x", branch = "main
 icu_provider_blob = { git = "https://github.com/unicode-org/icu4x", branch = "main", optional = true }
 icu_properties = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
 icu_segmenter = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+log = { version = "0.4.20", optional = true }
 
 [lib]
 name = "i18n_icu"

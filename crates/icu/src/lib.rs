@@ -27,6 +27,8 @@
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
 //! [`RefCell`].
 //! 
+//! * `log`: Enable log support.
+//! 
 //! # Examples
 //! 
 //! See various examples of the `i18n_lexer`, `i18n_pattern`, and `i18n_message` crates.

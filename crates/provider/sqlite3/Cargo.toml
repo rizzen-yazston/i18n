@@ -17,12 +17,14 @@ categories = ["internationalization", "localization", "rust-pattern"]
 
 [features]
 sync = [ "i18n_utility-rizzen-yazston/sync", "i18n_provider-rizzen-yazston/sync" ]
+log = [ "dep:log" ]
 
 [dependencies]
 i18n_utility-rizzen-yazston = { version = "0.6.1", path = "../../utility" }
 i18n_provider-rizzen-yazston = { version = "0.6.1", path = "../core" }
 icu_locid = "1.2.0"
 rusqlite = "0.29.0"
+log = { version = "0.4.20", optional = true }
 
 [dev-dependencies]
 

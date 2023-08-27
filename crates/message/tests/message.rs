@@ -27,7 +27,7 @@ fn format() -> Result<(), Box<dyn Error>> {
         "./l10n/", &language_tag_registry
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let mut message_system = Message::try_new(
+    let message_system = Message::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,
@@ -79,7 +79,7 @@ fn format_with_defaults() -> Result<(), Box<dyn Error>> {
         "./l10n/", &language_tag_registry
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let mut message_system = Message::try_new(
+    let message_system = Message::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,
@@ -114,7 +114,7 @@ fn get() -> Result<(), Box<dyn Error>> {
         "./l10n/", &language_tag_registry
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let mut message_system = Message::try_new(
+    let message_system = Message::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,
@@ -146,7 +146,7 @@ fn get_with_defaults() -> Result<(), Box<dyn Error>> {
         "./l10n/", &language_tag_registry
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let mut message_system = Message::try_new(
+    let message_system = Message::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,

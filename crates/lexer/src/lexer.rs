@@ -168,7 +168,7 @@ impl Lexer {
         let mut iterator = string.as_ref().char_indices();
         while let Some( ( position, character ) ) = iterator.next() {
             self.position_byte = position;
-            if self.data_provider.white_space().as_ref().unwrap().as_borrowed().contains( character ) {
+            if self.data_provider.white_space().as_borrowed().contains( character ) {
                 if state == LexerStates::Identifier {
                     self.add_previous_characters( &mut tokens, TokenType::Identifier, string.as_ref() );
                 }
@@ -180,7 +180,7 @@ impl Lexer {
                 }
                 state = LexerStates::WhiteSpace;
             }
-            else if self.data_provider.syntax().as_ref().unwrap().as_borrowed().contains( character ) {
+            else if self.data_provider.syntax().as_borrowed().contains( character ) {
                 let state_previous = state;
                 if self.grammar.contains( &character ) {
                     state = LexerStates::Grammar;
@@ -256,7 +256,7 @@ impl Lexer {
             let slice = &string.as_ref()[ self.token_position_byte .. self.position_byte ];
             let len_bytes = self.position_byte - self.token_position_byte;
             let len_characters = self.position_character - self.token_position_character;
-            let len_graphemes = self.data_provider.grapheme_segmenter().as_ref().unwrap().segment_str( slice ).count() - 1;
+            let len_graphemes = self.data_provider.grapheme_segmenter().segment_str( slice ).count() - 1;
             tokens.push( RefCount::new(
                 Token {
                     token_type: token,

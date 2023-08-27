@@ -28,6 +28,9 @@ use icu_provider_fs::FsDataProvider;
 
 use icu_segmenter::GraphemeClusterSegmenter;
 
+#[cfg( feature = "log" )]
+use log::{ error, warn, info, debug, trace };
+
 #[cfg( doc )]
 use std::sync::Arc;
 
@@ -62,20 +65,22 @@ pub enum DataProvider {
 /// `Arc<IcuDataProvider>` to prevent unnecessary duplication.
 pub struct IcuDataProvider {
     data_provider: DataProvider,
-    grapheme_segmenter: Option<GraphemeClusterSegmenter>,
+    grapheme_segmenter: GraphemeClusterSegmenter,
 
     #[allow( dead_code )]
-    syntax: Option<CodePointSetData>,
+    syntax: CodePointSetData,
 
     #[allow( dead_code )]
-    white_space: Option<CodePointSetData>,
+    white_space: CodePointSetData,
 }
 
 impl IcuDataProvider {
+
     /// Create a `IcuDataProvider` instance. Depending on the DataProvider choice, the instance may include the
     /// Grapheme Cluster Segmenter and character properties sets.
     pub fn try_new( data_provider: DataProvider ) -> Result<Self, IcuError> {
-         // Temporary values.
+
+        // Temporary values.
         #[allow( unused_mut )]
         #[allow( unused_variables )]
         let mut grapheme_segmenter = None;
@@ -92,6 +97,9 @@ impl IcuDataProvider {
         match data_provider.clone() {
             #[cfg( feature = "blob" )]
             DataProvider::Blob( blob ) => {
+                #[cfg( feature = "log" )]
+                debug!( "BlobDataProvider was selected." );
+
                 grapheme_segmenter = Some( GraphemeClusterSegmenter::try_new_with_buffer_provider( &blob )? );
                 let blob_provider = blob.as_deserializing();
                 syntax = Some( load_pattern_syntax( &blob_provider )? );
@@ -100,6 +108,9 @@ impl IcuDataProvider {
 
             #[cfg( feature = "fs" )]
             DataProvider::Fs( fs ) => {
+                #[cfg( feature = "log" )]
+                debug!( "FsDataProvider was selected." );
+
                 grapheme_segmenter = Some( GraphemeClusterSegmenter::try_new_with_buffer_provider( &fs )? );
                 let fs_provider = fs.as_deserializing();
                 syntax = Some( load_pattern_syntax( &fs_provider )? );
@@ -108,6 +119,9 @@ impl IcuDataProvider {
 
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => {
+                #[cfg( feature = "log" )]
+                debug!( "Internal data was selected." );
+
                 grapheme_segmenter = Some( GraphemeClusterSegmenter::new() );
                 syntax = Some( pattern_syntax().static_to_owned() );
                 white_space = Some( pattern_white_space().static_to_owned() );
@@ -117,21 +131,30 @@ impl IcuDataProvider {
             _ => {}
         };
 
-        // Do sanity check: grapheme, white_space or syntax can't have None.
+        // Do sanity check: None of `grapheme`, `white_space` or `syntax` can be `None`.
         if grapheme_segmenter.is_none() {
+            #[cfg( feature = "log" )]
+            error!( "Missing grapheme segmenter." );
+
             return Err( IcuError::Syntax );
         }
         if syntax.is_none() {
+            #[cfg( feature = "log" )]
+            error!( "Missing Pattern_Syntax properties." );
+
             return Err( IcuError::Syntax );
         }
         if white_space.is_none() {
+            #[cfg( feature = "log" )]
+            error!( "Missing Pattern_White_Space properties." );
+
             return Err( IcuError::WhiteSpace );
         }
         Ok( IcuDataProvider {
             data_provider,
-            grapheme_segmenter,
-            syntax,
-            white_space,
+            grapheme_segmenter: grapheme_segmenter.unwrap(),
+            syntax: syntax.unwrap(),
+            white_space: white_space.unwrap(),
         } )
     }
 
@@ -143,26 +166,17 @@ impl IcuDataProvider {
 
     /// Get the Grapheme Cluster Segmenter from preloaded character data set.
     /// See `i18n_lexer` crate on usage.
-    pub fn grapheme_segmenter( &self ) -> Option<&GraphemeClusterSegmenter> {
-        match &self.grapheme_segmenter {
-            None => return None,
-            Some( value ) => return Some( &value ),
-        }
+    pub fn grapheme_segmenter( &self ) -> &GraphemeClusterSegmenter {
+        &self.grapheme_segmenter
     }
 
     /// Get the Pattern_Syntax data from preloaded character data set.
-    pub fn syntax( &self ) -> Option<&CodePointSetData> {
-        match &self.syntax {
-            None => return None,
-            Some( value ) => return Some( &value ),
-        }
+    pub fn syntax( &self ) -> &CodePointSetData {
+        &self.syntax
     }
 
     /// Get the Pattern_White_Space data from preloaded character data set.
-    pub fn white_space( &self ) -> Option<&CodePointSetData> {
-        match &self.white_space {
-            None => return None,
-            Some( value ) => return Some( &value ),
-        }
+    pub fn white_space( &self ) -> &CodePointSetData {
+        &self.white_space
     }
 }

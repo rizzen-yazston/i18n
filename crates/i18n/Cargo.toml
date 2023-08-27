@@ -16,9 +16,18 @@ keywords = ["internationalization", "localization", "icu4x"]
 categories = ["internationalization", "localization", "rust-pattern"]
 
 [features]
-compiled_data = [ "i18n_icu-rizzen-yazston/compiled_data", ] 
-blob = [ "i18n_icu-rizzen-yazston/blob", ]
-fs = [ "i18n_icu-rizzen-yazston/fs", ]
+compiled_data = [
+    "i18n_icu-rizzen-yazston/compiled_data",
+    "i18n_pattern-rizzen-yazston/compiled_data",
+] 
+blob = [
+    "i18n_icu-rizzen-yazston/blob",
+    "i18n_pattern-rizzen-yazston/blob",
+]
+fs = [
+    "i18n_icu-rizzen-yazston/fs",
+    "i18n_pattern-rizzen-yazston/fs",
+]
 sync = [
     "i18n_icu-rizzen-yazston/sync",
     "i18n_lexer-rizzen-yazston/sync",
@@ -27,6 +36,10 @@ sync = [
     "i18n_provider_sqlite3-rizzen-yazston/sync",
     "i18n_pattern-rizzen-yazston/sync",
     "i18n_message-rizzen-yazston/sync",
+]
+log = [
+    "i18n_icu-rizzen-yazston/log",
+    "i18n_provider_sqlite3-rizzen-yazston/log",
 ]
 
 [dependencies]

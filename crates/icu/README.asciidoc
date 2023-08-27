@@ -26,6 +26,8 @@ Available features for `i18n_icu` crate:
 * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+ 
+* `log`: Enable log support.
 
 == Acknowledgement
 

@@ -324,12 +324,19 @@ impl Formatter {
                 },
                 PatternPart::PatternString( placeholder ) => {
                     let Some( value ) = values.get( placeholder ) else {
-                        return Err( FormatterError::PlaceholderValue( "PatternString 373".to_string() ) );
+                        return Err(
+                            FormatterError::PlaceholderValue(
+                                "PatternString".to_string(),
+                                placeholder.to_string(),
+                            )
+                        );
                     };
                     match value {
                         PlaceholderValue::String( value ) => string.push_str( value ),
-                        PlaceholderValue::TaggedString( value) => string.push_str( value.as_str() ),
-                        _ => return Err( FormatterError::InvalidValue( "PatternString 378".to_string() ) )
+                        PlaceholderValue::TaggedString( value) => string.push_str(
+                            value.as_str()
+                        ),
+                        _ => return Err( FormatterError::InvalidValue( "PatternString".to_string() ) )
                     }
                 },
                 PatternPart::PatternDecimal{
@@ -338,7 +345,12 @@ impl Formatter {
                     group
                 } => {
                     let Some( value ) = values.get( placeholder ) else {
-                        return Err( FormatterError::PlaceholderValue( "PatternDecimal".to_string() ) );
+                        return Err(
+                            FormatterError::PlaceholderValue(
+                                "PatternDecimal".to_string(),
+                                placeholder.to_string(),
+                            )
+                        );
                     };
                     let data_locale = DataLocale::from( RefCount::as_ref( &self.locale ) );
                     let mut options: options::FixedDecimalFormatterOptions = Default::default();
@@ -394,7 +406,12 @@ impl Formatter {
                     // TODO: add more options as they become non-experimental.
                     // TODO: implement hour for Time/DateTime when no longer experimental
                     let Some( value ) = values.get( placeholder ) else {
-                        return Err( FormatterError::PlaceholderValue( "PatternDateTime".to_string() ) );
+                        return Err(
+                            FormatterError::PlaceholderValue(
+                                "PatternDateTime".to_string(),
+                                placeholder.to_string(),
+                            )
+                        );
                     };
                     let length_date = match length_date {
                         None => DateLength::Medium,
@@ -466,7 +483,12 @@ impl Formatter {
                     selectors,
                 } => {
                     let Some( value ) = values.get( placeholder ) else {
-                        return Err( FormatterError::PlaceholderValue( "PatternComplex".to_string() ) );
+                        return Err(
+                            FormatterError::PlaceholderValue(
+                                "PatternComplex".to_string(),
+                                placeholder.to_string(),
+                            )
+                        );
                     };
                     let selectors_index = selectors;
                     let data_locale = DataLocale::from( RefCount::as_ref( &self.locale ) );

@@ -115,7 +115,7 @@ pub enum FormatterError {
     NumberSignString( usize ),
     SelectorsIndex( usize ),
     SelectorsIndexNamed( String, usize ),
-    PlaceholderValue( String ),
+    PlaceholderValue( String, String ),
     InvalidValue( String ),
     Decimal( DecimalError ),
     DateTime( DateTimeError ),
@@ -202,8 +202,13 @@ impl Display for FormatterError {
                     "Failed to retrieve the string for the named string ‘{}’ of the selectors index {}.",
                     identifier, index
                 ),
-            FormatterError::PlaceholderValue( part ) =>
-                write!( formatter, "The placeholder value was not found for the pattern part ‘{}’.", part ),
+            FormatterError::PlaceholderValue( part, placeholder ) =>
+                write!(
+                    formatter,
+                    "The placeholder value was not found for the pattern part ‘{}’ of the placeholder ‘{}’.",
+                    part,
+                    placeholder,
+                ),
             FormatterError::InvalidValue( part ) =>
                 write!( formatter, "Invalid value type was provided for the pattern part ‘{}’.", part ),
             FormatterError::Decimal( ref error ) => error.fmt( formatter ),
@@ -219,7 +224,8 @@ impl Display for FormatterError {
             FormatterError::Command( ref error ) => error.fmt( formatter ),
             FormatterError::NoIcuProvider => write!(
                 formatter,
-                "Build error: At least one ICU4X data provider must be specified for the crate ‘i18n_icu’ using the crate's features."
+                "Build error: At least one ICU4X data provider must be specified for the crate ‘i18n_icu’ using the \
+                    crate's features."
             ),
             FormatterError::NeverReached =>
                 write!( formatter, "Build error: Should never have reached this match branch." ),

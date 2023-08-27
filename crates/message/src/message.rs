@@ -31,9 +31,9 @@ where
     L: LanguageStringProvider,
 {
     icu_data_provider: RefCount<IcuDataProvider>,
-    lexer: Lexer,
+    lexer: MutCell<Lexer>,
     language_tag_registry: RefCount<LanguageTagRegistry>,
-    lstring_provider: L,
+    localisation_provider: L,
     command_registry: RefCount<CommandRegistry>,
     fallback: MutCell<bool>,
     caching: MutCell<bool>,
@@ -74,12 +74,12 @@ where
     /// fn message() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let lstring_provider = ProviderSqlite3::try_new(
+    ///     let localisation_provider = ProviderSqlite3::try_new(
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -118,7 +118,7 @@ where
     pub fn try_new<T: AsRef<str>>(
         icu_data_provider: &RefCount<IcuDataProvider>,
         language_tag_registry: &RefCount<LanguageTagRegistry>,
-        lstring_provider: L,
+        localisation_provider: L,
         command_registry: &RefCount<CommandRegistry>,
         fallback: bool,
         caching: bool,
@@ -127,9 +127,9 @@ where
         let tag = language_tag_registry.get_tag( language_tag )?;
         Ok( Message {
             icu_data_provider: RefCount::clone( icu_data_provider ),
-            lexer: Lexer::new( vec![ '{', '}', '`', '#' ], icu_data_provider ),
+            lexer: MutCell::new( Lexer::new( vec![ '{', '}', '`', '#' ], icu_data_provider ) ),
             language_tag_registry: RefCount::clone( language_tag_registry ),
-            lstring_provider,
+            localisation_provider,
             command_registry: RefCount::clone( command_registry ),
             fallback: MutCell::new( fallback ),
             caching: MutCell::new( caching ),
@@ -158,12 +158,12 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let lstring_provider = ProviderSqlite3::try_new(
+    ///     let localisation_provider = ProviderSqlite3::try_new(
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA"
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA"
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -200,7 +200,7 @@ where
     /// }
     /// ```
     pub fn format<T: AsRef<str>>(
-        &mut self,
+        &self,
         component: T,
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
@@ -252,12 +252,12 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let lstring_provider = ProviderSqlite3::try_new(
+    ///     let localisation_provider = ProviderSqlite3::try_new(
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -278,7 +278,7 @@ where
     /// }
     /// ```
     pub fn format_with_defaults<T: AsRef<str>>(
-        &mut self,
+        &self,
         component: T,
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
@@ -329,12 +329,12 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let lstring_provider = ProviderSqlite3::try_new(
+    ///     let localisation_provider = ProviderSqlite3::try_new(
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let lstring = message_system.get(
     ///         "i18n_message",
@@ -352,7 +352,7 @@ where
     /// }
     /// ```
     pub fn get<T: AsRef<str>>(
-        &mut self,
+        &self,
         component: T,
         identifier: T,
         language_tag: T,
@@ -400,12 +400,12 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let lstring_provider = ProviderSqlite3::try_new(
+    ///     let localisation_provider = ProviderSqlite3::try_new(
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Message::try_new(
-    ///         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let lstring = message_system.get_with_defaults(
     ///         "i18n_message",
@@ -420,7 +420,7 @@ where
     /// }
     /// ```
     pub fn get_with_defaults<T: AsRef<str>>(
-        &mut self,
+        &self,
         component: T,
         identifier: T,
     ) -> Result<TaggedString, MessageError> {
@@ -464,7 +464,7 @@ where
     /// 
     /// A value of `None` indicates no change.
     pub fn defaults<T: AsRef<str>>(
-        &mut self,
+        &self,
         language_tag: Option<T>,
         fallback: Option<bool>,
         caching: Option<bool>,
@@ -501,6 +501,21 @@ where
         Ok( () )
     }
 
+    pub fn default_language( &self ) -> RefCount<String> {
+
+        #[cfg( not( feature = "sync" ) )]
+        let binding = self.language_tag.borrow();
+
+        #[cfg( feature = "sync" )]
+        let binding = self.language_tag.borrow();
+
+        RefCount::clone( &binding )
+    }
+
+    pub fn localisation_provider( &self ) -> &L {
+        &self.localisation_provider
+    }
+
     // Internal methods
 
     // For the specified string identifier, format a string for the specified language tag with the supplied values
@@ -508,7 +523,7 @@ where
     // when there is no string pattern for the specified language. Optionally specify whether the parsed string should
     // be cache for reuse.
     fn actual_format<T: AsRef<str>>(
-        &mut self,
+        &self,
         component: T,
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
@@ -546,7 +561,7 @@ where
 
         // Not in cache.
         // Get pattern string for specified language, though returned `TaggedString` may be for another language.
-        let lstring = match self.lstring_provider.get_one(
+        let lstring = match self.localisation_provider.get_one(
             component.as_ref().to_string(), identifier.as_ref().to_string(), language_tag
         )? {
             Some( result ) => result,
@@ -559,13 +574,13 @@ where
                         false
                     ) );
                 }
-                let default_language = match self.lstring_provider.default_language(
+                let default_language = match self.localisation_provider.default_language(
                     component.as_ref()
                 )? {
                     None => return Err( MessageError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
                     Some( result ) => result
                 };
-                match self.lstring_provider.get_one(
+                match self.localisation_provider.get_one(
                     component.as_ref().to_string(),
                     identifier.as_ref().to_string(),
                     &default_language
@@ -583,8 +598,15 @@ where
 
         // Tokenise the pattern string.
         // If pattern string has no grammar syntax characters, simply cache (if allowed) and return the string.
-        let ( tokens, _lengths, grammar_found ) = self.lexer.tokenise(
+
+        #[cfg( not( feature = "sync" ) )]
+        let ( tokens, _lengths, grammar_found ) = self.lexer.borrow_mut().tokenise(
             lstring.as_str() );
+
+        #[cfg( feature = "sync" )]
+        let ( tokens, _lengths, grammar_found ) = self.lexer.lock().unwrap().tokenise(
+            lstring.as_str() );
+
         if !grammar_found {
             if caching {
                 if !_language_entry {
@@ -696,7 +718,7 @@ where
 
     // Simply get the language string without any formatting being done.
     fn actual_get<T: AsRef<str>>(
-        &mut self,
+        &self,
         component: T,
         identifier: T,
         language_tag: &RefCount<String>,
@@ -731,7 +753,7 @@ where
 
         // Not in cache.
         // Get pattern string for specified language, though returned `TaggedString` may be for another language.
-        let lstring = match self.lstring_provider.get_one(
+        let lstring = match self.localisation_provider.get_one(
             component.as_ref().to_string(), identifier.as_ref().to_string(), language_tag
         )? {
             Some( result ) => result,
@@ -744,13 +766,13 @@ where
                         false
                     ) );
                 }
-                let default_language = match self.lstring_provider.default_language(
+                let default_language = match self.localisation_provider.default_language(
                     component.as_ref()
                 )? {
                     None => return Err( MessageError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
                     Some( result ) => result
                 };
-                match self.lstring_provider.get_one(
+                match self.localisation_provider.get_one(
                     component.as_ref().to_string(),
                     identifier.as_ref().to_string(),
                     &default_language
