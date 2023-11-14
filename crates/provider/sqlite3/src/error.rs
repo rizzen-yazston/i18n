@@ -10,7 +10,23 @@ use core::fmt::{ Display, Formatter, Result };
 
 /// The `LocalisationProviderSqlite3Error` type consists of the follow:
 /// 
-/// * `Io`: Wraps the file system [`IoError`].
+/// * `Io`: Wraps the file system [`IoError`],
+/// 
+/// * `Sqlite3`: Wraps the Sqlite3 error,
+/// 
+/// * `NotDirectory`: Indicates provided path is not a directory,
+/// 
+/// * `NoSqlite3Files`: Indicates no Sqlite3 was found in the directory,
+/// 
+/// * `LanguageTagRegistry`: Wraps the language tag registry [`RegistryError`],
+/// 
+/// * `PathConversion`: Supposed to be infallible, yet may return an error,
+/// 
+/// * `DefaultLanguage`: Expected default language was not found,
+/// 
+/// * `NotExists`: Indicates path does not exists,
+/// 
+/// * `ComponentNotFound`: Indicates requested component is not found.
 #[derive( Debug )]
 #[non_exhaustive]
 pub enum LocalisationProviderSqlite3Error {
@@ -21,7 +37,6 @@ pub enum LocalisationProviderSqlite3Error {
     LanguageTagRegistry( RegistryError ),
     PathConversion,
     DefaultLanguage( String ),
-    DefaultLanguageCount( String, String ),
     NotExists( PathBuf ),
     ComponentNotFound( String ),
 }
@@ -39,12 +54,6 @@ impl Display for LocalisationProviderSqlite3Error {
             LocalisationProviderSqlite3Error::PathConversion => write!( formatter, "Conversion to PathBuf error." ),
             LocalisationProviderSqlite3Error::DefaultLanguage( ref component ) =>
                 write!( formatter, "The default language tag is missing for the component ‘{}’.", component ),
-            LocalisationProviderSqlite3Error::DefaultLanguageCount( ref component, ref language ) => write!(
-                formatter,
-                "There are no localisation strings in the component ‘{}’ for the default language tag ‘{}’.",
-                component,
-                language,
-            ),
             LocalisationProviderSqlite3Error::NotExists( ref path ) =>
                 write!( formatter, "Provided path ‘{}’ does not exist.", path.display() ),
             LocalisationProviderSqlite3Error::ComponentNotFound( ref component ) =>

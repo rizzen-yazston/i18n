@@ -29,7 +29,7 @@ use icu_provider_fs::FsDataProvider;
 use icu_segmenter::GraphemeClusterSegmenter;
 
 #[cfg( feature = "log" )]
-use log::{ error, warn, info, debug, trace };
+use log::{ error, debug };
 
 #[cfg( doc )]
 use std::sync::Arc;
@@ -37,14 +37,23 @@ use std::sync::Arc;
 #[cfg( doc )]
 use std::rc::Rc;
 
+#[cfg( doc )]
+use icu_provider_blob::BlobDataProvider;
+
+#[cfg( doc )]
+use icu_provider_fs::FsDataProvider;
+
 /// Indicates which data provider to use for various supported ICU4X components:
 ///
-/// * Internal: Will use the internal BakedDateProvider of various ICU4X components. Requires the `compiled_data`
-/// feature.
+/// * Internal (Preferred): Will use the internal BakedDateProvider of various ICU4X components. Requires the
+/// `compiled_data` feature. The internal data of ICU4X components are sufficient for most use cases needing
+/// localisation, and is recommended by ICU4X.
 ///
-/// * Blob: The BlobDataProvider will be used for the various ICU4X components. Requires the `blob` feature.
+/// * Blob: The [`BlobDataProvider`] will be used for the various ICU4X components. Requires the `blob` feature. An
+/// alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
 ///
-/// * Fs: The FsDataProvider will be used for the various ICU4X components. Requires the `fs` feature.
+/// * Fs: The [`FsDataProvider`] will be used for the various ICU4X components. Requires the `fs` feature. An
+/// alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
 #[derive( Clone) ]
 pub enum DataProvider {
     #[cfg( feature = "compiled_data" )]
@@ -61,7 +70,7 @@ pub enum DataProvider {
 ///
 /// The `IcuDataProvider` type also contains non-locale based data used within the `i18n_lexer` crate.
 ///
-/// `IcuDataProvider` type is used within the [`Rc`] type as `Rc<IcuDataProvider>` or [`Arc`] type as
+/// `IcuDataProvider` type is normally used within the [`Rc`] type as `Rc<IcuDataProvider>` or [`Arc`] type as
 /// `Arc<IcuDataProvider>` to prevent unnecessary duplication.
 pub struct IcuDataProvider {
     data_provider: DataProvider,
@@ -171,11 +180,13 @@ impl IcuDataProvider {
     }
 
     /// Get the Pattern_Syntax data from preloaded character data set.
+    /// See `i18n_lexer` crate on usage.
     pub fn syntax( &self ) -> &CodePointSetData {
         &self.syntax
     }
 
     /// Get the Pattern_White_Space data from preloaded character data set.
+    /// See `i18n_lexer` crate on usage.
     pub fn white_space( &self ) -> &CodePointSetData {
         &self.white_space
     }

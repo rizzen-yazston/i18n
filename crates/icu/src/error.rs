@@ -10,9 +10,31 @@ use icu_segmenter::SegmenterError;
 #[cfg( feature = "buffer" )]
 use icu_provider::DataError;
 
+#[cfg( doc )]
+use icu_properties::PropertiesError;
+
+#[cfg( doc )]
+use icu_segmenter::SegmenterError;
+
+#[cfg( doc )]
+use icu_provider::DataError;
+
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
+/// The `LocalisationProviderSqlite3Error` type consists of the follow:
+/// 
+/// * `Properties`: Requires `buffer` feature. Wraps the ICU4X [`PropertiesError`],
+/// 
+/// * `Segmenter`: Requires `buffer` feature. Wraps the ICU4X [`SegmenterError`],
+/// 
+/// * `Data`: Requires `buffer` feature. Wraps the ICU4X [`DataError`],
+/// 
+/// * `Grapheme`: Indicates no ICU4X provider for `GraphemeClusterSegmenter`,
+/// 
+/// * `Syntax`: Indicates no ICU4X provider for `Pattern_Syntax`,
+/// 
+/// * `WhiteSpace`: Indicates no ICU4X provider for `Pattern_White_Space`.
 #[derive( Debug )]
 #[non_exhaustive]
 pub enum IcuError {
@@ -42,9 +64,13 @@ impl Display for IcuError {
             #[cfg( feature = "buffer" )]
             IcuError::Data( ref error ) => return error.fmt( formatter ),
             
-            IcuError::Grapheme =>  write!( formatter, "No data provider is available for the ‘GraphemeClusterSegmenter’." ),
+            IcuError::Grapheme =>  write!(
+                formatter, "No data provider is available for the ‘GraphemeClusterSegmenter’."
+            ),
             IcuError::Syntax => write!( formatter, "No data provider is available for the ‘Pattern_Syntax’." ),
-            IcuError::WhiteSpace => write!( formatter, "No data provider is available for the ‘Pattern_White_Space’." ),
+            IcuError::WhiteSpace => write!(
+                formatter, "No data provider is available for the ‘Pattern_White_Space’."
+            ),
         }
     }
 }

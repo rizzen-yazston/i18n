@@ -19,33 +19,22 @@ Rizzen Yazston
 
 == `i18n_icu` crate
 
-* [ ] cargo build compiles (also features)
-* [ ] CHANGELOG.asciidoc updated
-* [ ] cargo test compiles (including doc examples)
-* [ ] doc blocks of structs, enums, traits, functions checked
-* [ ] lib.rs doc block checked
-* [ ] cargo doc compiles
-* [ ] README.asciidoc checked
-
-== `i18n_icu` crate
-
-* [ ] cargo build compiles (also features)
-* [ ] CHANGELOG.asciidoc updated
-* [ ] cargo test compiles (including doc examples)
-* [ ] doc blocks of structs, enums, traits, functions checked
-* [ ] lib.rs doc block checked
-* [ ] cargo doc compiles
-* [ ] README.asciidoc checked
+* [x] cargo build compiles (also features)
+* [x] CHANGELOG.asciidoc updated
+* [x] doc blocks of structs, enums, traits, functions checked
+* [x] lib.rs doc block checked
+* [x] cargo doc compiles
+* [x] README.asciidoc checked
 
 == `i18n_lexer` crate
 
-* [ ] cargo build compiles (also features)
-* [ ] CHANGELOG.asciidoc updated
-* [ ] cargo test compiles (including doc examples)
-* [ ] doc blocks of structs, enums, traits, functions checked
-* [ ] lib.rs doc block checked
-* [ ] cargo doc compiles
-* [ ] README.asciidoc checked
+* [x] cargo build compiles (also features)
+* [x] CHANGELOG.asciidoc updated
+* [x] cargo test compiles (including doc examples)
+* [x] doc blocks of structs, enums, traits, functions checked
+* [x] lib.rs doc block checked
+* [x] cargo doc compiles
+* [x] README.asciidoc checked
 
 == `i18n_localiser` crate
 

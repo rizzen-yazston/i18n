@@ -19,11 +19,11 @@ When data provider is not `Internal` and depending on the data provider used, th
 
 Available features for `i18n_icu` crate:
  
-* `compiled_data`: Allow for the internal data of the various ICU4X components.
+* `compiled_data` (Preferred): Allow for the internal data of the various ICU4X components.
  
-* `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
+* `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`]. An alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
  
-* `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+* `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`. An alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
  
@@ -32,19 +32,3 @@ Available features for `i18n_icu` crate:
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
-
-== Cargo.toml
-
-```
-[dependencies]
-i18n_icu = "0.7.0"
-icu_provider = "1.3.0"
-icu_provider_fs = "1.3.0" # Optional
-icu_provider_glob = "1.3.0" # Optional
-icu_properties = "1.3.0"
-icu_segmenter = "1.3.0"
-```
-
-== Examples
-
-See various examples of the `i18n_lexer`, `i18n_pattern`, and `i18n_message` crates.

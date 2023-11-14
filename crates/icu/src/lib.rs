@@ -17,12 +17,16 @@
 //! 
 //! Available features for `i18n_icu` crate:
 //! 
-//! * `compiled_data`: Allow for the internal data of the various ICU4X components.
+//! * `compiled_data` (Preferred): Allow for the internal data of the various ICU4X components. Also recommended by
+//! ICU4X.
 //! 
-//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports
-//! [`BufferProvider`].
+//! * `blob`: Allow for instances of [`BlobDataProvider`] to be used various ICU4X components that supports
+//! [`BufferProvider`]. An alternative provider when the internal data of ICU4X components are insufficient for a
+//! particular use case.
 //! 
-//! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+//! * `fs`: Allow for instances of [`FsDataProvider`] to be used various ICU4X components that supports
+//! `BufferProvider`. An alternative provider when the internal data of ICU4X components are insufficient for a
+//! particular use case.
 //! 
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
 //! [`RefCell`].

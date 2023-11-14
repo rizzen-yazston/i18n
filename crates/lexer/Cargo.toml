@@ -26,9 +26,7 @@ compiled_data = [ "i18n_icu-rizzen-yazston/compiled_data", ]
 blob = [ "i18n_icu-rizzen-yazston/blob", ]
 fs = [ "i18n_icu-rizzen-yazston/fs", ]
 sync = [ "i18n_icu-rizzen-yazston/sync" ]
-log = [
-    "i18n_icu-rizzen-yazston/log",
-]
+log = [ "i18n_icu-rizzen-yazston/log", ]
 
 [dependencies]
 i18n_icu-rizzen-yazston = { workspace = true }

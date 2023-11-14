@@ -16,50 +16,16 @@ Strings are tokenised using the method `tokenise()` taking string slice and a ve
 
 Available features for `i18n_icu` crate:
  
-* `compiled_data`: Allow for the internal data of the various ICU4X components.
+* `compiled_data` (Preferred): Enable the `compiled_data` feature on `i18n_icu`. Allow for the internal data of the various ICU4X components.
  
-* `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
+* `blob`: Enable the `blob` feature on `i18n_icu`. Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
  
-* `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+* `fs`: Enable the `fs` feature on `i18n_icu`. Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+
+* `log`: Enables logging on `i18n_icu` crate.
 
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
-
-== Cargo.toml
-
-```
-[dependencies]
-i18n_icu-rizzen-yazston = "0.6.1"
-```
-
-== Examples
-
-```
-use i18n_icu::{ IcuDataProvider, DataProvider };
-use i18n_lexer::{Token, TokenType, Lexer};
-use std::rc::Rc;
-use std::error::Error;
-
-fn test_tokenise() -> Result<(), Box<dyn Error>> {
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
-    let mut lexer = Lexer::new( vec![ '{', '}' ], &icu_data_provider );
-    let ( tokens, lengths, grammar ) =
-        lexer.tokenise( "String contains a {placeholder}." );
-    let mut grammar_tokens = 0;
-    assert_eq!( lengths.bytes, 32, "Supposed to be a total of 32 bytes." );
-    assert_eq!( lengths.characters, 32, "Supposed to be a total of 32 characters." );
-    assert_eq!( lengths.graphemes, 32, "Supposed to be a total of 32 graphemes." );
-    assert_eq!( lengths.tokens, 10, "Supposed to be a total of 10 tokens." );
-    for token in tokens.iter() {
-        if token.token_type == TokenType::Grammar {
-            grammar_tokens += 1;
-        }
-    }
-    assert_eq!( grammar_tokens, 2, "Supposed to be 2 grammar tokens." );
-    assert!(grammar, "There supposed to be grammar tokens." );
-    Ok( () )
-}
-```

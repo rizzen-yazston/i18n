@@ -18,14 +18,19 @@
 //! 
 //! Available features for `i18n_lexer` crate:
 //! 
-//! * `compiled_data`: Allow for the internal data of the various ICU4X components.
+//! * `compiled_data` (Preferred): Enable the `compiled_data` feature on `i18n_icu`. Allow for the internal data of
+//! the various ICU4X components.
 //! 
-//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
+//! * `blob`: Enable the `blob` feature on `i18n_icu`. Allow for instances of `BlobDataProvider` to be used
+//! various ICU4X components that supports [`BufferProvider`].
 //! 
-//! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+//! * `fs`: Enable the `fs` feature on `i18n_icu`. Allow for instances of `FsDataProvider` to be used
+//! various ICU4X components that supports `BufferProvider`.
 //! 
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
 //! [`RefCell`].
+//! 
+//! * `log`: Enables logging on `i18n_icu` crate.
 //! 
 //! # Examples
 //! 
