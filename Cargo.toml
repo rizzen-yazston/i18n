@@ -10,10 +10,71 @@ members = [
     "crates/provider/core",
     "crates/provider/sqlite3",
     "crates/pattern",
-    "crates/message",
+    "crates/localiser",
     "crates/i18n",
 ]
-
 exclude = [
     # Currently no exclusions.
 ]
+
+[workspace.package]
+authors = [ "Rizzen Yazston" ]
+categories = [ "internationalization", "localization", "rust-pattern" ]
+edition = "2021"
+homepage = "https://github.com/rizzen-yazston/i18n"
+include = [
+    "src/**/*",
+    "Cargo.toml",
+    "BSD-3-Clause",
+    "README.asciidoc",
+]
+keywords = [ "internationalization", "localization", "icu4x" ]
+license = "BSD-3-Clause"
+readme = "README.asciidoc"
+repository = "https://github.com/rizzen-yazston/i18n"
+rust-version = "1.70.0"
+version = "0.6.1"
+
+[workspace.dependencies]
+# KEEP IN SYNC WITH workspace.members
+
+# Project crates
+i18n-rizzen-yazston = { version = "0.6.1", path = ".crates/i18n" }
+i18n_icu-rizzen-yazston = { version = "0.6.1", path = "crates/icu" }
+i18n_lexer-rizzen-yazston = { version = "0.6.1", path = "crates/lexer" }
+i18n_localiser-rizzen-yazston = { version = "0.6.1", path = "crates/localiser" }
+i18n_pattern-rizzen-yazston = { version = "0.6.1", path = "crates/pattern" }
+i18n_provider-rizzen-yazston = { version = "0.6.1", path = "crates/provider/core" }
+i18n_provider_sqlite3-rizzen-yazston = { version = "0.6.1", path = "crates/provider/sqlite3" }
+i18n_utility-rizzen-yazston = { version = "0.6.1", path = "crates/utility" }
+
+# ICU dependencies
+icu_provider = { version = "1.3.2", features = [ "serde" ] }
+icu_provider_fs = { version = "1.3.2" }
+icu_provider_blob = { version = "1.3.2" }
+icu_properties = { version = "1.3.2" }
+icu_segmenter = { version = "1.3.2", features = [ "serde" ] }
+icu_locid = "1.3.2"
+icu_plurals = "1.3.2"
+icu_decimal = "1.3.2"
+icu_calendar = "1.3.2"
+icu_datetime = "1.3.2"
+fixed_decimal = { version = "0.5.4", features = [ "ryu" ] }
+# Use when trying out the new features of ICU on the master branch
+#icu_provider = { git = "https://github.com/unicode-org/icu4x", branch = "main", features = [ "serde" ], optional = true }
+#icu_provider_fs = { git = "https://github.com/unicode-org/icu4x", branch = "main", optional = true }
+#icu_provider_blob = { git = "https://github.com/unicode-org/icu4x", branch = "main", optional = true }
+#icu_properties = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+#icu_segmenter = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+#icu_locid = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+#icu_plurals = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+#icu_decimal = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+#icu_calendar = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+#icu_datetime = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+#fixed_decimal = { git = "https://github.com/unicode-org/icu4x", branch = "main", features = [ "ryu" ] }
+
+# Other dependendies
+tree-rizzen-yazston = "0.4.0"
+log = { version = "0.4.20" }
+os_info = "3"
+rusqlite = "0.29.0"

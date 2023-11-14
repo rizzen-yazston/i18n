@@ -39,7 +39,7 @@ use std::iter::FromIterator;
 /// use i18n_utility::LanguageTagRegistry;
 /// 
 /// let registry = LanguageTagRegistry::new();
-/// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
+/// let result = registry.tag_and_locale( "en_ZA" ).expect( "Failed to parse language tag." );
 /// let tags = registry.list().iter().count();
 /// 
 /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -71,7 +71,7 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// let result = registry.tag_and_locale( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
     /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -103,7 +103,7 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// let result = registry.tag_and_locale( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
     /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -114,7 +114,7 @@ impl LanguageTagRegistry {
     /// [`Locale`]: icu_locid::Locale
     /// [`Arc`]: std::sync::Arc
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get<T: AsRef<str>>( &self, language_tag: T )
+    pub fn tag_and_locale<T: AsRef<str>>( &self, language_tag: T )
         -> Result<( RefCount<String>, RefCount<Locale> ), RegistryError>
     {
         #[cfg( not( feature = "sync" ) )]
@@ -207,7 +207,7 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let tag = registry.get_tag( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// let tag = registry.tag( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
     /// assert_eq!( tag.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -218,8 +218,8 @@ impl LanguageTagRegistry {
     /// [`Arc`]: std::sync::Arc
     /// [`Locale`]: icu_locid::Locale
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_tag<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<String>, RegistryError> {
-        let result = self.get( language_tag.as_ref() )?;
+    pub fn tag<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<String>, RegistryError> {
+        let result = self.tag_and_locale( language_tag.as_ref() )?;
         Ok( result.0 )
     }
 
@@ -241,7 +241,7 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let locale = registry.get_locale( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// let locale = registry.locale( "en_ZA" ).expect( "Failed to parse language tag." );
     /// let tags = registry.list().iter().count();
     /// 
     /// assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -252,8 +252,8 @@ impl LanguageTagRegistry {
     /// [`Locale`]: icu_locid::Locale
     /// [`Arc`]: std::sync::Arc
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-    pub fn get_locale<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<Locale>, RegistryError> {
-        let result = self.get( language_tag.as_ref() )?;
+    pub fn locale<T: AsRef<str>>( &self, language_tag: T ) -> Result<RefCount<Locale>, RegistryError> {
+        let result = self.tag_and_locale( language_tag.as_ref() )?;
         Ok( result.1 )
     }
 
@@ -267,7 +267,10 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
+    /// 
+    /// // Just adding deprecated tag.
+    /// let result = registry.tag_and_locale( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// 
     /// let tags = registry.list().iter().count();
     /// 
     /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -294,7 +297,10 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
+    /// 
+    /// // Just adding deprecated tag.
+    /// let result = registry.tag_and_locale( "en_ZA" ).expect( "Failed to parse language tag." );
+    /// 
     /// let deprecated_tags = registry.list_deprecated().iter().count();
     /// 
     /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -322,8 +328,11 @@ impl LanguageTagRegistry {
     /// use i18n_utility::LanguageTagRegistry;
     /// 
     /// let registry = LanguageTagRegistry::new();
-    /// let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." ); // Just adding deprecated tag.
-    /// let all_tags = registry.list_all().iter().count();
+    /// 
+    /// // Just adding deprecated tag.
+    /// let result = registry.tag_and_locale( "en_ZA" ).expect( "Failed to parse language tag." );
+    ///
+    ///  let all_tags = registry.list_all().iter().count();
     /// 
     /// assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
     /// assert_eq!( all_tags, 2, "Supposed to be 2 entries: en_ZA and en-ZA." )
@@ -361,7 +370,7 @@ mod tests {
     #[test]
     fn get() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        let result = registry.get( "en_ZA" )?;
+        let result = registry.tag_and_locale( "en_ZA" )?;
         assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
         Ok( () )
     }
@@ -369,7 +378,7 @@ mod tests {
     #[test]
     fn get_tag() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        let tag = registry.get_tag( "en_ZA" )?;
+        let tag = registry.tag( "en_ZA" )?;
         assert_eq!( tag.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
         Ok( () )
     }
@@ -377,7 +386,7 @@ mod tests {
     #[test]
     fn get_locale() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        let locale = registry.get_locale( "en_ZA" )?;
+        let locale = registry.locale( "en_ZA" )?;
         assert_eq!( locale.to_string(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
         Ok( () )
     }
@@ -385,7 +394,7 @@ mod tests {
     #[test]
     fn list() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        registry.get( "en_ZA" )?;
+        registry.tag_and_locale( "en_ZA" )?;
         let pcb47 = registry.list().iter().count();
         assert_eq!( pcb47, 1, "Supposed to be 1 entries: en-ZA." );
         Ok( () )
@@ -394,7 +403,7 @@ mod tests {
     #[test]
     fn list_all() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        registry.get( "en_ZA" )?;
+        registry.tag_and_locale( "en_ZA" )?;
         let all = registry.list_all().iter().count();
         assert_eq!( all, 2, "Supposed to be 2 entries: en_ZA and en-ZA." );
         Ok( () )
@@ -403,7 +412,7 @@ mod tests {
     #[test]
     fn list_deprecated() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        registry.get( "en_ZA" )?;
+        registry.tag_and_locale( "en_ZA" )?;
         let deprecated = registry.list_deprecated().iter().count();
         assert_eq!( deprecated, 1, "Supposed to be 1 entries: en_ZA." );
         Ok( () )
@@ -412,7 +421,7 @@ mod tests {
     #[test]
     fn invalid_tag() -> Result<(), Box<dyn Error>> {
         let registry = LanguageTagRegistry::new();
-        match registry.get_tag( "hnfg_lku" ) {
+        match registry.tag( "hnfg_lku" ) {
             Ok( _ ) => panic!( "Must fail as tag is invalid." ),
             Err( _ ) => Ok( () )
         }

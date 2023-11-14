@@ -5,6 +5,9 @@ use icu_locid::ParserError;
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
+/// The `RegistryError` type consists of the follow:
+/// 
+/// * `Locale`: Wraps the ICU's [`ParserError`].
 #[derive( Debug, PartialEq, Copy, Clone )]
 #[non_exhaustive]
 pub enum RegistryError {

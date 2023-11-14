@@ -4,27 +4,33 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_provider_sqlite3-rizzen-yazston"
-version = "0.6.1"
-authors = ["Rizzen Yazston"]
-edition = "2021"
-rust-version = "1.70.0"
 description = "The `i18n_provider_sqlite3` crate of the Internationalisation project."
 license = "BSD-3-Clause"
-readme = "README.asciidoc"
-repository = "https://github.com/rizzen-yazston/i18n"
-keywords = ["internationalization", "localization", "icu4x"]
-categories = ["internationalization", "localization", "rust-pattern"]
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 sync = [ "i18n_utility-rizzen-yazston/sync", "i18n_provider-rizzen-yazston/sync" ]
-log = [ "dep:log" ]
+log = []#[ "dep:log" ]
 
 [dependencies]
-i18n_utility-rizzen-yazston = { version = "0.6.1", path = "../../utility" }
-i18n_provider-rizzen-yazston = { version = "0.6.1", path = "../core" }
-icu_locid = "1.2.0"
-rusqlite = "0.29.0"
-log = { version = "0.4.20", optional = true }
+i18n_utility-rizzen-yazston = { workspace = true }
+i18n_provider-rizzen-yazston = { workspace = true }
+icu_locid = { workspace = true }
+rusqlite = { workspace = true }
+log = { workspace = true }
 
 [dev-dependencies]
 

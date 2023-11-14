@@ -1,10 +1,10 @@
-// This file is part of `i18n_message-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_message-rizzen-yazston` crate.
+// This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-use crate::MessageError;
+use crate::LocaliserError;
 use i18n_icu::IcuDataProvider;
 use i18n_lexer::Lexer;
-use i18n_provider::LanguageStringProvider;
+use i18n_provider::LocalisationProvider;
 use i18n_utility::{ LanguageTagRegistry, TaggedString };
 use i18n_pattern::{ parse, Formatter, PlaceholderValue, CommandRegistry };
 
@@ -16,7 +16,7 @@ use std::rc::Rc as RefCount;
 
 #[cfg( feature = "sync" )]
 #[cfg( target_has_atomic = "ptr" )]
-use std::sync::{ Arc as RefCount, Mutex as MutCell};
+use std::sync::{ Arc as RefCount, RwLock as MutCell};
 
 use std::collections::HashMap;
 
@@ -26,13 +26,13 @@ use std::sync::Arc;
 #[cfg( doc )]
 use std::rc::Rc;
 
-pub struct Message<L>
+pub struct Localiser<L>
 where
-    L: LanguageStringProvider,
+    L: LocalisationProvider,
 {
     icu_data_provider: RefCount<IcuDataProvider>,
     lexer: MutCell<Lexer>,
-    language_tag_registry: RefCount<LanguageTagRegistry>,
+    language_registry: RefCount<LanguageTagRegistry>,
     localisation_provider: L,
     command_registry: RefCount<CommandRegistry>,
     fallback: MutCell<bool>,
@@ -41,22 +41,22 @@ where
     language_tag: MutCell<RefCount<String>>,
 }
 
-impl<L> Message<L>
+impl<L> Localiser<L>
 where
-    L: LanguageStringProvider,
+    L: LocalisationProvider,
 {
 
-    /// Create a new `Message` instance, that is connected to a language string provider [`LanguageStringProvider`]. A
+    /// Create a new `Localiser` instance, that is connected to a language string provider [`LocalisationProvider`]. A
     /// reference to the language tag registry [`Rc`]`<`[`LanguageTagRegistry`]`>` or [`Arc`]`<LanguageTagRegistry>`
     /// instance and reference to the ICU data provider `Rc<`[`IcuDataProvider`]`>` or `Arc<IcuDataProvider>`
-    /// are stored within the `Message` to facilitate the parsing of language string patterns, and for formatting
+    /// are stored within the `Localiser` to facilitate the parsing of language string patterns, and for formatting
     /// strings.
     /// 
-    /// Two boolean flags `fallback` and `caching` are also set to be the defaults of the `Message` instance. These
+    /// Two boolean flags `fallback` and `caching` are also set to be the defaults of the `Localiser` instance. These
     /// flags govern whether parsed strings are cached for reuse, and if no string is found for the specified language
     /// whether the `format()` method should fallback to the default language tag of the string identifier.
     /// 
-    /// The `language_tag` parameter is for the default language for this `Message` instance, allows for simpler
+    /// The `language_tag` parameter is for the default language for this `Localiser` instance, allows for simpler
     /// formatting function `format_with_defaults()`.
     ///  
     /// # Examples
@@ -66,7 +66,7 @@ where
     /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-    /// use i18n_message::Message;
+    /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -78,13 +78,13 @@ where
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let mut message_system = Message::try_new(
+    ///     let mut message_system = Localiser::try_new(
     ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
     ///         "component".to_string(),
-    ///         PlaceholderValue::String( "i18n_message".to_string() )
+    ///         PlaceholderValue::String( "i18n_localiser".to_string() )
     ///     );
     ///     values.insert(
     ///         "identifier".to_string(),
@@ -99,7 +99,7 @@ where
     ///         PlaceholderValue::String( "true".to_string() )
     ///     );
     ///     let lstring = message_system.format(
-    ///         "i18n_message",
+    ///         "i18n_localiser",
     ///         "string_not_found",
     ///         &values,
     ///         &language_tag_registry.get_tag( "en-ZA" ).unwrap(),
@@ -108,7 +108,7 @@ where
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ and the \
+    ///         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ and the \
     ///             language tag ‘en-ZA’. Fallback was used: True.",
     ///         "Check placeholder values."
     ///     );
@@ -123,12 +123,12 @@ where
         fallback: bool,
         caching: bool,
         language_tag: T
-    ) -> Result<Message<L>, MessageError> {
-        let tag = language_tag_registry.get_tag( language_tag )?;
-        Ok( Message {
+    ) -> Result<Localiser<L>, LocaliserError> {
+        let tag = language_tag_registry.tag( language_tag )?;
+        Ok( Localiser {
             icu_data_provider: RefCount::clone( icu_data_provider ),
             lexer: MutCell::new( Lexer::new( vec![ '{', '}', '`', '#' ], icu_data_provider ) ),
-            language_tag_registry: RefCount::clone( language_tag_registry ),
+            language_registry: RefCount::clone( language_tag_registry ),
             localisation_provider,
             command_registry: RefCount::clone( command_registry ),
             fallback: MutCell::new( fallback ),
@@ -150,7 +150,7 @@ where
     /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-    /// use i18n_message::Message;
+    /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -162,13 +162,13 @@ where
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let mut message_system = Message::try_new(
+    ///     let mut message_system = Localiser::try_new(
     ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA"
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
     ///         "component".to_string(),
-    ///         PlaceholderValue::String( "i18n_message".to_string() )
+    ///         PlaceholderValue::String( "i18n_localiser".to_string() )
     ///     );
     ///     values.insert(
     ///         "identifier".to_string(),
@@ -183,7 +183,7 @@ where
     ///         PlaceholderValue::String( "true".to_string() )
     ///     );
     ///     let lstring = message_system.format(
-    ///         "i18n_message",
+    ///         "i18n_localiser",
     ///         "string_not_found",
     ///         &values,
     ///         "en-ZA",
@@ -192,7 +192,7 @@ where
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ for the \
+    ///         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the \
     ///             language tag ‘en-ZA’. Fallback was used: True.",
     ///         "Check placeholder values."
     ///     );
@@ -205,10 +205,10 @@ where
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
         language_tag: T,
-        fallback: Option<bool>, // true = fallback to default language, None = use the Message default.
+        fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
-    ) -> Result<TaggedString, MessageError> {
-        let tag = self.language_tag_registry.get_tag( language_tag )?;
+    ) -> Result<TaggedString, LocaliserError> {
+        let tag = self.language_registry.tag( language_tag )?;
 
         #[cfg( not( feature = "sync" ) )]
         let bool_fallback = fallback.unwrap_or( self.fallback.borrow().clone() );
@@ -217,10 +217,10 @@ where
         let bool_caching = caching.unwrap_or( self.caching.borrow().clone() );
  
         #[cfg( feature = "sync" )]
-        let bool_fallback = fallback.unwrap_or( self.fallback.lock().unwrap().clone() );
+        let bool_fallback = fallback.unwrap_or( self.fallback.read().unwrap().clone() );
 
         #[cfg( feature = "sync" )]
-        let bool_caching = caching.unwrap_or( self.caching.lock().unwrap().clone() );
+        let bool_caching = caching.unwrap_or( self.caching.read().unwrap().clone() );
        
         self.actual_format(
             component,
@@ -244,7 +244,7 @@ where
     /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-    /// use i18n_message::Message;
+    /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -256,22 +256,22 @@ where
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let mut message_system = Message::try_new(
+    ///     let mut message_system = Localiser::try_new(
     ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
     ///         "component".to_string(),
-    ///         PlaceholderValue::String( "i18n_message".to_string() )
+    ///         PlaceholderValue::String( "i18n_localiser".to_string() )
     ///     );
     ///     let lstring = message_system.format_with_defaults(
-    ///         "i18n_message",
+    ///         "i18n_localiser",
     ///         "no_default_language_tag",
     ///         &values,
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No default language tag was found for the component ‘i18n_message’.",
+    ///         "No default language tag was found for the component ‘i18n_localiser’.",
     ///         "Check placeholder values."
     ///     );
     ///     Ok( () )
@@ -282,7 +282,7 @@ where
         component: T,
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
-    ) -> Result<TaggedString, MessageError> {
+    ) -> Result<TaggedString, LocaliserError> {
 
         #[cfg( not( feature = "sync" ) )]
         let tag = &RefCount::clone( &self.language_tag.borrow() );
@@ -294,13 +294,13 @@ where
         let bool_caching = self.caching.borrow().clone();
 
         #[cfg( feature = "sync" )]
-        let tag = &RefCount::clone( &self.language_tag.lock().unwrap() );
+        let tag = &RefCount::clone( &self.language_tag.read().unwrap() );
  
         #[cfg( feature = "sync" )]
-        let bool_fallback = self.fallback.lock().unwrap().clone();
+        let bool_fallback = self.fallback.read().unwrap().clone();
 
         #[cfg( feature = "sync" )]
-        let bool_caching = self.caching.lock().unwrap().clone();
+        let bool_caching = self.caching.read().unwrap().clone();
 
         self.actual_format(
             component,
@@ -321,7 +321,7 @@ where
     /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-    /// use i18n_message::Message;
+    /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -333,11 +333,11 @@ where
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let mut message_system = Message::try_new(
+    ///     let mut message_system = Localiser::try_new(
     ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let lstring = message_system.get(
-    ///         "i18n_message",
+    ///         "i18n_localiser",
     ///         "no_default_language_tag",
     ///         "en-ZA",
     ///         None,
@@ -356,10 +356,10 @@ where
         component: T,
         identifier: T,
         language_tag: T,
-        fallback: Option<bool>, // true = fallback to default language, None = use the Message default.
+        fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
-    ) -> Result<TaggedString, MessageError> {
-        let tag = self.language_tag_registry.get_tag( language_tag )?;
+    ) -> Result<TaggedString, LocaliserError> {
+        let tag = self.language_registry.tag( language_tag )?;
 
         #[cfg( not( feature = "sync" ) )]
         let bool_fallback = fallback.unwrap_or( self.fallback.borrow().clone() );
@@ -368,10 +368,10 @@ where
         let bool_caching = caching.unwrap_or( self.caching.borrow().clone() );
  
         #[cfg( feature = "sync" )]
-        let bool_fallback = fallback.unwrap_or( self.fallback.lock().unwrap().clone() );
+        let bool_fallback = fallback.unwrap_or( self.fallback.read().unwrap().clone() );
 
         #[cfg( feature = "sync" )]
-        let bool_caching = caching.unwrap_or( self.caching.lock().unwrap().clone() );
+        let bool_caching = caching.unwrap_or( self.caching.read().unwrap().clone() );
 
         self.actual_get(
             component,
@@ -383,7 +383,7 @@ where
     }
 
     /// Simply get a language string without any formatting being done, typically strings with no placeholder patterns
-    /// using the `Message` instance defaults.
+    /// using the `Localiser` instance defaults.
     /// 
     /// # Examples
     /// 
@@ -392,7 +392,7 @@ where
     /// use i18n_utility::LanguageTagRegistry;
     /// use i18n_provider_sqlite3::ProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-    /// use i18n_message::Message;
+    /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -404,11 +404,11 @@ where
     ///         "./l10n/", &language_tag_registry
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let mut message_system = Message::try_new(
+    ///     let mut message_system = Localiser::try_new(
     ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let lstring = message_system.get_with_defaults(
-    ///         "i18n_message",
+    ///         "i18n_localiser",
     ///         "no_default_language_tag",
     ///     )?;
     ///     assert_eq!(
@@ -423,7 +423,7 @@ where
         &self,
         component: T,
         identifier: T,
-    ) -> Result<TaggedString, MessageError> {
+    ) -> Result<TaggedString, LocaliserError> {
 
         #[cfg( not( feature = "sync" ) )]
         let tag = &RefCount::clone( &self.language_tag.borrow() );
@@ -435,13 +435,13 @@ where
         let bool_caching = self.caching.borrow().clone();
 
         #[cfg( feature = "sync" )]
-        let tag = &RefCount::clone( &self.language_tag.lock().unwrap() );
+        let tag = &RefCount::clone( &self.language_tag.read().unwrap() );
  
         #[cfg( feature = "sync" )]
-        let bool_fallback = self.fallback.lock().unwrap().clone();
+        let bool_fallback = self.fallback.read().unwrap().clone();
 
         #[cfg( feature = "sync" )]
-        let bool_caching = self.caching.lock().unwrap().clone();
+        let bool_caching = self.caching.read().unwrap().clone();
 
         self.actual_get(
             component,
@@ -452,15 +452,15 @@ where
         )
     }
 
-    /// Change the defaults of `Message` instance.
+    /// Change the defaults of `Localiser` instance.
     /// 
     /// The following can be reset:
     /// 
-    /// * `language_tag`: Option<&str>
+    /// * `language_tag`: `Option<&str>`
     /// 
-    /// * `fallback`: Option<bool>
+    /// * `fallback`: `Option<bool>`
     /// 
-    /// * `caching`: Option<bool>
+    /// * `caching`: `Option<bool>`
     /// 
     /// A value of `None` indicates no change.
     pub fn defaults<T: AsRef<str>>(
@@ -468,16 +468,16 @@ where
         language_tag: Option<T>,
         fallback: Option<bool>,
         caching: Option<bool>,
-    ) -> Result<(), MessageError> {
+    ) -> Result<(), LocaliserError> {
         if language_tag.is_some() {
-            let tag = self.language_tag_registry.get_tag( language_tag.unwrap() )?;
+            let tag = self.language_registry.tag( language_tag.unwrap() )?;
 
             #[cfg( not( feature = "sync" ) )]
             self.language_tag.replace( tag );
     
             #[cfg( feature = "sync" )]
             {
-                *self.language_tag.get_mut().unwrap() = tag;
+                *self.language_tag.write().unwrap() = tag;
             }
         }
         if fallback.is_some() {
@@ -486,7 +486,7 @@ where
     
             #[cfg( feature = "sync" )]
             {
-                *self.fallback.get_mut().unwrap() = fallback.unwrap();
+                *self.fallback.write().unwrap() = fallback.unwrap();
             }
         }
         if caching.is_some() {
@@ -495,25 +495,42 @@ where
     
             #[cfg( feature = "sync" )]
             {
-                *self.caching.get_mut().unwrap() = caching.unwrap();
+                *self.caching.write().unwrap() = caching.unwrap();
             }
         }
         Ok( () )
     }
 
+    /// Obtain the default language for the `Localiser` instance.
     pub fn default_language( &self ) -> RefCount<String> {
 
         #[cfg( not( feature = "sync" ) )]
         let binding = self.language_tag.borrow();
 
         #[cfg( feature = "sync" )]
-        let binding = self.language_tag.borrow();
+        let binding = self.language_tag.read().unwrap();
 
         RefCount::clone( &binding )
     }
 
+    /// Obtain the localisation provider for the `Localiser` instance.
     pub fn localisation_provider( &self ) -> &L {
         &self.localisation_provider
+    }
+
+    /// Obtain the language tag registry for the `Localiser` instance.
+    pub fn language_tag_registry( &self ) -> &RefCount<LanguageTagRegistry> {
+        &self.language_registry
+    }
+    
+    /// Obtain the command registry for the `Localiser` instance.
+    pub fn command_registry( &self ) -> &RefCount<CommandRegistry> {
+        &self.command_registry
+    }
+
+    /// Obtain the ICU data provider for the `Localiser` instance.
+    pub fn icu_data_provider( &self ) -> &RefCount<IcuDataProvider> {
+        &self.icu_data_provider
     }
 
     // Internal methods
@@ -528,9 +545,9 @@ where
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
         language_tag: &RefCount<String>,
-        fallback: bool, // true = fallback to default language, None = use the Message default.
+        fallback: bool, // true = fallback to default language, None = use the Localiser default.
         caching: bool, // true = cache the resultant Formatter for repeating use with different values.
-    ) -> Result<TaggedString, MessageError> {
+    ) -> Result<TaggedString, LocaliserError> {
         let mut combined = component.as_ref().to_string();
         combined.push( '/' );
         combined.push_str( identifier.as_ref() );
@@ -540,7 +557,7 @@ where
             let binding = self.cache.borrow();
 
             #[cfg( feature = "sync" )]
-            let binding = self.cache.lock().unwrap();
+            let binding = self.cache.read().unwrap();
 
             if let Some( result ) = binding.get( language_tag ) {
                 _language_entry = true;
@@ -553,7 +570,7 @@ where
                             Ok( formatter.borrow_mut().format( values )? ),
 
                         #[cfg( feature = "sync" )]
-                        CacheData::Formatter( formatter ) => Ok( formatter.lock().unwrap().format( values )? )
+                        CacheData::Formatter( formatter ) => Ok( formatter.write().unwrap().format( values )? )
                     }
                 }
             }
@@ -567,7 +584,7 @@ where
             Some( result ) => result,
             None => {
                 if !fallback {
-                    return Err( MessageError::StringNotFound(
+                    return Err( LocaliserError::StringNotFound(
                         component.as_ref().to_string(),
                         identifier.as_ref().to_string(),
                         language_tag.as_str().to_string(),
@@ -577,7 +594,7 @@ where
                 let default_language = match self.localisation_provider.default_language(
                     component.as_ref()
                 )? {
-                    None => return Err( MessageError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
+                    None => return Err( LocaliserError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
                     Some( result ) => result
                 };
                 match self.localisation_provider.get_one(
@@ -586,7 +603,7 @@ where
                     &default_language
                 )? {
                     Some( result ) => result,
-                    None => return Err( MessageError::StringNotFound(
+                    None => return Err( LocaliserError::StringNotFound(
                         component.as_ref().to_string(),
                         identifier.as_ref().to_string(),
                         language_tag.as_str().to_owned(),
@@ -604,7 +621,7 @@ where
             lstring.as_str() );
 
         #[cfg( feature = "sync" )]
-        let ( tokens, _lengths, grammar_found ) = self.lexer.lock().unwrap().tokenise(
+        let ( tokens, _lengths, grammar_found ) = self.lexer.write().unwrap().tokenise(
             lstring.as_str() );
 
         if !grammar_found {
@@ -623,7 +640,7 @@ where
                     );
 
                     #[cfg( feature = "sync" )]
-                    self.cache.lock().unwrap().insert(
+                    self.cache.write().unwrap().insert(
                         RefCount::clone( language_tag ),
                         data_entry
                     );
@@ -632,7 +649,7 @@ where
                     let mut binding = self.cache.borrow_mut();
 
                     #[cfg( feature = "sync" )]
-                    let mut binding = self.cache.lock().unwrap();
+                    let mut binding = self.cache.write().unwrap();
 
                     let data_entry = binding.get_mut( language_tag );
                     data_entry.unwrap().insert(
@@ -650,7 +667,7 @@ where
         let mut formatter = Formatter::try_new(
             &self.icu_data_provider,
             language_tag,
-            &self.language_tag_registry.get_locale( language_tag.as_str() )?,
+            &self.language_registry.locale( language_tag.as_str() )?,
             &tree,
             &self.command_registry,
         )?;
@@ -676,7 +693,7 @@ where
                 );
 
                 #[cfg( feature = "sync" )]
-                self.cache.lock().unwrap().insert(
+                self.cache.write().unwrap().insert(
                     RefCount::clone( language_tag ),
                     data_entry
                 );
@@ -685,7 +702,7 @@ where
                 let mut binding = self.cache.borrow_mut();
 
                 #[cfg( feature = "sync" )]
-                let mut binding = self.cache.lock().unwrap();
+                let mut binding = self.cache.write().unwrap();
 
                 let data_entry = binding.get_mut( language_tag );
                 data_entry.unwrap().insert(
@@ -700,7 +717,7 @@ where
         let binding = self.cache.borrow();
 
         #[cfg( feature = "sync" )]
-        let binding = self.cache.lock().unwrap();
+        let binding = self.cache.read().unwrap();
 
         let result = binding.get( language_tag ).unwrap();
         let result2 = result.get( &combined ).unwrap();
@@ -712,7 +729,7 @@ where
                 Ok( formatter.borrow_mut().format( values )? ),
 
             #[cfg( feature = "sync" )]
-            CacheData::Formatter( formatter ) => Ok( formatter.lock().unwrap().format( values )? )
+            CacheData::Formatter( formatter ) => Ok( formatter.write().unwrap().format( values )? )
         }
     }
 
@@ -722,9 +739,9 @@ where
         component: T,
         identifier: T,
         language_tag: &RefCount<String>,
-        fallback: bool, // true = fallback to default language, None = use the Message default.
+        fallback: bool, // true = fallback to default language, None = use the Localiser default.
         caching: bool, // true = cache the resultant Formatter for repeating use with different values.
-    ) -> Result<TaggedString, MessageError> {
+    ) -> Result<TaggedString, LocaliserError> {
         let mut combined = component.as_ref().to_string();
         combined.push( '/' );
         combined.push_str( identifier.as_ref() );
@@ -734,7 +751,7 @@ where
             let binding = self.cache.borrow();
 
             #[cfg( feature = "sync" )]
-            let binding = self.cache.lock().unwrap();
+            let binding = self.cache.read().unwrap();
 
             if let Some( result ) = binding.get( language_tag ) {
                 _language_entry = true;
@@ -742,7 +759,7 @@ where
                     return match result2 {
                         CacheData::TaggedString( lstring) => Ok( lstring.clone() ),
                         CacheData::Formatter( _formatter ) =>
-                            Err( MessageError::CacheEntry(
+                            Err( LocaliserError::CacheEntry(
                                 component.as_ref().to_string(),
                                 identifier.as_ref().to_string(),
                             ) ),
@@ -759,7 +776,7 @@ where
             Some( result ) => result,
             None => {
                 if !fallback {
-                    return Err( MessageError::StringNotFound(
+                    return Err( LocaliserError::StringNotFound(
                         component.as_ref().to_string(),
                         identifier.as_ref().to_string(),
                         language_tag.as_str().to_string(),
@@ -769,7 +786,7 @@ where
                 let default_language = match self.localisation_provider.default_language(
                     component.as_ref()
                 )? {
-                    None => return Err( MessageError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
+                    None => return Err( LocaliserError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
                     Some( result ) => result
                 };
                 match self.localisation_provider.get_one(
@@ -778,7 +795,7 @@ where
                     &default_language
                 )? {
                     Some( result ) => result,
-                    None => return Err( MessageError::StringNotFound(
+                    None => return Err( LocaliserError::StringNotFound(
                         component.as_ref().to_string(),
                         identifier.as_ref().to_string(),
                         language_tag.as_str().to_owned(),
@@ -804,7 +821,7 @@ where
                 );
 
                 #[cfg( feature = "sync" )]
-                self.cache.lock().unwrap().insert(
+                self.cache.write().unwrap().insert(
                     RefCount::clone( language_tag ),
                     data_entry
                 );
@@ -813,7 +830,7 @@ where
                 let mut binding = self.cache.borrow_mut();
 
                 #[cfg( feature = "sync" )]
-                let mut binding = self.cache.lock().unwrap();
+                let mut binding = self.cache.write().unwrap();
 
                 let data_entry = binding.get_mut( language_tag );
                 data_entry.unwrap().insert(

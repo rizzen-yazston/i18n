@@ -1,10 +1,10 @@
 // This file is part of `i18n_provider-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider-rizzen-yazston` crate.
 
-//! A language string provider.
+//! A localisation string provider.
 //! 
-//! A trait for retrieving localisation language strings from a data repository via a provider that implements the
-//! trait methods: `get()` and `get_one()`. In addition, there are other trait methods for retrieve the default
+//! A trait for retrieving localisation strings from a data repository via a provider that implements the trait
+//! methods: `strings()` and `string()`. In addition, there are other trait methods for retrieve the default
 //! language for a component, and supported languages for entire data repository, component and identifier
 //! respectively.
 //! 

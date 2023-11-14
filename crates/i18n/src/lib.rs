@@ -11,7 +11,7 @@
 //! 
 //! * `i18n_lexer`: A simple lexer to tokenise a string,
 //! 
-//! * `i18n_message`: The multilingual messaging system,
+//! * `i18n_localiser`: The multilingual messaging system,
 //! 
 //! * `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro
 //! functionality,
@@ -63,7 +63,7 @@ use std::cell::RefCell;
 
 pub use i18n_icu as icu;
 pub use i18n_lexer as lexer;
-pub use i18n_message as message;
+pub use i18n_localiser as localiser;
 pub use i18n_pattern as pattern;
 pub use i18n_provider as provider;
 pub use i18n_provider_sqlite3 as provider_sqlite3;

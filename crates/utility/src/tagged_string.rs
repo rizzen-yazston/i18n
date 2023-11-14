@@ -1,6 +1,8 @@
 // This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
+use std::fmt;
+
 #[cfg( not( feature = "sync" ) )]
 use std::rc::Rc as RefCount;
 
@@ -10,8 +12,8 @@ use std::sync::Arc as RefCount;
 
 /// Tagged string.
 /// 
-/// The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<String>` or [`Arc`]`<String>`) to a
-/// text string ([`String`]).
+/// The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`)
+/// to a text string (String).
 /// 
 /// In the context of the `i18n` project, the identifier tag is expected to be a [BCP 47 Language Tag] string, even
 /// though any identifier could be used.
@@ -45,7 +47,7 @@ impl TaggedString {
     /// Creates a `TaggedString` from string slice [`str`] and an identifier tag as `&`[`Rc`]`<`[`String`]`>` or
     /// `&`[`Arc`]`<String>`.
     /// 
-   /// # Examples
+    /// # Examples
     /// 
     /// ```
     /// use icu_locid::Locale;
@@ -114,6 +116,12 @@ impl TaggedString {
     /// [`Arc`]: std::sync::Arc
     pub fn tag( &self ) -> &RefCount<String> {
         &self.tag
+    }
+}
+
+impl fmt::Display for TaggedString {
+    fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result {
+        write!( f, "{}", self.string )
     }
 }
 

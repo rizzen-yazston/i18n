@@ -4,23 +4,28 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_utility-rizzen-yazston"
-version = "0.6.1"
-authors = ["Rizzen Yazston"]
-edition = "2021"
-rust-version = "1.70.0"
 description = "The `i18n_utility` crate of the Internationalisation project."
 license = "BSD-3-Clause"
-readme = "README.asciidoc"
-repository = "https://github.com/rizzen-yazston/i18n"
-keywords = ["internationalization", "localization", "icu4x"]
-categories = ["internationalization", "localization", "rust-pattern"]
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 sync = []
 
 [dependencies]
-#icu_locid = "1.3.0"
-icu_locid = { git = "https://github.com/unicode-org/icu4x", branch = "main" }
+icu_locid = { workspace = true }
 
 [lib]
 name = "i18n_utility"

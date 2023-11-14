@@ -9,7 +9,7 @@ This convenience meta crate contains selected available crates:
 
 - `i18n_lexer`: A simple lexer to tokenise a string,
 
-- `i18n_message`: The multilingual messaging system,
+- `i18n_localiser`: The multilingual localisation system,
 
 - `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
 

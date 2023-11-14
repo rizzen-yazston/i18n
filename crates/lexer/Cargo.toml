@@ -4,28 +4,37 @@
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
 name = "i18n_lexer-rizzen-yazston"
-version = "0.6.1"
-authors = [ "Rizzen Yazston" ]
-edition = "2021"
-rust-version = "1.70.0"
 description = "The `i18n_lexer` crate of the Internationalisation project."
 license = "BSD-3-Clause"
-readme = "README.asciidoc"
-repository = "https://github.com/rizzen-yazston/i18n"
-keywords = [ "internationalization", "localization", "icu4x" ]
-categories = [ "internationalization", "localization", "rust-pattern" ]
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 compiled_data = [ "i18n_icu-rizzen-yazston/compiled_data", ] 
 blob = [ "i18n_icu-rizzen-yazston/blob", ]
 fs = [ "i18n_icu-rizzen-yazston/fs", ]
 sync = [ "i18n_icu-rizzen-yazston/sync" ]
+log = [
+    "i18n_icu-rizzen-yazston/log",
+]
 
 [dependencies]
-i18n_icu-rizzen-yazston = { version = "0.6.1", path = "../icu" }
+i18n_icu-rizzen-yazston = { workspace = true }
 
 [dev-dependencies]
-i18n_icu-rizzen-yazston = { version = "0.6.1", path = "../icu", features = [ "compiled_data" ] }
+i18n_icu-rizzen-yazston = { workspace = true, features = [ "compiled_data" ] }
 
 [lib]
 name = "i18n_lexer"

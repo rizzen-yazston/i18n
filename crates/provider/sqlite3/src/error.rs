@@ -8,9 +8,12 @@ use std::io::Error as IoError;
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
+/// The `LocalisationProviderSqlite3Error` type consists of the follow:
+/// 
+/// * `Io`: Wraps the file system [`IoError`].
 #[derive( Debug )]
 #[non_exhaustive]
-pub enum ProviderSqlite3Error {
+pub enum LocalisationProviderSqlite3Error {
     Io( IoError ),
     Sqlite3( Sqlite3Error ),
     NotDirectory( PathBuf ),
@@ -20,50 +23,53 @@ pub enum ProviderSqlite3Error {
     DefaultLanguage( String ),
     DefaultLanguageCount( String, String ),
     NotExists( PathBuf ),
+    ComponentNotFound( String ),
 }
 
-impl Display for ProviderSqlite3Error {
+impl Display for LocalisationProviderSqlite3Error {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match *self {
-            ProviderSqlite3Error::Io( ref error ) => error.fmt( formatter ),
-            ProviderSqlite3Error::Sqlite3( ref error ) => error.fmt( formatter ),
-            ProviderSqlite3Error::NotDirectory( ref path ) =>
+            LocalisationProviderSqlite3Error::Io( ref error ) => error.fmt( formatter ),
+            LocalisationProviderSqlite3Error::Sqlite3( ref error ) => error.fmt( formatter ),
+            LocalisationProviderSqlite3Error::NotDirectory( ref path ) =>
                 write!( formatter, "Provided path ‘{}’ is not a directory.", path.display() ),
-            ProviderSqlite3Error::NoSqlite3Files( ref path ) =>
+            LocalisationProviderSqlite3Error::NoSqlite3Files( ref path ) =>
                 write!( formatter, "No ‘.sqlite3’ files was found in ‘{}’.", path.display() ),
-            ProviderSqlite3Error::LanguageTagRegistry( ref error ) => error.fmt( formatter ),
-            ProviderSqlite3Error::PathConversion => write!( formatter, "Conversion to PathBuf error." ),
-            ProviderSqlite3Error::DefaultLanguage( ref component ) =>
+            LocalisationProviderSqlite3Error::LanguageTagRegistry( ref error ) => error.fmt( formatter ),
+            LocalisationProviderSqlite3Error::PathConversion => write!( formatter, "Conversion to PathBuf error." ),
+            LocalisationProviderSqlite3Error::DefaultLanguage( ref component ) =>
                 write!( formatter, "The default language tag is missing for the component ‘{}’.", component ),
-            ProviderSqlite3Error::DefaultLanguageCount( ref component, ref language ) => write!(
+            LocalisationProviderSqlite3Error::DefaultLanguageCount( ref component, ref language ) => write!(
                 formatter,
                 "There are no localisation strings in the component ‘{}’ for the default language tag ‘{}’.",
                 component,
                 language,
             ),
-            ProviderSqlite3Error::NotExists( ref path ) =>
+            LocalisationProviderSqlite3Error::NotExists( ref path ) =>
                 write!( formatter, "Provided path ‘{}’ does not exist.", path.display() ),
+            LocalisationProviderSqlite3Error::ComponentNotFound( ref component ) =>
+                write!( formatter, "Component ‘{}’ is not found.", component ),
         }
     }
 }
 
 // Source is embedded in the enum value.
-impl Error for ProviderSqlite3Error {}
+impl Error for LocalisationProviderSqlite3Error {}
 
-impl From<IoError> for ProviderSqlite3Error {
-    fn from( error: IoError ) -> ProviderSqlite3Error {
-        ProviderSqlite3Error::Io( error )
+impl From<IoError> for LocalisationProviderSqlite3Error {
+    fn from( error: IoError ) -> LocalisationProviderSqlite3Error {
+        LocalisationProviderSqlite3Error::Io( error )
     }
 }
 
-impl From<Sqlite3Error> for ProviderSqlite3Error {
-    fn from( error: Sqlite3Error ) -> ProviderSqlite3Error {
-        ProviderSqlite3Error::Sqlite3( error )
+impl From<Sqlite3Error> for LocalisationProviderSqlite3Error {
+    fn from( error: Sqlite3Error ) -> LocalisationProviderSqlite3Error {
+        LocalisationProviderSqlite3Error::Sqlite3( error )
     }
 }
 
-impl From<RegistryError> for ProviderSqlite3Error {
-    fn from( error: RegistryError ) -> ProviderSqlite3Error {
-        ProviderSqlite3Error::LanguageTagRegistry( error )
+impl From<RegistryError> for LocalisationProviderSqlite3Error {
+    fn from( error: RegistryError ) -> LocalisationProviderSqlite3Error {
+        LocalisationProviderSqlite3Error::LanguageTagRegistry( error )
     }
 }

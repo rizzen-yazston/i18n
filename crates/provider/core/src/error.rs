@@ -14,18 +14,18 @@ use std::error::Error;
 /// [`Error`]: std::error::Error
 /// [`str`]: core::str
 #[derive( Debug )]
-pub struct ProviderError {
+pub struct LocalisationProviderError {
     pub error_type: &'static str,
     pub source: Box<dyn Error>,
 }
 
-impl Display for ProviderError {
+impl Display for LocalisationProviderError {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         self.source.fmt( formatter )
     }
 }
 
-impl Error for ProviderError {
+impl Error for LocalisationProviderError {
     
     /// Source is the actual error that can be downcasted.
     fn source(&self) -> Option<&( dyn Error + 'static )> {

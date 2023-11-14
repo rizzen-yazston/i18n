@@ -5,9 +5,9 @@ Rizzen Yazston
 :ICU4X: https://github.com/unicode-org/icu4x
 :Unicode_Consortium: https://home.unicode.org/
 
-Sqlite3 provider for language strings.
+Sqlite3 provider for localisation strings.
 
-This crate implements `LanguageStringProvider` using Sqlite3 as the data store for language strings. As a directory path is used at the time of creating a `ProviderSqlite3` object, it means that an application can have multiple data stores for both application language strings, and also for data packages' language strings.
+This crate implements [`LocalisationProvider`] using Sqlite3 as the data store for localisation strings. As a directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an application can have multiple data stores for both application localisation strings, and also for data packages' localisation strings.
 
 == Features
 
@@ -15,43 +15,12 @@ Available features for `i18n_provider_sqlite3` crate:
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
 
+* `log`: To provide some logging information, primarily debug and error.
+
+== Localisation Sqlite3 templates
+ 
+Can find the templates `all_in_one.sqlite3` and component `application.sqlite3` for the application in the `l10n` directory.
+
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
-
-== Cargo.toml
-
-```
-[dependencies]
-i18n_lstring-rizzen-yazston = "0.6.1"
-i18n_provider-rizzen-yazston = "0.6.1"
-i18n_provider_sqlite3-rizzen-yazston = "0.6.1"
-```
-
-== Examples
-
-```
-use i18n_provider_sqlite3::ProviderSqlite3;
-use i18n_provider::LanguageStringProvider;
-use i18n_registry::LanguageTagRegistry;
-use std::rc::Rc;
-use std::error::Error;
-fn main() -> Result<(), Box<dyn Error>> {
-    let path = "./i18n/";
-    let registry = Rc::new( LanguageTagRegistry::new() );
-    let tag = registry.get_tag( "en" )?;
-    let provider = ProviderSqlite3::try_new(
-        path,
-        &registry
-    )?;
-    let strings = provider.get(
-        "i18n_provider_sqlite3",
-        "path_conversion",
-        &tag,
-    )?;
-    assert_eq!( strings.len(), 1, "There should be 1 string." );
-    assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
-    Ok( () )
-}
-```

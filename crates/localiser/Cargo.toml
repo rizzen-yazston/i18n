@@ -1,10 +1,10 @@
-# This file is part of `i18n-rizzen-yazston` crate. For the terms of use, please see the file
-# called `LICENSE-BSD-3-Clause` at the top level of the `i18n-rizzen-yazston` crate.
+# This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
+# called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
 [package]
 # suffix '-rizzen-yazston' appended to prevent package name clashes on 'crates.io'
-name = "i18n-rizzen-yazston"
-description = "The `i18n` crate of the Internationalisation project."
+name = "i18n_localiser-rizzen-yazston"
+description = "The `i18n_localiser` crate of the Internationalisation project."
 license = "BSD-3-Clause"
 
 authors.workspace = true
@@ -22,18 +22,9 @@ version.workspace = true
 all-features = true
 
 [features]
-compiled_data = [
-    "i18n_icu-rizzen-yazston/compiled_data",
-    "i18n_pattern-rizzen-yazston/compiled_data",
-] 
-blob = [
-    "i18n_icu-rizzen-yazston/blob",
-    "i18n_pattern-rizzen-yazston/blob",
-]
-fs = [
-    "i18n_icu-rizzen-yazston/fs",
-    "i18n_pattern-rizzen-yazston/fs",
-]
+compiled_data = [ "i18n_icu-rizzen-yazston/compiled_data", ] 
+blob = [ "i18n_icu-rizzen-yazston/blob", ]
+fs = [ "i18n_icu-rizzen-yazston/fs", ]
 sync = [
     "i18n_icu-rizzen-yazston/sync",
     "i18n_lexer-rizzen-yazston/sync",
@@ -41,7 +32,6 @@ sync = [
     "i18n_provider-rizzen-yazston/sync",
     "i18n_provider_sqlite3-rizzen-yazston/sync",
     "i18n_pattern-rizzen-yazston/sync",
-    "i18n_localiser-rizzen-yazston/sync",
 ]
 log = [
     "i18n_icu-rizzen-yazston/log",
@@ -51,11 +41,14 @@ log = [
 [dependencies]
 i18n_icu-rizzen-yazston = { workspace = true }
 i18n_lexer-rizzen-yazston = { workspace = true }
-i18n_localiser-rizzen-yazston = { workspace = true }
 i18n_pattern-rizzen-yazston = { workspace = true }
 i18n_provider-rizzen-yazston = { workspace = true }
 i18n_provider_sqlite3-rizzen-yazston = { workspace = true }
 i18n_utility-rizzen-yazston = { workspace = true }
+tree-rizzen-yazston = { workspace = true }
+
+[dev-dependencies]
+i18n_icu-rizzen-yazston = { workspace = true, features = [ "compiled_data" ] }
 
 [lib]
-name = "i18n"
+name = "i18n_localiser"

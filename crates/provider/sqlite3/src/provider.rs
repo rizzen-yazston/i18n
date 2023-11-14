@@ -1,13 +1,20 @@
 // This file is part of `i18n_provider_sqlite3-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
-use crate::ProviderSqlite3Error;
+use crate::LocalisationProviderSqlite3Error;
 use i18n_utility::{ LanguageTagRegistry, TaggedString };
-use i18n_provider::{ LanguageStringProvider, ProviderError, LanguageData };
+use i18n_provider::{
+    LocalisationProvider,
+    LocalisationProviderError,
+    IdentifierDetails,
+    ComponentDetails,
+    RepositoryDetails,
+    LanguageData,
+};
 use rusqlite::{ Connection, OpenFlags };
 
 #[cfg( feature = "log" )]
-use log::{ error, warn, info, debug, trace };
+use log::{ error, debug };
 
 use std::collections::HashMap;
 
@@ -15,48 +22,49 @@ use std::collections::HashMap;
 use std::rc::Rc as RefCount;
 
 #[cfg( not( feature = "sync" ) )]
-use std::cell::RefCell as MutCell;
+use std::cell::{ RefCell as MutCell, OnceCell as OnceMut };
 
 #[cfg( feature = "sync" )]
 #[cfg( target_has_atomic = "ptr" )]
-use std::sync::{ Arc as RefCount, Mutex as MutCell };
+use std::sync::{ Arc as RefCount, Mutex as MutCell, OnceLock as OnceMut };
 
 use std::path::PathBuf;
 
-/// `ProviderSqlite3` struct is an implementation of the [`LanguageStringProvider`] trait, and uses Sqlite3 as the data store
-/// for localisation data repository. As the directory path of the data store is embedded in the `ProviderSqlite3`
-/// struct upon creation, one can have multiple `ProviderSqlite3` instances representing the application itself,
-/// application plugin module, and for various data packages that supports internationalisation.
+/// `LocalisationProviderSqlite3` struct is an implementation of the [`LocalisationProvider`] trait, and uses Sqlite3
+/// as the data store for localisation data repository. As the directory path of the data store is embedded in the
+/// `LocalisationProviderSqlite3` struct upon creation, one can have multiple `LocalisationProviderSqlite3` instances
+/// representing the application itself, application plugin modules, and for various data packages that supports
+/// internationalisation.
 /// 
-/// Supports two directory layouts, though both can be combined:
+/// As this provider is directory based, there may be one or more Sqlite3 files present for application's
+/// localisation. There may just be a single file `all_in_one.sqlite3` containing all the localisation strings of
+/// all the components (application and libraries, or data files), or there may be multiple separate Sqlite3 for
+/// each components (for application the `application.sqlite3` must be present), or even a combination of
+/// `all_in_one.sqlite3` and separate component files.
 /// 
-/// * A single file `all_in_one.sqlite3`, that has an additional `component` column to each of the tables for holding
-/// the component name.
-/// 
-/// * Individual component sqlite3 files, using the component name as the filename. 
-/// 
-/// If both directory layouts are present, the `all_in_one.sqlite3` will be tried first, before trying the individual
-/// component sqlite3 file.
+/// If `all_in_one.sqlite3` and separate component files are present, then the `all_in_one.sqlite3` is accessed
+/// first. If a string is not found in the `all_in_one.sqlite3` then the separate component file is accessed.
 /// 
 /// Any non-sqlite3 files and sub directories present will be ignored.
 /// 
 /// # Examples
 /// 
 /// ```
-/// use i18n_provider_sqlite3::ProviderSqlite3;
-/// use i18n_provider::LanguageStringProvider;
+/// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
+/// use i18n_provider::LocalisationProvider;
 /// use i18n_utility::LanguageTagRegistry;
 /// use std::rc::Rc;
 /// use std::error::Error;
 /// fn main() -> Result<(), Box<dyn Error>> {
 ///     let path = "./l10n/";
 ///     let registry = Rc::new( LanguageTagRegistry::new() );
-///     let tag = registry.get_tag( "en" )?;
-///     let provider = ProviderSqlite3::try_new(
+///     let tag = registry.tag( "en" )?;
+///     let provider = LocalisationProviderSqlite3::try_new(
 ///         path,
-///         &registry
+///         &registry,
+///         false
 ///     )?;
-///     let strings = provider.get(
+///     let strings = provider.strings(
 ///         "i18n_provider_sqlite3",
 ///         "path_conversion",
 ///         &tag,
@@ -68,46 +76,59 @@ use std::path::PathBuf;
 /// }
 /// ```
 /// 
-/// [`LanguageStringProvider`]: i18n_provider::LanguageStringProvider
-pub struct ProviderSqlite3 {
+/// [`LocalisationProvider`]: i18n_provider::LocalisationProvider
+pub struct LocalisationProviderSqlite3 {
     directory: PathBuf,
     language_tag_registry: RefCount<LanguageTagRegistry>,
-    connections: MutCell<HashMap<String, Connection>>,
+    connections: MutCell<HashMap<String, Option<RefCount<Connection>>>>, // None => already tried and failed.
     all_in_one: bool,
+
+    // Cached data (long running sql queries)
+    repository_details: OnceMut<RefCount<RepositoryDetails>>,
+    component_details: OnceMut<HashMap<String, RefCount<ComponentDetails>>>,
+    use_database_cache: bool,//TODO: This feature still to be implemented, once database schema is stabilised.
+                             //      Leaving as a compiler warning for reminder to do.
 }
 
-impl ProviderSqlite3 {
+impl LocalisationProviderSqlite3 {
 
-    /// Create a `ProviderSqlite3` type for the specified directory path.
+    /// Create a `LocalisationProviderSqlite3` type for the specified directory path.
     /// 
-    /// As this provider is directory based, there may be multiple providers, where one provider would just be for the
-    /// application's messages (including libraries' error messages (where supported)), while the rest of the
-    /// providers would be various data packages' messages located in separate directories.
+    /// Any non-sqlite3 files and sub directories present will be ignored.
     /// 
     /// Parameter `directory_path` is a path to the directory containing the localisation sqlite3 files, usually named
     /// `l10n`.
     /// 
-    /// Returns `ProviderSqlite3Error` when there is an error in verifying the path is a directory and it does contain
-    /// `.sqlite3` files.
+    /// Parameter `language_tag_registry` is the shared language tag registry.
+    /// 
+    /// Finally parameter `use_database_cache` is used to indicate the provider is to use the detail data stored in the
+    /// Sqlite files. This is a future feature and currently not implemented, thus the boolean value has no effect. 
+    /// 
+    /// Returns `LocalisationProviderSqlite3Error` when there is an error in verifying the path is a directory and it
+    /// does not contain `.sqlite3` files, or Sqlite error occurred.
+    // TODO: do schema verification.
     pub fn try_new<T: TryInto<PathBuf>>(
         directory_path: T,
-        language_tag_registry: &RefCount<LanguageTagRegistry>
-    ) -> Result<Self, ProviderSqlite3Error> {
+        language_tag_registry: &RefCount<LanguageTagRegistry>,
+        use_database_cache: bool,
+    ) -> Result<Self, LocalisationProviderSqlite3Error> {
         let Ok( directory ) = directory_path.try_into() else {
-            return Err( ProviderSqlite3Error::PathConversion ) // If not Infallible error.
+            return Err( LocalisationProviderSqlite3Error::PathConversion ) // If not Infallible error.
         };
         if !directory.is_dir() {
             #[cfg( feature = "log" )]
             error!( "{} is not a directory.", directory.display() );
 
-            return Err( ProviderSqlite3Error::NotDirectory( directory ) );
+            return Err( LocalisationProviderSqlite3Error::NotDirectory( directory ) );
         }
+        let connections =
+        MutCell::new( HashMap::<String, Option<RefCount<Connection>>>::new() );
 
         // Check if all_in_one.sqlite3 exists, if so create the connection.
+        // If present, only a connection to all_in_one.sqlite3 is made. Connections to other sqlite3 files will be made
+        // if needed at the time of querying.
         let all_in_one = directory.join( "all_in_one.sqlite3" );
         if all_in_one.try_exists()? {
-            let connections =
-                MutCell::new( HashMap::<String, Connection>::new() );
             let connection = Connection::open_with_flags(
                 all_in_one,
                 OpenFlags::SQLITE_OPEN_READ_ONLY
@@ -115,22 +136,27 @@ impl ProviderSqlite3 {
                     | OpenFlags::SQLITE_OPEN_URI
             )?;
     
+            // TODO: do schema verification here.
+
             #[cfg( not( feature = "sync" ) )]
-            connections.borrow_mut().insert( "all_in_one".to_string(), connection );
+            connections.borrow_mut().insert( "all_in_one".to_string(), Some( RefCount::new( connection ) ) );
     
             #[cfg( feature = "sync" )]
-            connections.lock().unwrap().insert( "all_in_one".to_string(), connection );
+            connections.lock().unwrap().insert( "all_in_one".to_string(), Some( RefCount::new( connection ) ) );
 
-            return Ok( ProviderSqlite3 {
+            return Ok( LocalisationProviderSqlite3 {
                 directory,
                 language_tag_registry: RefCount::clone( language_tag_registry ),
                 connections,
                 all_in_one: true,
+                repository_details: OnceMut::new(),
+                component_details: OnceMut::new(),
+                use_database_cache,
             } )
         }
 
-        // No all_in_one.sqlite3 present, then check for any other sqlite3 files are present, but do not create
-        // connections.
+        // No all_in_one.sqlite3 is present, check for any other sqlite3 files are present, but do not create
+        // connections. Connection to Sqlite3 file will be made at the time of accessing the component.
         #[cfg( feature = "log" )]
         debug!( "all_in_one.sqlite3 is not present in {}.", directory.display() );
 
@@ -149,577 +175,80 @@ impl ProviderSqlite3 {
             #[cfg( feature = "log" )]
             error!( "No sqlite3 files is found in {}.", directory.display() );
 
-            return Err( ProviderSqlite3Error::NoSqlite3Files( directory ) );
+            return Err( LocalisationProviderSqlite3Error::NoSqlite3Files( directory ) );
         }
-        Ok( ProviderSqlite3 {
+        Ok( LocalisationProviderSqlite3 {
             directory,
             language_tag_registry: RefCount::clone( language_tag_registry ),
-            connections: MutCell::new( HashMap::<String, Connection>::new() ),
+            connections,
             all_in_one: false,
+            repository_details: OnceMut::new(),
+            component_details: OnceMut::new(),
+        use_database_cache,
         } )
     }
 
-    fn add_connection<T: AsRef<str>>( &self, component: T ) -> Result<(), ProviderSqlite3Error> {
-        let mut file = component.as_ref().to_string();
-        file.push_str( ".sqlite3" );
-        let path = self.directory.join( file );
-        if !path.try_exists()? {
-            #[cfg( feature = "log" )]
-            error!( "{} does not exist.", path.display() );
-
-            return Err( ProviderSqlite3Error::NotExists( path ) );
-        }
-        let connection = Connection::open_with_flags(
-            path,
-            OpenFlags::SQLITE_OPEN_READ_ONLY
-                | OpenFlags::SQLITE_OPEN_NO_MUTEX
-                | OpenFlags::SQLITE_OPEN_URI
-        )?;
-
-        #[cfg( not( feature = "sync" ) )]
-        self.connections.borrow_mut().insert( component.as_ref().to_string(), connection );
-
-        #[cfg( feature = "sync" )]
-        self.connections.lock().unwrap().insert( component.as_ref().to_string(), connection );
-
-        Ok( () )
-    }
-}
-
-impl LanguageStringProvider for ProviderSqlite3 {
-
-    /// Retrieve a vector of possible [`TaggedString`] for requested identifier that matches a language tag.
-    /// 
-    /// Ideally a single exact match should be returned, yet may not be for the requested language tag. If no strings
-    /// is found for the requested tag, the right most subtag is removed sequentially until there are no more subtags.
-    /// Multiple [`TaggedString`]s may be returned when there are multiple entries of language tags having additional
-    /// subtags than the requested language tag.
-    /// 
-    /// Return of empty `Vec<TaggedString>` indicates no localisation language strings was found.
-    /// 
-    /// Return of `ProviderSqlite3Errore` indicates there was a Sqlite3 error.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LanguageStringProvider;
-    /// use i18n_utility::LanguageTagRegistry;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    /// fn main() -> Result<(), Box<dyn Error>> {
-    ///     let path = "./l10n/";
-    ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let tag = registry.get_tag( "en" )?;
-    ///     let provider = ProviderSqlite3::try_new(
-    ///         path,
-    ///         &registry
-    ///     )?;
-    ///     let strings = provider.get(
-    ///         "i18n_provider_sqlite3",
-    ///         "path_conversion",
-    ///         &tag,
-    ///     )?;
-    ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
-    ///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    ///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
-    ///     Ok( () )
-    /// }
-    /// ```
-    /// 
-    /// [`TaggedString`]: i18n_utility::TaggedString
-    fn get<T: AsRef<str>>(
+    // Get database connection.
+    // TODO: do schema verification.
+    fn connection<T: AsRef<str>>(
         &self,
         component: T,
-        identifier: T,
-        language_tag: &RefCount<String>
-    ) -> Result<Vec<TaggedString>, ProviderError> {
-        let mut result = Vec::<TaggedString>::new();
-        let mut tag = language_tag.to_string();
+        all_in_one: bool,
+    ) -> Result<Option<RefCount<Connection>>, LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!( "Getting database connection." );
 
-        // If all_in_one.sqlite3 exists, check if all_in_one.sqlite3 has the component.
-        if self.all_in_one {
-            #[cfg( feature = "log" )]
-            trace!( "Trying the 'all_in_one.sqlite3' for string." );
-
+        {
             #[cfg( not( feature = "sync" ) )]
             let borrow = self.connections.borrow();
     
             #[cfg( feature = "sync" )]
             let borrow = self.connections.lock().unwrap();
     
-            let connection = borrow.get( "all_in_one" ).unwrap();
-            let mut stmt = match connection.prepare(
-                "SELECT string, languageTag FROM pattern WHERE component = ?1 AND identifier = ?2 AND \
-                    languageTag like ?3"
-            ) {
-                Ok( result ) => result,
-                Err( error ) => {
-                    #[cfg( feature = "log" )]
-                    error!( "Failed to prepare SQL statement." );
-        
-                    return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                }
+            let option = if all_in_one {
+                borrow.get( "all_in_one" )
+            } else {
+                borrow.get( component.as_ref() )
             };
-            while tag.len() > 0 {
-                tag.push( '%' );
-                let mut rows = match stmt.query(
-                    [ component.as_ref(), identifier.as_ref(), tag.as_str() ]
-                ) {
-                    Ok( result ) => result,
-                    Err( error ) => {
-                        #[cfg( feature = "log" )]
-                        error!( "Failed to query prepared SQL statement." );
-            
-                        return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                            }
-                        )
-                    }
-                };
-                while let Some( row ) = match rows.next() {
-                    Ok( result ) => result,
-                    Err( error ) => {
-                        #[cfg( feature = "log" )]
-                        error!( "Failed to get row result from query." );
-            
-                        return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                            }
-                        )
-                    }
-                } {
-                    let string: String = match row.get( 0 ) {
-                        Ok( result ) => result,
-                        Err( error ) => {
-                            #[cfg( feature = "log" )]
-                            error!( "Failed to string value from row result." );
-                
-                            return Err(
-                                ProviderError {
-                                    error_type: "ProviderSqlite3Error",
-                                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                                }
-                            )
-                        }
-                    };
-                    let tag_raw: String = match row.get( 1 ) {
-                        Ok( result ) => result,
-                        Err( error ) => {
-                            #[cfg( feature = "log" )]
-                            error!( "Failed to language tag value from row result." );
-                
-                            return Err(
-                                ProviderError {
-                                    error_type: "ProviderSqlite3Error",
-                                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                                }
-                            )
-                        }
-                    };
-                    let language = match
-                        self.language_tag_registry.as_ref().get_tag( tag_raw ) {
-                        Ok( result ) => result,
-                        Err( error ) => {
-                            #[cfg( feature = "log" )]
-                            error!( "Language tag in sqlite3 file is invalid." );
-                
-                            return Err(
-                                ProviderError {
-                                    error_type: "ProviderSqlite3Error",
-                                    source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                                }
-                            )
-                        }
-                    };
-                    result.push( TaggedString::new( string, &language ) );
-                }
-                if result.len() > 0 {
-                    #[cfg( feature = "log" )]
-                    trace!( "Found at least 1 string from 'all_in_one.sqlite3'." );
-
-                    return Ok( result );
-                }
-                tag = match tag.rsplit_once( '-' ) {
-                    None => String::new(),
-                    Some( value ) => value.0.to_owned(),
-                };
+            if option.is_some() {
+                return Ok( option.unwrap().clone() );
+            }
+            if all_in_one {
+                return Ok( None );
             }
         }
 
-        // Either no all_in_one.sqlite3 exists or does not exist in the all_in_one.sqlite3, now trying individual
-        // <component>.sqlite3 files.
-        #[cfg( feature = "log" )]
-        trace!( "Attempting component sqlite3 file for component '{}'.", component.as_ref() );
-
-        let mut have = false;
+        // No entry in components.
         {
             #[cfg( not( feature = "sync" ) )]
-            if self.connections.borrow().contains_key( component.as_ref() ) {
-                have = true;
-            }
-
+            let mut borrow_mut = self.connections.borrow_mut();
+    
             #[cfg( feature = "sync" )]
-            if self.connections.lock().unwrap().contains_key( component.as_ref() ) {
-                have = true;
-            }
-        }
-        {
-            if !have {
-                match self.add_connection( component.as_ref() ) {
-                    Err( error ) => {
+            let mut borrow_mut = self.connections.lock().unwrap();
 
-                        // No <component>.sqlite3, yet all_in_one.sqlite3 exists but found within.
-                        if self.all_in_one {
-                            #[cfg( feature = "log" )]
-                            debug!(
-                                "No string was found in 'all_in_one.sqlite3', no component sqlite3 file was present."
-                            );
-                    
-                            return Ok( result ); // Empty indicates not found.
-                        }
-
-                        // No all_in_one.sqlite3 or <component>.sqlite3 file exists
-                        #[cfg( feature = "log" )]
-                        error!(
-                            "No component sqlite3 file or 'all_in_one.sqlite3' file exists for component '{}'.",
-                             component.as_ref()
-                        );
-
-                        return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( error ),
-                            }
-                        )
-                    },
-                    Ok( () ) => {}
-                };
-            }
-        }
-
-        #[cfg( feature = "log" )]
-        trace!( "Have component sqlite3 file for component '{}'.", component.as_ref() );
-
-        #[cfg( not( feature = "sync" ) )]
-        let borrow = self.connections.borrow();
-
-        #[cfg( feature = "sync" )]
-        let borrow = self.connections.lock().unwrap();
-
-        let connection = borrow.get( component.as_ref() ).unwrap();
-        let mut stmt = match connection.prepare(
-            "SELECT string, languageTag FROM pattern WHERE identifier = ?1 AND languageTag like ?2"
-        ) {
-            Ok( result ) => result,
-            Err( error ) => {
+            let mut file = component.as_ref().to_string();
+            file.push_str( ".sqlite3" );
+            let path = self.directory.join( file );
+            if !path.try_exists()? {
                 #[cfg( feature = "log" )]
-                error!( "Failed to prepare SQL statement." );
+                error!( "{} does not exist.", path.display() );
     
-                return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
+                borrow_mut.insert( component.as_ref().to_string(), None );
+                return Err( LocalisationProviderSqlite3Error::NotExists( path ) );
             }
-        };
-        while tag.len() > 0 {
-            tag.push( '%' );
-            let mut rows = match stmt.query(
-                [ identifier.as_ref(), tag.as_str() ]
+            let connection = match Connection::open_with_flags(
+                path,
+                OpenFlags::SQLITE_OPEN_READ_ONLY
+                    | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                    | OpenFlags::SQLITE_OPEN_URI
             ) {
-                Ok( result ) => result,
                 Err( error ) => {
-                    #[cfg( feature = "log" )]
-                    error!( "Failed to query prepared SQL statement." );
-        
-                    return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                }
+                    borrow_mut.insert( component.as_ref().to_string(), None );
+                    return Err( LocalisationProviderSqlite3Error::Sqlite3( error ) );
+                },
+                Ok( result ) => result
             };
-            while let Some( row ) = match rows.next() {
-                Ok( result ) => result,
-                Err( error ) => {
-                    #[cfg( feature = "log" )]
-                    error!( "Failed to get row result from query." );
-        
-                    return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                }
-            } {
-                let string: String = match row.get( 0 ) {
-                    Ok( result ) => result,
-                    Err( error ) => {
-                        #[cfg( feature = "log" )]
-                        error!( "Failed to string value from row result." );
-            
-                        return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                            }
-                        )
-                    }
-                };
-                let tag_raw: String = match row.get( 1 ) {
-                    Ok( result ) => result,
-                    Err( error ) => {
-                        #[cfg( feature = "log" )]
-                        error!( "Failed to language tag value from row result." );
-            
-                        return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                            }
-                        )
-                    }
-                };
-                let language = match
-                    self.language_tag_registry.as_ref().get_tag( tag_raw ) {
-                    Ok( result ) => result,
-                    Err( error ) => {
-                        #[cfg( feature = "log" )]
-                        error!( "Language tag in sqlite3 file is invalid." );
-            
-                        return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                            }
-                        )
-                    }
-                };
-                result.push( TaggedString::new( string, &language ) );
-            }
-            if result.len() > 0 {
-                return Ok( result );
-            }
-            tag = match tag.rsplit_once( '-' ) {
-                None => String::new(),
-                Some( value ) => value.0.to_owned(),
-            };
-        }
-        #[cfg( feature = "log" )]
-        debug!(
-            "No string was found in either 'all_in_one.sqlite3' or component '{}' sqlite3 file.",
-            component.as_ref()
-        );
-
-        Ok( result ) // Empty indicates not found.
-    }
-
-    /// Similar to `get()` method, except that `get_one()` will only return a single [`TaggedString`] if multiple strings
-    /// are available. 
-    /// 
-    /// `None` is returned when there is no strings available for the language tag.
-    /// 
-    /// Return of [`ProviderError`] indicates there was a Sqlite3 error.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LanguageStringProvider;
-    /// use i18n_utility::LanguageTagRegistry;
-    /// use core::cell::RefCell;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    /// fn main() -> Result<(), Box<dyn Error>> {
-    ///     let path = "./l10n/";
-    ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let tag = registry.get_tag( "en" )?;
-    ///     let provider = ProviderSqlite3::try_new(
-    ///         path,
-    ///         &registry
-    ///     )?;
-    ///     let strings = provider.get(
-    ///         "i18n_provider_sqlite3",
-    ///         "path_conversion",
-    ///         &tag,
-    ///     )?;
-    ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
-    ///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    ///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
-    ///     Ok( () )
-    /// }
-    /// ```
-    /// 
-    /// [`TaggedString`]: i18n_utility::TaggedString
-    /// [`ProviderError`]: i18n_provider::ProviderError
-    fn get_one<T: AsRef<str>>(
-        &self,
-        component: T,
-        identifier: T,
-        language_tag: &RefCount<String>
-    ) -> Result<Option<TaggedString>, ProviderError> {
-        #[cfg( feature = "log" )]
-        debug!(
-            "Trying to get only 1 string for identifier '{}' of component '{}'.",
-            identifier.as_ref().clone(),
-            component.as_ref().clone()
-        );
-
-        let mut result = self.get(
-            component.as_ref().clone(),
-            identifier.as_ref().clone(),
-            language_tag
-        )?;
-        if result.is_empty() {
-            #[cfg( feature = "log" )]
-            debug!(
-                "No string was found for identifier '{}' of component '{}'.",
-                identifier.as_ref(),
-                component.as_ref()
-            );
-    
-            return Ok( None );
-        }
-        //temp for now, just popping last one.
-        //TODO: try to return string closest to the language tag, by match language length
-        #[cfg( feature = "log" )]
-        debug!(
-            "String was found for identifier '{}' of component '{}'.",
-            identifier.as_ref(),
-            component.as_ref()
-        );
-
-        Ok( result.pop() )
-    }
-
-    /// Retrieve the default language tag of the component in the data repository.
-    /// 
-    /// Return of `None` indicates no default language tag was found for the component.
-    /// 
-    /// Return of [`ProviderError`] indicates there was a Sqlite3 error.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LanguageStringProvider;
-    /// use i18n_utility::LanguageTagRegistry;
-    /// use core::cell::RefCell;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    /// fn main() -> Result<(), Box<dyn Error>> {
-    ///     let path = "./l10n/";
-    ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let provider = ProviderSqlite3::try_new(
-    ///         path,
-    ///         &registry
-    ///     )?;
-    ///     let tag = provider.default_language(
-    ///         "i18n_provider_sqlite3",
-    ///     )?.expect( "No default language tag found." );
-    ///     assert_eq!( tag.as_str(), "en-ZA", "Must be en-ZA." );
-    ///     Ok( () )
-    /// }
-    /// ```
-    /// 
-    /// [`ProviderError`]: i18n_provider::ProviderError
-    fn default_language<T: AsRef<str>>( &self, component: T ) -> Result<Option<RefCount<String>>, ProviderError> {
-
-        // Check if all_in_one has component.
-        if self.all_in_one {
-            #[cfg( not( feature = "sync" ) )]
-            let borrow = self.connections.borrow();
-    
-            #[cfg( feature = "sync" )]
-            let borrow = self.connections.lock().unwrap();
-    
-            let connection = borrow.get( "all_in_one" ).unwrap();
-            let mut stmt = match connection.prepare(
-                "SELECT value FROM metadata WHERE key = 'default_language_tag' AND component = ?1"
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let rows = match stmt.query_map(
-                [ component.as_ref() ],
-                |row| Ok( row.get( 0 )? )
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let mut string = "".to_string();
-            for row in rows {
-                string = match row {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                };
-            }
-            if !string.is_empty() {
-                match self.language_tag_registry.get_tag( string ) {
-                    Ok( result ) => return Ok( Some( result ) ),
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                        }
-                    )
-                };
-            }
-        }
-
-        // Try individual component sqlite3 files.
-        let mut have = false;
-        {
-            #[cfg( not( feature = "sync" ) )]
-                if self.connections.borrow().contains_key( component.as_ref() ) {
-                have = true;
-            }
-
-            #[cfg( feature = "sync" )]
-                if self.connections.lock().unwrap().contains_key( component.as_ref() ) {
-                have = true;
-            }
-        }
-        {
-            if !have {
-                match self.add_connection( component.as_ref() ) {
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( error ),
-                        }
-                    ),
-                    Ok( () ) => {}
-                };
-            }
+            borrow_mut.insert( component.as_ref().to_string(), Some( RefCount::new( connection ) ) );
         }
 
         #[cfg( not( feature = "sync" ) )]
@@ -728,773 +257,963 @@ impl LanguageStringProvider for ProviderSqlite3 {
         #[cfg( feature = "sync" )]
         let borrow = self.connections.lock().unwrap();
 
-        let connection = borrow.get( component.as_ref() ).unwrap();
-        let mut stmt = match connection.prepare(
-            "SELECT value FROM metadata WHERE key = 'default_language_tag'"
-        ) {
-            Ok( result ) => result,
-            Err( error ) => return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                }
-            )
-        };
-        let rows = match stmt.query_map(
-            [],
-            |row| Ok( row.get( 0 )? )
-        ) {
-            Ok( result ) => result,
-            Err( error ) => return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                }
-            )
-        };
-        let mut string = "".to_string();
-        for row in rows {
-            string = match row {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-        }
-        if !string.is_empty() {
-            match self.language_tag_registry.get_tag( string ) {
-                Ok( result ) => return Ok( Some( result ) ),
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                    }
-                )
-            };
-        }
-        Ok( None )
+        let option = borrow.get( component.as_ref() );
+        Ok( option.unwrap().clone() )
     }
 
-    /// Obtain a list of all the supported languages for a specific identifier.
-    /// 
-    /// Return of [`ProviderError`] indicates there was an error, usually from within the data repository.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LanguageStringProvider;
-    /// use i18n_utility::LanguageTagRegistry;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    /// fn main() -> Result<(), Box<dyn Error>> {
-    ///     let path = "./l10n/";
-    ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let provider = ProviderSqlite3::try_new(
-    ///         path,
-    ///         &registry
-    ///     )?;
-    ///     let tags = provider.identifier_languages(
-    ///         "i18n_provider_sqlite3",
-    ///         "path_conversion",
-    ///     )?;
-    ///     assert_eq!( tags.iter().count(), 2, "Must be 2 languages." );
-    ///     Ok( () )
-    /// }
-    /// ```
+    fn find_strings<T: AsRef<str>>(
+        &self,
+        component: T,
+        identifier: T,
+        language_tag: &RefCount<String>,
+        all_in_one: bool,
+        only_one: bool,
+        exact: bool,
+    ) -> Result<Vec<TaggedString>, LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!(
+            "Finding strings for identifier '{}' of component '{}' for language tag '{}' with all_in_one: {}, \
+            only_one: {}, and exact: {}.",
+            identifier.as_ref(), component.as_ref(), language_tag, all_in_one, only_one, exact
+        );
+
+            match self.connection( component.as_ref(), all_in_one ) {
+            Err( error ) => {
+                return Err( error )
+            },
+            Ok( result ) => match result {
+                None => {
+                    #[cfg( feature = "log" )]
+                    debug!( "No database connection for `{}`.", component.as_ref() );
+                    return Ok( Vec::<TaggedString>::new() );
+                },
+                Some( connection ) => {
+                    let exact_equal = if exact {
+                        "="
+                    } else {
+                        "LIKE"
+                    };
+                    let mut query = if all_in_one {
+                        let mut string =
+                        "SELECT string, languageTag FROM pattern WHERE component = ?1 AND identifier = ?2 AND \
+                        languageTag "
+                        .to_string();
+                        string.push_str( exact_equal );
+                        string.push_str( " ?3" );
+                        string
+                    } else {
+                        let mut string =
+                        "SELECT string, languageTag FROM pattern WHERE identifier = ?1 AND languageTag "
+                        .to_string();
+                        string.push_str( exact_equal );
+                        string.push_str( " ?2" );
+                        string
+                    };
+                    if only_one {
+                        query.push_str( " LIMIT 1" );
+                    }
+                    let mut statement = connection.prepare( query.as_str() )?;
+                    let mut strings = Vec::<TaggedString>::new();
+                    let mut tag = language_tag.to_string();
+                    while tag.len() > 0 {
+                        if !exact {
+                            tag.push( '%' );
+                        }
+                        let mut rows = if all_in_one {
+                            statement.query( [ component.as_ref(), identifier.as_ref(), tag.as_str() ] )?
+                        } else {
+                            statement.query( [ identifier.as_ref(), tag.as_str() ] )?
+                        };
+                        while let Some( row ) = rows.next()? {
+                            let string: String = row.get( 0 )?;
+                            let tag_raw: String = row.get( 1 )?;
+                            let language = self.language_tag_registry.as_ref().tag(
+                                tag_raw
+                            )?;
+                            strings.push( TaggedString::new( string, &language ) );
+                        }
+                        if strings.len() > 0 {
+                            #[cfg( feature = "log" )]
+                            debug!( "Found at least 1 string from '{}.sqlite3'.", component.as_ref() );
+            
+                            return Ok( strings );
+                        }
+                        if exact {
+                            return Ok( strings );
+                        }
+                        tag = match tag.rsplit_once( '-' ) {
+                            None => String::new(),
+                            Some( value ) => value.0.to_owned(),
+                        };
+                    }
+                    Ok( strings )
+                }
+            }
+        }
+    }
+
+    fn languages<T: AsRef<str>>(
+        &self,
+        component: T,
+        all_in_one: bool,
+    ) -> Result<Vec<RefCount<String>>, LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!( "Get languages for component '{}'.", component.as_ref() );
+
+        let option = self.connection( component.as_ref(), all_in_one )?;
+        match option {
+            None => {
+                return Ok( Vec::<RefCount<String>>::new() );
+            },
+            Some( connection ) => {
+                let query = if all_in_one {
+                    "SELECT DISTINCT languageTag FROM contributor WHERE component = ?1"
+                } else {
+                    "SELECT DISTINCT languageTag FROM contributor"
+                };
+                let mut statement = connection.prepare( query )?;
+                let mut languages = Vec::<RefCount<String>>::new();
+                let mut rows = if all_in_one {
+                    statement.query( [ component.as_ref() ] )?
+                } else {
+                    statement.query( [] )?
+                };
+                while let Some( row ) = rows.next()? {
+                    let tag_raw: String = row.get( 0 )?;
+                    let language = self.language_tag_registry.as_ref().tag( tag_raw )?;
+                    languages.push( language );
+                }
+                Ok( languages )
+            }
+        }
+    }
+
     fn identifier_languages<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
-    ) -> Result<Vec<RefCount<String>>, ProviderError> {
-        let mut list = Vec::<RefCount<String>>::new();
+        all_in_one: bool,
+    ) -> Result<Vec<RefCount<String>>, LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!( "Get languages for identifier '{}' of component '{}'.",
+            identifier.as_ref(), component.as_ref() );
 
-        // Check if all_in_one has component.
-        if self.all_in_one {
-            #[cfg( not( feature = "sync" ) )]
-            let borrow = self.connections.borrow();
-    
-            #[cfg( feature = "sync" )]
-            let borrow = self.connections.lock().unwrap();
-    
-            let connection = borrow.get( "all_in_one" ).unwrap();
-            let mut stmt = match connection.prepare(
-                "SELECT languageTag FROM pattern WHERE component = ?1 AND identifier = ?2"
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let rows = match stmt.query_map(
-                [ component.as_ref(), identifier.as_ref() ],
-                |row| Ok( row.get( 0 )? )
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            for row in rows {
-                let string: String = match row {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
+        let option = self.connection( component.as_ref(), all_in_one )?;
+        match option {
+            None => {
+                return Ok( Vec::<RefCount<String>>::new() );
+            },
+            Some( connection ) => {
+                let query = if all_in_one {
+                    "SELECT languageTag FROM pattern WHERE identifier = ?1 AND component = ?2"
+                } else {
+                    "SELECT languageTag FROM pattern WHERE identifier = ?1"
                 };
-                let language = match self.language_tag_registry.get_tag( string ) {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                        }
-                    )
+                let mut statement = connection.prepare( query )?;
+                let mut languages = Vec::<RefCount<String>>::new();
+                let mut rows = if all_in_one {
+                    statement.query( [ identifier.as_ref(), component.as_ref() ] )?
+                } else {
+                    statement.query( [ identifier.as_ref() ] )?
                 };
-                list.push( language );
-            }
-            return Ok( list );
-        }
-
-        // Try individual component sqlite3 files.
-        let mut have = false;
-        {
-            #[cfg( not( feature = "sync" ) )]
-                if self.connections.borrow().contains_key( component.as_ref() ) {
-                have = true;
-            }
-
-            #[cfg( feature = "sync" )]
-                if self.connections.lock().unwrap().contains_key( component.as_ref() ) {
-                have = true;
-            }
-        }
-        {
-            if !have {
-                match self.add_connection( component.as_ref() ) {
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( error ),
-                        }
-                    ),
-                    Ok( () ) => {}
-                };
-            }
-        }
-
-        #[cfg( not( feature = "sync" ) )]
-        let borrow = self.connections.borrow();
-
-        #[cfg( feature = "sync" )]
-        let borrow = self.connections.lock().unwrap();
-
-        let connection = borrow.get( component.as_ref() ).unwrap();
-        let mut stmt = match connection.prepare(
-            "SELECT languageTag FROM pattern WHERE identifier = ?1"
-        ) {
-            Ok( result ) => result,
-            Err( error ) => return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
+                while let Some( row ) = rows.next()? {
+                    let tag_raw: String = row.get( 0 )?;
+                    let language = self.language_tag_registry.as_ref().tag( tag_raw )?;
+                    languages.push( language );
                 }
-            )
-        };
-        let rows = match stmt.query_map(
-            [ identifier.as_ref() ],
-            |row| Ok( row.get( 0 )? )
-        ) {
-            Ok( result ) => result,
-            Err( error ) => return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                }
-            )
-        };
-        for row in rows {
-            let string: String = match row {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let language = match self.language_tag_registry.get_tag( string ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                    }
-                )
-            };
-            list.push( language );
+                Ok( languages )
+            }
         }
-        Ok( list )
     }
 
-    /// Obtain a list of all the supported languages for a specific component.
-    /// 
-    /// Return of [`ProviderError`] indicates there was an error, usually from within the data repository.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LanguageStringProvider;
-    /// use i18n_utility::LanguageTagRegistry;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    /// fn main() -> Result<(), Box<dyn Error>> {
-    ///     let path = "./l10n/";
-    ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let provider = ProviderSqlite3::try_new(
-    ///         path,
-    ///         &registry
-    ///     )?;
-    ///     let tags = provider.component_languages(
-    ///         "i18n_provider_sqlite3",
-    ///     )?;
-    ///     for tag in tags {
-    ///         if tag.language == registry.get_tag( "en-ZA" ).unwrap() {
-    ///             assert_eq!( tag.ratio, 1.0, "Ratio ust be 1.0 for en-ZA." );
-    ///         }
-    ///     }
-    ///     Ok( () )
-    /// }
-    /// ```
-    fn component_languages<T: AsRef<str>>(
+    fn contributors<T: AsRef<str>>(
         &self,
         component: T,
-    ) -> Result<Vec<LanguageData>, ProviderError> {
-        let mut list = Vec::<LanguageData>::new();
-        let mut default_count = 0usize;
-        let Some( default_language ) = self.default_language( component.as_ref() )? else {
-            return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::DefaultLanguage( component.as_ref().to_string() ) ),
-                }
-            )
-        };
+        language_tag: &RefCount<String>,
+        all_in_one: bool,
+    ) -> Result<Vec<String>, LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!( "Get contributors for component '{}' for language tag '{}'.", component.as_ref(), language_tag );
 
-        // Check if all_in_one has component.
-        if self.all_in_one {
-            #[cfg( not( feature = "sync" ) )]
-            let borrow = self.connections.borrow();
-    
-            #[cfg( feature = "sync" )]
-            let borrow = self.connections.lock().unwrap();
-    
-            let connection = borrow.get( "all_in_one" ).unwrap();
-            let mut stmt = match connection.prepare(
-                "SELECT languageTag FROM contributor WHERE component = ?1"
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let rows = match stmt.query_map(
-                [ component.as_ref() ],
-                |row| {
-                    let string: String = row.get( 0 )?;
-                    Ok( string )
+        let option = self.connection( component.as_ref(), all_in_one )?;
+        match option {
+            None => {
+                return Ok( Vec::<String>::new() );
+            },
+            Some( connection ) => {
+                let query = if all_in_one {
+                    "SELECT DISTINCT contributor FROM contributor WHERE languageTag = ?1 AND component = ?2"
+                } else {
+                    "SELECT DISTINCT contributor FROM contributor WHERE languageTag = ?1"
+                };
+                let mut statement = connection.prepare( query )?;
+                let mut contributors = Vec::<String>::new();
+                let mut rows = if all_in_one {
+                    statement.query( [ &language_tag, component.as_ref() ] )?
+                } else {
+                    statement.query( [ &language_tag ] )?
+                };
+                while let Some( row ) = rows.next()? {
+                    let contributor: String = row.get( 0 )?;
+                    contributors.push( contributor );
                 }
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            for row in rows {
-                let string = match row {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                };
-                let language = match self.language_tag_registry.get_tag( string ) {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                        }
-                    )
-                };
-                list.push( LanguageData {
-                    language,
-                    count: 0,
-                    ratio: 0.0,
-                } );
+                Ok( contributors )
             }
+        }
+    }
 
-            // Get counts for the languages, get count for default.
-            let mut iterator = list.iter_mut();
-            while let Some( data ) = iterator.next() {
-                let mut stmt = match connection.prepare(
-                    "SELECT count( * ) FROM pattern WHERE component = ?1 AND languageTag = ?2"
-                ) {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
+    fn count<T: AsRef<str>>(
+        &self,
+        component: T,
+        language_tag: &RefCount<String>,
+        all_in_one: bool,
+    ) -> Result<usize, LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!( "Get string count for component '{}' for language tag '{}'.", component.as_ref(), language_tag );
+
+        let option = self.connection( component.as_ref(), all_in_one )?;
+        match option {
+            None => {
+                return Ok( 0usize );
+            },
+            Some( connection ) => {
+                let query = if all_in_one {
+                    "SELECT count( * ) FROM pattern WHERE languageTag = ?1 AND component = ?2"
+                } else {
+                    "SELECT count( * ) FROM pattern WHERE languageTag = ?1"
                 };
-                let rows = match stmt.query_map(
-                    [ component.as_ref(), data.language.as_ref() ],
-                    |row| {
-                        let count: usize = row.get( 0 )?;
-                        Ok( count )
-                    }
-                ) {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                };
+                let mut statement = connection.prepare( query )?;
                 let mut count = 0usize;
-                for row in rows {
-                    count = match row {
-                        Ok( result ) => result,
-                        Err( error ) => return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                            }
-                        )
-                    }
-                }
-                if data.language == default_language {
-                    default_count = count.clone();
-                }
-                data.count = count;
-            }
-
-            // Loop through to get percentage.
-            if default_count == 0 {
-                return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new(
-                            ProviderSqlite3Error::DefaultLanguageCount(
-                                component.as_ref().to_string(), default_language.to_string()
-                            )
-                        ),
-                    }
-                )
-            }
-            iterator = list.iter_mut();
-            while let Some( data ) = iterator.next() {
-                data.ratio = data.count as f32 / default_count as f32;
-            }
-            return Ok( list );
-        }
-
-        // Try individual component sqlite3 files.
-        let mut have = false;
-        {
-            #[cfg( not( feature = "sync" ) )]
-                if self.connections.borrow().contains_key( component.as_ref() ) {
-                have = true;
-            }
-
-            #[cfg( feature = "sync" )]
-                if self.connections.lock().unwrap().contains_key( component.as_ref() ) {
-                have = true;
-            }
-        }
-        {
-            if !have {
-                match self.add_connection( component.as_ref() ) {
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( error ),
-                        }
-                    ),
-                    Ok( () ) => {}
+                let mut rows = if all_in_one {
+                    statement.query( [ &language_tag, component.as_ref() ] )?
+                } else {
+                    statement.query( [ &language_tag ] )?
                 };
+                while let Some( row ) = rows.next()? {
+                    count = row.get( 0 )?;
+                }
+                Ok( count )
             }
         }
+    }
 
-        #[cfg( not( feature = "sync" ) )]
-        let borrow = self.connections.borrow();
+    fn default_language<T: AsRef<str>>(
+        &self,
+        component: T,
+        all_in_one: bool,
+    ) -> Result<Option<RefCount<String>>, LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!( "Get default language for component '{}'", component.as_ref() );
 
-        #[cfg( feature = "sync" )]
-        let borrow = self.connections.lock().unwrap();
-
-        let connection = borrow.get( component.as_ref() ).unwrap();
-        let mut stmt = match connection.prepare(
-            "SELECT languageTag FROM contributor"
-        ) {
-            Ok( result ) => result,
-            Err( error ) => return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
+        let option = self.connection( component.as_ref(), all_in_one )?;
+        match option {
+            None => {
+                return Ok( None );
+            },
+            Some( connection ) => {
+                let query = if all_in_one {
+                    "SELECT value FROM metadata WHERE key = 'default_language_tag' AND component = ?1"
+                } else {
+                    "SELECT value FROM metadata WHERE key = 'default_language_tag'"
+                };
+                let mut statement = connection.prepare( query )?;
+                let mut tag: Option<RefCount<String>> = None;
+                let mut rows = if all_in_one {
+                    statement.query( [ component.as_ref() ] )?
+                } else {
+                    statement.query( [] )?
+                };
+                while let Some( row ) = rows.next()? {
+                    let tag_raw: String = row.get( 0 )?;
+                    tag = Some( self.language_tag_registry.as_ref().tag( tag_raw )? );
                 }
-            )
-        };
-        let rows = match stmt.query_map(
-            [],
-            |row| {
-                let string: String = row.get( 0 )?;
-                Ok( string )
+                Ok( tag )
             }
-        ) {
-            Ok( result ) => result,
-            Err( error ) => return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                }
-            )
-        };
-        for row in rows {
-            let string = match row {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let language = match self.language_tag_registry.get_tag( string ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                    }
-                )
-            };
-            list.push( LanguageData {
-                language,
-                count: 0,
-                ratio: 0.0,
-            } );
         }
+    }
 
-        // Get counts for the languages, get count for default.
-        let mut iterator = list.iter_mut();
-        while let Some( data ) = iterator.next() {
-            let mut stmt = match connection.prepare(
-                "SELECT count( * ) FROM pattern WHERE languageTag = ?1"
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let rows = match stmt.query_map(
-                [ data.language.as_ref() ],
-                |row| {
-                    let count: usize = row.get( 0 )?;
-                    Ok( count )
-                }
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let mut count = 0usize;
-            for row in rows {
-                count = match row {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                }
-            }
-            if data.language == default_language {
-                default_count = count.clone();
-            }
-            data.count = count;
-        }
+    fn build_cache( &self ) -> Result<(), LocalisationProviderSqlite3Error> {
+        #[cfg( feature = "log" )]
+        debug!( "Building details cache." );
 
-        // Loop through to get percentage.
-        if default_count == 0 {
-            return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new(
-                        ProviderSqlite3Error::DefaultLanguageCount(
-                            component.as_ref().to_string(), default_language.to_string()
-                        )
-                    ),
-                }
-            )
-        }
-        iterator = list.iter_mut();
-        while let Some( data ) = iterator.next() {
-            data.ratio = data.count as f32 / default_count as f32;
-        }
-        Ok( list )
-    } 
-
-    /// Obtain a list of all the supported languages of the entire repository.
-    /// 
-    /// Return of [`ProviderError`] indicates there was an error, usually from within the data repository.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
-    /// use i18n_provider::LanguageStringProvider;
-    /// use i18n_utility::LanguageTagRegistry;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    /// fn main() -> Result<(), Box<dyn Error>> {
-    ///     let path = "./l10n/";
-    ///     let registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let provider = ProviderSqlite3::try_new(
-    ///         path,
-    ///         &registry
-    ///     )?;
-    ///     let tags = provider.repository_languages()?;
-    ///     assert_eq!( tags.iter().count(), 2, "Must be 2 languages." );
-    ///     Ok( () )
-    /// }
-    /// ```
-    fn repository_languages( &self ) -> Result<Vec<RefCount<String>>, ProviderError> {
-        let mut list = Vec::<RefCount<String>>::new();
+        let mut details = HashMap::<String, RefCount<ComponentDetails>>::new();
+        let mut components = Vec::<String>::new();
 
         // Check if all_in_one has component.
         if self.all_in_one {
-            #[cfg( not( feature = "sync" ) )]
-            let borrow = self.connections.borrow();
-    
-            #[cfg( feature = "sync" )]
-            let borrow = self.connections.lock().unwrap();
-    
-            let connection = borrow.get( "all_in_one" ).unwrap();
-            let mut stmt = match connection.prepare(
-                "SELECT DISTINCT languageTag FROM contributor"
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            let rows = match stmt.query_map(
-                [],
-                |row| {
-                    let string: String = row.get( 0 )?;
-                    Ok( string )
-                }
-            ) {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                    }
-                )
-            };
-            for row in rows {
-                let string = match row {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                        }
-                    )
-                };
-                let language = match self.language_tag_registry.get_tag( string ) {
-                    Ok( result ) => result,
-                    Err( error ) => return Err(
-                        ProviderError {
-                            error_type: "ProviderSqlite3Error",
-                            source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                        }
-                    )
-                };
-                list.push( language );
+            let connection: RefCount<Connection> = self.connection( "all_in_one", true ).unwrap().unwrap();
+            let mut statement = connection.prepare(
+                "SELECT DISTINCT component FROM contributor"
+            )?;
+            let mut rows = statement.query( [] )?;
+            while let Some( row ) = rows.next()? {
+                let component: String = row.get( 0 )?;
+                components.push( component );
             }
-            return Ok( list );
         }
         
         // Try individual component sqlite3 files.
-        let iterator = match self.directory.read_dir() {
-            Ok( result ) => result,
-            Err( error ) => return Err(
-                ProviderError {
-                    error_type: "ProviderSqlite3Error",
-                    source: Box::new( ProviderSqlite3Error::Io( error ) ),
-                }
-            )
-        };
+        let iterator = self.directory.read_dir()?;
         for entry in iterator {
-            let entry_data = match entry {
-                Ok( result ) => result,
-                Err( error ) => return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( ProviderSqlite3Error::Io( error ) ),
-                    }
-                )
-            };
+            let entry_data = entry?;
             if let Some( extension ) = entry_data.path().extension() {
                 if extension == "sqlite3" {
                     let path = entry_data.path();
-                    let component = path.file_stem().unwrap().to_str().unwrap();
-                    let mut have = false;
-                    {
-                        #[cfg( not( feature = "sync" ) )]
-                            if self.connections.borrow().contains_key( component ) {
-                            have = true;
-                        }
-            
-                        #[cfg( feature = "sync" )]
-                            if self.connections.lock().unwrap().contains_key( component ) {
-                            have = true;
-                        }
-                    }
-                    {
-                        if !have {
-                            match self.add_connection( component ) {
-                                Err( error ) => return Err(
-                                    ProviderError {
-                                        error_type: "ProviderSqlite3Error",
-                                        source: Box::new( error ),
-                                    }
-                                ),
-                                Ok( () ) => {}
-                            };
-                        }
-                    }
-            
-                    #[cfg( not( feature = "sync" ) )]
-                    let borrow = self.connections.borrow();
-            
-                    #[cfg( feature = "sync" )]
-                    let borrow = self.connections.lock().unwrap();
-            
-                    let connection = borrow.get( component ).unwrap();
-                    let mut stmt = match connection.prepare(
-                        "SELECT DISTINCT languageTag FROM contributor"
-                    ) {
-                        Ok( result ) => result,
-                        Err( error ) => return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                            }
-                        )
-                    };
-                    let rows = match stmt.query_map(
-                        [],
-                        |row| {
-                            let string: String = row.get( 0 )?;
-                            Ok( string )
-                        }
-                    ) {
-                        Ok( result ) => result,
-                        Err( error ) => return Err(
-                            ProviderError {
-                                error_type: "ProviderSqlite3Error",
-                                source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
-                            }
-                        )
-                    };
-                    for row in rows {
-                        let string = match row {
-                            Ok( result ) => result,
-                            Err( error ) => return Err(
-                                ProviderError {
-                                    error_type: "ProviderSqlite3Error",
-                                    source: Box::new( ProviderSqlite3Error::Sqlite3( error ) ),
+                    let component = path.file_stem().unwrap().to_str().unwrap().to_string();
+                    if component.as_str() != "all_in_one" && !components.contains( &component ) {
+                        match self.connection( component.clone(), false ) {
+                            Err( error ) => {
+                                return Err( error )
+                            },
+                            Ok( result ) => match result {
+                                None => {
+                                    #[cfg( feature = "log" )]
+                                    debug!( "No database connection for `{}`.", component );
+                                    // Skipping component.
+                                },
+                                Some( _connection ) => {
+                                    components.push( component );
                                 }
-                            )
-                        };
-                        let language = match self.language_tag_registry.get_tag( string ) {
-                            Ok( result ) => result,
-                            Err( error ) => return Err(
-                                ProviderError {
-                                    error_type: "ProviderSqlite3Error",
-                                    source: Box::new( ProviderSqlite3Error::LanguageTagRegistry( error ) ),
-                                }
-                            )
-                        };
-                        //check if language is in list already, ignore if present.
-                        let mut have = false;
-                        let mut iterator = list.iter();
-                        while let Some( entry ) = iterator.next() {
-                            if *entry == language {
-                                have = true;
                             }
-                        }
-                        if !have {
-                            list.push( language );
                         }
                     }
                 }
             }
         }
-        Ok( list )
-    } 
+
+        // Repository details
+        let mut repository_total_strings = 0usize;
+        let mut repository_contributors = Vec::<String>::new();
+        let mut repository_languages = Vec::<RefCount<String>>::new();
+
+        // Get details info per component
+        let mut components_iterator = components.iter();
+        while let Some( component ) = components_iterator.next() {
+            let mut total_strings = 0usize;
+    
+            // Get languages
+            let mut languages = self.languages( component, true )?;
+            let mut language_iterator = languages.iter();
+            while let Some( language ) = language_iterator.next() {
+                if !repository_languages.contains( &language ) {
+                    repository_languages.push( RefCount::clone( &language ) );
+                }
+            }
+            let languages_separate = self.languages( component, false )?;
+            let mut language_iterator = languages_separate.iter();
+            while let Some( language ) = language_iterator.next() {
+                if !languages.contains( &language ) {
+                    languages.push( RefCount::clone( &language ) );
+                }
+                if !repository_languages.contains( &language ) {
+                    repository_languages.push( RefCount::clone( &language ) );
+                }
+            }
+
+            // Build language data
+            let mut language_data_all = Vec::<LanguageData>::new();
+            let mut languages_iterator = languages.iter();
+            while let Some( language ) = languages_iterator.next() {
+                let mut contributors = self.contributors(
+                    component, language, true
+                )?;
+                let mut contributors_iterator = contributors.iter();
+                while let Some( contributor ) = contributors_iterator.next() {
+                    if !repository_contributors.contains( contributor ) {
+                        repository_contributors.push( contributor.to_string() );
+                    }
+                }
+                let contributors_separate = self.contributors(
+                    component, language, false
+                )?;
+                let mut contributors_iterator = contributors_separate.iter();
+                while let Some( contributor ) = contributors_iterator.next() {
+                    if !contributors.contains( contributor ) {
+                        contributors.push( contributor.to_string() );
+                    }
+                    if !repository_contributors.contains( contributor ) {
+                        repository_contributors.push( contributor.to_string() );
+                    }
+                }
+                let mut count = self.count( component, language, true )?;
+                count += self.count( component, language, false )?;
+                total_strings += count;
+                repository_total_strings += count;
+                let data = LanguageData {
+                    language: RefCount::clone( language ),
+                    count,
+                    ratio: 0f32,
+                    contributors,
+                };
+                language_data_all.push( data );
+            }
+
+            // Get default language
+            let mut default = self.default_language( component, true )?;
+            if default.is_none() {
+                default = self.default_language( component, false )?;
+            }
+            if default.is_none() {
+                return Err( LocalisationProviderSqlite3Error::DefaultLanguage( component.to_string() ) );
+            }
+
+            // Create ComponentDetails and add to cache
+            let component_details = ComponentDetails {
+                languages: language_data_all,
+                default: default.unwrap(),
+                total_strings,
+            };
+            details.insert(component.to_string(), RefCount::new( component_details ) );
+        }
+        let _ = self.component_details.set( details );
+
+        // Complete repository details
+        let mut default = self.default_language( "application", true )?;
+        if default.is_none() {
+            default = self.default_language( "application", false )?;
+        }
+
+        let repository = RefCount::new(
+            RepositoryDetails {
+                languages: repository_languages,
+                default,
+                total_strings: repository_total_strings,
+                contributors: repository_contributors,
+                components,
+            }
+        );
+        let _ = self.repository_details.set( repository );
+        Ok( () )
+    }
 }
 
-// The next 3 items (struct, trait, and impl) is implementing the concept of storing an `impl Trait` into a struct as
-// a member, has been taken from the `icu_provider` crate, particular the serde module.
-pub struct LanguageStringProviderSqlite3<'a, P: ?Sized>( &'a P );
+impl LocalisationProvider for LocalisationProviderSqlite3 {
 
-pub trait AsLanguageStringProviderSqlite3 {
-    fn as_lstring_provider( &self ) -> LanguageStringProviderSqlite3<Self>;
-}
+    /// Obtain a localisation string ([`TaggedString`]) from the data repository for the provided parameters, though
+    /// if an exact match is not found then search using similar language tags, else [`None`] returned indicating no
+    /// possible match was found.
+    /// 
+    /// If no string is found for the requested tag, the provider must remove the right most subtag sequentially until
+    /// either a match is found or there are no more subtags remaining, at which the result is `None` (not found).
+    /// 
+    /// If more than one string matches the requested tag, then only one string is returned. This trait does not
+    /// specify how the string is to be selected to be returned, thus varied results may be experienced. Look at
+    /// `strings()` method to obtain all the strings, that matches the requested tag.
+    ///  
+    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository. The
+    /// `LocalisationProviderError` contains the actual error [`LocalisationProviderSqlite3Error`], usually indicates
+    /// there was a Sqlite3 error.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
+    /// use i18n_provider::LocalisationProvider;
+    /// use i18n_utility::LanguageTagRegistry;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     let path = "./l10n/";
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let tag = registry.tag( "en" )?;
+    ///     let provider = LocalisationProviderSqlite3::try_new(
+    ///         path,
+    ///         &registry,
+    ///         false
+    ///     )?;
+    ///     let string = provider.string(
+    ///         "i18n_provider_sqlite3",
+    ///         "path_conversion",
+    ///         &tag,
+    ///     )?.unwrap();
+    ///     assert_eq!( string.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    ///     assert_eq!( string.tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     Ok( () )
+    /// }
+    /// ```
+    fn string<T: AsRef<str>>(
+        &self,
+        component: T,
+        identifier: T,
+        language_tag: &RefCount<String>,
+    ) -> Result<Option<TaggedString>, LocalisationProviderError> {
+        #[cfg( feature = "log" )]
+        debug!(
+            "Finding one string for identifier '{}' of component '{}' for language tag '{}'.",
+            identifier.as_ref(), component.as_ref(), language_tag
+        );
 
-impl<P> AsLanguageStringProviderSqlite3 for P
-where
-    P: LanguageStringProvider + ?Sized,
-{
-    fn as_lstring_provider( &self ) -> LanguageStringProviderSqlite3<Self> {
-        LanguageStringProviderSqlite3( self )
+        // Try all_in_one.sqlite3 first.
+        if self.all_in_one {
+            #[cfg( feature = "log" )]
+            debug!( "Trying the 'all_in_one.sqlite3' for string." );
+
+            let strings = match self.find_strings(
+                component.as_ref(),
+                identifier.as_ref(),
+                language_tag,
+                true,
+                true,
+                false,
+            ) {
+                Err( error ) => {
+                    return Err(
+                        LocalisationProviderError {
+                            error_type: "LocalisationProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    )
+                },
+                Ok( result ) => result,
+            };
+            if !strings.is_empty() {
+                return Ok( Some( strings[ 0 ].clone() ) );
+            }
+        }
+
+        // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
+        #[cfg( feature = "log" )]
+        debug!( "Trying the component sqlite3 file for string." );
+
+        let strings = match self.find_strings(
+            component.as_ref(),
+            identifier.as_ref(),
+            language_tag,
+            false,
+            true,
+            false,
+        ) {
+            Err( error ) => {
+                return Err(
+                    LocalisationProviderError {
+                        error_type: "LocalisationProviderSqlite3Error",
+                        source: Box::new( error ),
+                    }
+                )
+            },
+            Ok( result ) => result,
+        };
+        if !strings.is_empty() {
+            return Ok( Some( strings[ 0 ].clone() ) );
+        }
+        Ok( None )
+    }
+
+    /// Obtain a localisation string ([`TaggedString`]) only if there is an exact match in the data repository for the
+    /// provided parameters, else [`None`] returned indicating no match was found.
+    /// 
+    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository. The
+    /// `LocalisationProviderError` contains the actual error [`LocalisationProviderSqlite3Error`], usually indicates
+    /// there was a Sqlite3 error.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
+    /// use i18n_provider::LocalisationProvider;
+    /// use i18n_utility::LanguageTagRegistry;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     let path = "./l10n/";
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let tag = registry.tag( "en-ZA" )?;
+    ///     let provider = LocalisationProviderSqlite3::try_new(
+    ///         path,
+    ///         &registry,
+    ///         false
+    ///     )?;
+    ///     let string = provider.string_exact_match(
+    ///         "i18n_provider_sqlite3",
+    ///         "path_conversion",
+    ///         &tag,
+    ///     )?.unwrap();
+    ///     assert_eq!( string.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    ///     assert_eq!( string.tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     Ok( () )
+    /// }
+    /// ```
+    fn string_exact_match<T: AsRef<str>>(
+        &self,
+        component: T,
+        identifier: T,
+        language_tag: &RefCount<String>,
+    ) -> Result<Option<TaggedString>, LocalisationProviderError> {
+        #[cfg( feature = "log" )]
+        debug!(
+            "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
+            identifier.as_ref(), component.as_ref(), language_tag
+        );
+
+        // Try all_in_one.sqlite3 first.
+        if self.all_in_one {
+            #[cfg( feature = "log" )]
+            debug!( "Trying the 'all_in_one.sqlite3' for exact match string." );
+
+            let strings = match self.find_strings(
+                component.as_ref(),
+                identifier.as_ref(),
+                language_tag,
+                true,
+                true,
+                true,
+            ) {
+                Err( error ) => {
+                    return Err(
+                        LocalisationProviderError {
+                            error_type: "LocalisationProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    )
+                },
+                Ok( result ) => result,
+            };
+            if !strings.is_empty() {
+                return Ok( Some( strings[ 0 ].clone() ) );
+            }
+        }
+
+        // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
+        #[cfg( feature = "log" )]
+        debug!( "Trying the component sqlite3 file for exact match string." );
+
+        let strings = match self.find_strings(
+            component.as_ref(),
+            identifier.as_ref(),
+            language_tag,
+            false,
+            true,
+            true,
+        ) {
+            Err( error ) => {
+                return Err(
+                    LocalisationProviderError {
+                        error_type: "LocalisationProviderSqlite3Error",
+                        source: Box::new( error ),
+                    }
+                )
+            },
+            Ok( result ) => result,
+        };
+        if !strings.is_empty() {
+            return Ok( Some( strings[ 0 ].clone() ) );
+        }
+        Ok( None )
+    }
+
+    /// Similar to `string()`, except all the strings are returned for the matching requested tag.
+    /// 
+    /// Empty [`Vec`] returned indicates no match was found.
+    ///  
+    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository. The
+    /// `LocalisationProviderError` contains the actual error [`LocalisationProviderSqlite3Error`], usually indicates
+    /// there was a Sqlite3 error.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
+    /// use i18n_provider::LocalisationProvider;
+    /// use i18n_utility::LanguageTagRegistry;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     let path = "./l10n/";
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let tag = registry.tag( "en" )?;
+    ///     let provider = LocalisationProviderSqlite3::try_new(
+    ///         path,
+    ///         &registry,
+    ///         false
+    ///     )?;
+    ///     let strings = provider.strings(
+    ///         "i18n_provider_sqlite3",
+    ///         "path_conversion",
+    ///         &tag,
+    ///     )?;
+    ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
+    ///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    ///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     Ok( () )
+    /// }
+    /// ```
+    fn strings<T: AsRef<str>>(
+        &self,
+        component: T,
+        identifier: T,
+        language_tag: &RefCount<String>,
+    ) -> Result<Vec<TaggedString>, LocalisationProviderError> {
+        #[cfg( feature = "log" )]
+        debug!(
+            "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
+            identifier.as_ref(), component.as_ref(), language_tag
+        );
+
+        // Try all_in_one.sqlite3 first.
+        if self.all_in_one {
+            #[cfg( feature = "log" )]
+            debug!( "Trying the 'all_in_one.sqlite3' for strings." );
+
+            let strings = match self.find_strings(
+                component.as_ref(),
+                identifier.as_ref(),
+                language_tag,
+                true,
+                false,
+                false,
+            ) {
+                Err( error ) => {
+                    return Err(
+                        LocalisationProviderError {
+                            error_type: "LocalisationProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    )
+                },
+                Ok( result ) => result,
+            };
+            if !strings.is_empty() {
+                return Ok( strings );
+            }
+        }
+
+        // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
+        #[cfg( feature = "log" )]
+        debug!( "Trying the component sqlite3 file for strings." );
+
+        let strings = match self.find_strings(
+            component.as_ref(),
+            identifier.as_ref(),
+            language_tag,
+            false,
+            false,
+            false,
+        ) {
+            Err( error ) => {
+                return Err(
+                    LocalisationProviderError {
+                        error_type: "LocalisationProviderSqlite3Error",
+                        source: Box::new( error ),
+                    }
+                )
+            },
+            Ok( result ) => result,
+        };
+        Ok( strings )
+    }
+
+    /// Obtain the information details [`IdentifierDetails`] of an identifier within a component. 
+    /// 
+    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository. The
+    /// `LocalisationProviderError` contains the actual error [`LocalisationProviderSqlite3Error`], usually indicates
+    /// there was a Sqlite3 error.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
+    /// use i18n_provider::LocalisationProvider;
+    /// use i18n_utility::LanguageTagRegistry;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     let path = "./l10n/";
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let provider = LocalisationProviderSqlite3::try_new(
+    ///         path,
+    ///         &registry,
+    ///         false
+    ///     )?;
+    ///     let details = provider.identifier_details(
+    ///         "application",
+    ///         "example",
+    ///     )?;
+    ///     assert_eq!( details.default, registry.tag( "en-US" )?, "Should be en-US." );
+    ///     assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
+    ///     Ok( () )
+    /// }
+    /// ```
+    fn identifier_details<T: AsRef<str>>(
+        &self,
+        component: T,
+        identifier: T,
+    ) -> Result<IdentifierDetails, LocalisationProviderError> {
+        #[cfg( feature = "log" )]
+        debug!( "Getting identifier details for '{}' of component '{}'.", identifier.as_ref(), component.as_ref() );
+
+        let components = match self.component_details.get() {
+            None => {
+                match self.build_cache() {
+                    Ok( _ ) => {},
+                    Err( error ) => return Err(
+                        LocalisationProviderError {
+                            error_type: "LocalisationProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    ),
+                };
+                self.component_details.get().unwrap()
+            },
+            Some( value ) => value,
+        };
+        match components.get( component.as_ref() ) {
+            None => return Err(
+                LocalisationProviderError {
+                    error_type: "LocalisationProviderSqlite3Error",
+                    source: Box::new(
+                        LocalisationProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() )
+                    ),
+                }
+            ),
+            Some( component_details ) => {
+                let mut languages = match self.identifier_languages(
+                    component.as_ref(), identifier.as_ref(), true
+                ) {
+                    Err( error ) => return Err(
+                        LocalisationProviderError {
+                            error_type: "LocalisationProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    ),
+                    Ok( value ) => value,
+                };
+                if languages.is_empty() {
+                    languages = match self.identifier_languages(
+                        component.as_ref(), identifier.as_ref(), false
+                    ) {
+                        Err( error ) => return Err(
+                            LocalisationProviderError {
+                                error_type: "LocalisationProviderSqlite3Error",
+                                source: Box::new( error ),
+                            }
+                        ),
+                        Ok( value ) => value,
+                    };
+                }
+                Ok( IdentifierDetails {
+                    languages,
+                    default: RefCount::clone( &component_details.default )
+                } )
+            }
+        }
+    }
+    
+    /// Obtain the information details [`ComponentDetails`] of a component. 
+    /// 
+    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository. The
+    /// `LocalisationProviderError` contains the actual error [`LocalisationProviderSqlite3Error`], usually indicates
+    /// there was a Sqlite3 error.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
+    /// use i18n_provider::LocalisationProvider;
+    /// use i18n_utility::LanguageTagRegistry;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     let path = "./l10n/";
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let provider = LocalisationProviderSqlite3::try_new(
+    ///         path,
+    ///         &registry,
+    ///         false
+    ///     )?;
+    ///     let details = provider.component_details(
+    ///         "i18n_provider_sqlite3",
+    ///     )?;
+    ///     assert_eq!( details.default, registry.tag( "en-ZA" )?, "Should be en-ZA." );
+    ///     assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
+    ///     assert_eq!( details.total_strings, 12, "Should be 12 strings for component" );
+    ///     Ok( () )
+    /// }
+    /// ```
+    fn component_details<T: AsRef<str>>(
+        &self,
+        component: T,
+    ) -> Result<RefCount<ComponentDetails>, LocalisationProviderError> {
+        #[cfg( feature = "log" )]
+        debug!( "Getting component details for '{}'.", component.as_ref() );
+
+        let components = match self.component_details.get() {
+            None => {
+                match self.build_cache() {
+                    Ok( _ ) => {},
+                    Err( error ) => return Err(
+                        LocalisationProviderError {
+                            error_type: "LocalisationProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    ),
+                };
+                self.component_details.get().unwrap()
+            },
+            Some( value ) => value,
+        };
+        match components.get( component.as_ref() ) {
+            None => return Err(
+                LocalisationProviderError {
+                    error_type: "LocalisationProviderSqlite3Error",
+                    source: Box::new(
+                        LocalisationProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() )
+                    ),
+                }
+            ),
+            Some( value ) => return Ok( RefCount::clone( value ) )
+        }
+    }
+    
+
+    /// Obtain the information details [`RepositoryDetails`] of the provider's repository.
+    /// 
+    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository. The
+    /// `LocalisationProviderError` contains the actual error [`LocalisationProviderSqlite3Error`], usually indicates
+    /// there was a Sqlite3 error.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
+    /// use i18n_provider::LocalisationProvider;
+    /// use i18n_utility::LanguageTagRegistry;
+    /// use std::rc::Rc;
+    /// use std::error::Error;
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     let path = "./l10n/";
+    ///     let registry = Rc::new( LanguageTagRegistry::new() );
+    ///     let provider = LocalisationProviderSqlite3::try_new(
+    ///         path,
+    ///         &registry,
+    ///         false
+    ///     )?;
+    ///     let details = provider.repository_details()?;
+    ///     assert_eq!( details.default.as_ref().unwrap(), &registry.tag( "en-US" )?, "Should be en-US." );
+    ///     assert_eq!( details.languages.iter().count(), 3, "Should be 3 languages" );
+    ///     assert_eq!( details.total_strings, 16, "Should be 16 strings for repository" );
+    ///     assert_eq!( details.components.iter().count(), 2, "Should be 2 components" );
+    ///     assert_eq!( details.contributors.iter().count(), 2, "Should be contributors" );
+    ///     Ok( () )
+    /// }
+    /// ```
+    fn repository_details( &self ) -> Result<RefCount<RepositoryDetails>, LocalisationProviderError> {
+        #[cfg( feature = "log" )]
+        debug!( "Getting repository details." );
+
+        match self.repository_details.get() {
+            None => {
+                match self.build_cache() {
+                    Ok( _ ) => {},
+                    Err( error ) => return Err(
+                        LocalisationProviderError {
+                            error_type: "LocalisationProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    ),
+                };
+                return Ok( RefCount::clone( self.repository_details.get().unwrap() ) )
+            },
+            Some( value ) => return Ok( RefCount::clone( value ) ),
+        }
     }
 }

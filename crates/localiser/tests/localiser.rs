@@ -1,13 +1,13 @@
-// This file is part of `i18n_message-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_message-rizzen-yazston` crate.
+// This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-//! Testing `Message`.
+//! Testing `Localiser`.
 
 use i18n_icu::{ IcuDataProvider, DataProvider };
 use i18n_utility::LanguageTagRegistry;
-use i18n_provider_sqlite3::ProviderSqlite3;
+use i18n_provider_sqlite3::LocalisationProviderSqlite3;
 use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-use i18n_message::Message;
+use i18n_localiser::Localiser;
 use std::collections::HashMap;
 
 #[cfg( not( feature = "sync" ) )]
@@ -23,11 +23,11 @@ use std::error::Error;
 fn format() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
-    let lstring_provider = ProviderSqlite3::try_new(
-        "./l10n/", &language_tag_registry
+    let lstring_provider = LocalisationProviderSqlite3::try_new(
+        "./l10n/", &language_tag_registry, false
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let message_system = Message::try_new(
+    let localiser = Localiser::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,
@@ -39,7 +39,7 @@ fn format() -> Result<(), Box<dyn Error>> {
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "component".to_string(),
-        PlaceholderValue::String( "i18n_message".to_string() )
+        PlaceholderValue::String( "i18n_localiser".to_string() )
     );
     values.insert(
         "identifier".to_string(),
@@ -53,17 +53,17 @@ fn format() -> Result<(), Box<dyn Error>> {
         "fallback".to_string(),
         PlaceholderValue::String( "true".to_string() )
     );
-    let lstring = message_system.format(
-        "i18n_message",
+    let lstring = localiser.format(
+        "i18n_localiser",
         "string_not_found",
         &values,
-        &language_tag_registry.get_tag( "en-ZA" ).unwrap(),
+        &language_tag_registry.tag( "en-ZA" ).unwrap(),
         None,
         None
     )?;
     assert_eq!(
         lstring.as_str(),
-        "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ for the language \
+        "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the language \
             tag ‘en-ZA’. Fallback was used: True.",
         "Check placeholder values."
     );
@@ -75,11 +75,11 @@ fn format() -> Result<(), Box<dyn Error>> {
 fn format_with_defaults() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
-    let lstring_provider = ProviderSqlite3::try_new(
-        "./l10n/", &language_tag_registry
+    let lstring_provider = LocalisationProviderSqlite3::try_new(
+        "./l10n/", &language_tag_registry, false
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let message_system = Message::try_new(
+    let localiser = Localiser::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,
@@ -91,16 +91,16 @@ fn format_with_defaults() -> Result<(), Box<dyn Error>> {
     let mut values = HashMap::<String, PlaceholderValue>::new();
     values.insert(
         "component".to_string(),
-        PlaceholderValue::String( "i18n_message".to_string() )
+        PlaceholderValue::String( "i18n_localiser".to_string() )
     );
-    let lstring = message_system.format_with_defaults(
-        "i18n_message",
+    let lstring = localiser.format_with_defaults(
+        "i18n_localiser",
         "no_default_language_tag",
         &values,
     )?;
     assert_eq!(
         lstring.as_str(),
-        "No default language tag was found for the component ‘i18n_message’.",
+        "No default language tag was found for the component ‘i18n_localiser’.",
         "Check placeholder values."
     );
     Ok( () )
@@ -110,11 +110,11 @@ fn format_with_defaults() -> Result<(), Box<dyn Error>> {
 fn get() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
-    let lstring_provider = ProviderSqlite3::try_new(
-        "./l10n/", &language_tag_registry
+    let lstring_provider = LocalisationProviderSqlite3::try_new(
+        "./l10n/", &language_tag_registry, false
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let message_system = Message::try_new(
+    let localiser = Localiser::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,
@@ -123,8 +123,8 @@ fn get() -> Result<(), Box<dyn Error>> {
         true,
         "en-ZA",
     )?;
-    let lstring = message_system.get(
-        "i18n_message",
+    let lstring = localiser.get(
+        "i18n_localiser",
         "no_default_language_tag",
         "en-ZA",
         None,
@@ -142,11 +142,11 @@ fn get() -> Result<(), Box<dyn Error>> {
 fn get_with_defaults() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
-    let lstring_provider = ProviderSqlite3::try_new(
-        "./l10n/", &language_tag_registry
+    let lstring_provider = LocalisationProviderSqlite3::try_new(
+        "./l10n/", &language_tag_registry, false
     )?;
     let command_registry = RefCount::new( CommandRegistry::new() );
-    let message_system = Message::try_new(
+    let localiser = Localiser::try_new(
         &icu_data_provider,
         &language_tag_registry,
         lstring_provider,
@@ -155,8 +155,8 @@ fn get_with_defaults() -> Result<(), Box<dyn Error>> {
         true,
         "en-ZA",
     )?;
-    let lstring = message_system.get_with_defaults(
-        "i18n_message",
+    let lstring = localiser.get_with_defaults(
+        "i18n_localiser",
         "no_default_language_tag",
     )?;
     assert_eq!(

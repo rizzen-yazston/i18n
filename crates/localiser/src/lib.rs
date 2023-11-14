@@ -1,7 +1,7 @@
-// This file is part of `i18n_message-rizzen-yazston` crate. For the terms of use, please see the file
-// called LICENSE-BSD-3-Clause at the top level of the `i18n_message-rizzen-yazston` crate.
+// This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
+// called LICENSE-BSD-3-Clause at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-//! The `i18n_message` crate contains the messaging system.
+//! The `i18n_localiser` crate contains the messaging system.
 //!
 //! A message system that connects to a string data store, to obtain strings for the specified language using a
 //! string identifier, and formatting the string to replace any placeholders within the string with provided values.
@@ -10,11 +10,11 @@
 //! reused without the need to parse the string for placeholders.
 //! 
 //! The message system makes use of all the other component crates that make up the `i18n` project. Ideally one only
-//! needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
+//! needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_localiser` crate.
 //! 
 //! # Features
 //! 
-//! Available features for `i18n_message` crate:
+//! Available features for `i18n_localiser` crate:
 //! 
 //! * `compiled_data`: Allow for the internal data of the various ICU4X components.
 //! 
@@ -32,7 +32,7 @@
 //! use i18n_utility::LanguageTagRegistry;
 //! use i18n_provider_sqlite3::ProviderSqlite3;
 //! use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-//! use i18n_message::Message;
+//! use i18n_localiser::Message;
 //! use std::collections::HashMap;
 //! use std::rc::Rc;
 //! use std::error::Error;
@@ -50,7 +50,7 @@
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
 //!     values.insert(
 //!         "component".to_string(),
-//!         PlaceholderValue::String( "i18n_message".to_string() )
+//!         PlaceholderValue::String( "i18n_localiser".to_string() )
 //!     );
 //!     values.insert(
 //!         "identifier".to_string(),
@@ -65,7 +65,7 @@
 //!         PlaceholderValue::String( "true".to_string() )
 //!     );
 //!     let lstring = message_system.format(
-//!         "i18n_message",
+//!         "i18n_localiser",
 //!         "string_not_found",
 //!         &values,
 //!         "en-ZA",
@@ -74,7 +74,7 @@
 //!     )?;
 //!     assert_eq!(
 //!         lstring.as_str(),
-//!         "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ for the language \
+//!         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the language \
 //!             tag ‘en-ZA’. Fallback was used: True.",
 //!         "Check placeholder values."
 //!     );
@@ -95,5 +95,5 @@ use std::cell::RefCell;
 
 pub mod error;
 pub use error::*;
-pub mod message;
-pub use message::*;
+pub mod localiser;
+pub use localiser::*;

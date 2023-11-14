@@ -5,15 +5,9 @@
 //! 
 //! This crate consists of two modules:
 //! 
-//! * `registry`: Registry for Language Tags and ICU4X's `Locale` instances,
+//! * [`registry`]: Registry for Language Tags and ICU4X's `Locale` instances,
 //! 
-//! * `lstring`: Simple tagged string type.
-//! 
-//! # Features
-//! 
-//! Available features for `i18n_utility` crate:
-//! 
-//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+//! * [`tagged_string`]: Simple tagged string type.
 //! 
 //! # Registry for holding ICU4X `Locale` objects.
 //! 
@@ -37,7 +31,7 @@
 //! use i18n_utility::registry::LanguageTagRegistry;
 //! 
 //! let mut registry = LanguageTagRegistry::new();
-//! let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
+//! let result = registry.tag_and_locale( "en_ZA" ).expect( "Failed to parse language tag." );
 //! let tags = registry.list().iter().count();
 //! 
 //! assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
@@ -51,13 +45,6 @@
 //! 
 //! In the context of the `i18n` project, the identifier tag is expected to be a [BCP 47 Language Tag] string, even
 //! though any identifier could be used.
-//! 
-//! # Features
-//! 
-//! Available features for `i18n_utility` crate:
-//! 
-//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
-//! [`RefCell`].
 //! 
 //! ## Examples
 //! 
@@ -74,6 +61,13 @@
 //! assert_eq!( lang_string.as_str(), string, "String failed." );
 //! assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
 //! ```
+//! 
+//! # Features
+//! 
+//! Available features for `i18n_utility` crate:
+//! 
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
+//! [`RefCell`].
 //! 
 //! [`ICU4X`]: https://github.com/unicode-org/icu4x
 //! [Unicode Consortium]: https://home.unicode.org/
@@ -94,8 +88,8 @@ use std::rc::Rc;
 #[cfg( doc )]
 use std::cell::RefCell;
 
-pub mod taggedstring;
-pub use taggedstring::*;
+pub mod tagged_string;
+pub use tagged_string::*;
 pub mod registry;
 pub use registry::*;
 pub mod error;

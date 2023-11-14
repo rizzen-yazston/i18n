@@ -1,10 +1,10 @@
 // This file is part of `i18n_provider_sqlite3-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
-//! Testing `get()` and `default_tag()`.
+//! Testing `strings()` and `default_tag()`.
 
-use i18n_provider::LanguageStringProvider;
-use i18n_provider_sqlite3::ProviderSqlite3;
+use i18n_provider::LocalisationProvider;
+use i18n_provider_sqlite3::LocalisationProviderSqlite3;
 use i18n_utility::LanguageTagRegistry;
 
 #[cfg( not( feature = "sync" ) )]
@@ -16,16 +16,17 @@ use std::sync::Arc as RefCount;
 
 use std::error::Error;
 
-#[test]
-fn get_for_en() -> Result<(), Box<dyn Error>> {
+#[test]// positive
+fn strings_for_en() -> Result<(), Box<dyn Error>> {
     let path = "./l10n/";
     let registry = RefCount::new( LanguageTagRegistry::new() );
-    let tag = registry.get_tag( "en" )?;
-    let provider = ProviderSqlite3::try_new(
+    let tag = registry.tag( "en" )?;
+    let provider = LocalisationProviderSqlite3::try_new(
         path,
-        &registry
+        &registry,
+        false,
     )?;
-    let strings = provider.get(
+    let strings = provider.strings(
         "i18n_provider_sqlite3",
         "path_conversion",
         &tag
@@ -35,16 +36,17 @@ fn get_for_en() -> Result<(), Box<dyn Error>> {
     Ok( () )
 }
 
-#[test]
-fn get_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
+#[test]// positive
+fn strings_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
     let path = "./l10n/";
     let registry = RefCount::new( LanguageTagRegistry::new() );
-    let tag = registry.get_tag( "en-ZA-u-ca-julian" )?;
-    let provider = ProviderSqlite3::try_new(
+    let tag = registry.tag( "en-ZA-u-ca-julian" )?;
+    let provider = LocalisationProviderSqlite3::try_new(
         path,
-        &registry
+        &registry,
+        false,
     )?;
-    let strings = provider.get(
+    let strings = provider.strings(
         "i18n_provider_sqlite3",
         "path_conversion",
         &tag
@@ -54,65 +56,132 @@ fn get_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
     Ok( () )
 }
 
-#[test]
-fn default_tag() -> Result<(), Box<dyn Error>> {
+#[test]// negative (private use subtag)
+fn strings_for_qz() -> Result<(), Box<dyn Error>> {
     let path = "./l10n/";
     let registry = RefCount::new( LanguageTagRegistry::new() );
-    let provider = ProviderSqlite3::try_new(
+    let tag = registry.tag( "qz" )?;
+    let provider = LocalisationProviderSqlite3::try_new(
         path,
-        &registry
+        &registry,
+        false,
     )?;
-    let tag = provider.default_language(
-        "i18n_provider_sqlite3",
-    )?.expect( "No default language tag found." );
-    assert_eq!( tag.as_str(), "en-ZA", "Must be en-ZA." );
-    Ok( () )
-}
-
-#[test]
-fn identifier_languages() -> Result<(), Box<dyn Error>> {
-    let path = "./l10n/";
-    let registry = RefCount::new( LanguageTagRegistry::new() );
-    let provider = ProviderSqlite3::try_new(
-        path,
-        &registry
-    )?;
-    let tags = provider.identifier_languages(
+    let strings = provider.strings(
         "i18n_provider_sqlite3",
         "path_conversion",
-    )?;//.expect( "No default language tag found." );
-    assert_eq!( tags.iter().count(), 2, "Must be 2 languages." );
+        &tag
+    )?;
+    assert_eq!( strings.len(), 0, "There should be 0 string." );
     Ok( () )
 }
 
-#[test]
-fn component_languages() -> Result<(), Box<dyn Error>> {
+#[test]//positive
+fn one_string() -> Result<(), Box<dyn Error>> {
     let path = "./l10n/";
     let registry = RefCount::new( LanguageTagRegistry::new() );
-    let provider = ProviderSqlite3::try_new(
+    let tag = registry.tag( "en" )?;
+    let provider = LocalisationProviderSqlite3::try_new(
         path,
-        &registry
+        &registry,
+        false,
     )?;
-    let tags = provider.component_languages(
+    let string = provider.string(
         "i18n_provider_sqlite3",
-    )?;//.expect( "No default language tag found." );
-    for tag in tags {
-        if tag.language == registry.get_tag( "en-ZA" ).unwrap() {
-            assert_eq!( tag.ratio, 1.0, "Ratio ust be 1.0 for en-ZA." );
-        }
-    }
+        "path_conversion",
+        &tag
+    )?;
+    assert_eq!( string.unwrap().as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    Ok( () )
+}
+
+#[test]//positive
+fn exact_string() -> Result<(), Box<dyn Error>> {
+    let path = "./l10n/";
+    let registry = RefCount::new( LanguageTagRegistry::new() );
+    let tag = registry.tag( "en-ZA" )?;
+    let provider = LocalisationProviderSqlite3::try_new(
+        path,
+        &registry,
+        false,
+    )?;
+    let string = provider.string_exact_match(
+        "i18n_provider_sqlite3",
+        "path_conversion",
+        &tag
+    )?;
+    assert_eq!( string.unwrap().as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    Ok( () )
+}
+
+#[test]//negative
+fn exact_string_fail() -> Result<(), Box<dyn Error>> {
+    let path = "./l10n/";
+    let registry = RefCount::new( LanguageTagRegistry::new() );
+    let tag = registry.tag( "en" )?;
+    let provider = LocalisationProviderSqlite3::try_new(
+        path,
+        &registry,
+        false,
+    )?;
+    let string = provider.string_exact_match(
+        "i18n_provider_sqlite3",
+        "path_conversion",
+        &tag
+    )?;
+    assert!( string.is_none(), "Should be None." );
     Ok( () )
 }
 
 #[test]
-fn repository_languages() -> Result<(), Box<dyn Error>> {
+fn identifier_details() -> Result<(), Box<dyn Error>> {
     let path = "./l10n/";
     let registry = RefCount::new( LanguageTagRegistry::new() );
-    let provider = ProviderSqlite3::try_new(
+    let provider = LocalisationProviderSqlite3::try_new(
         path,
-        &registry
+        &registry,
+        false,
     )?;
-    let tags = provider.repository_languages()?;//.expect( "No default language tag found." );
-    assert_eq!( tags.iter().count(), 2, "Must be 2 languages." );
+    let details = provider.identifier_details(
+        "application",
+        "example",
+    )?;
+    assert_eq!( details.default, registry.tag( "en-US" )?, "Should be en-US." );
+    assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
+    Ok( () )
+}
+
+#[test]
+fn component_details() -> Result<(), Box<dyn Error>> {
+    let path = "./l10n/";
+    let registry = RefCount::new( LanguageTagRegistry::new() );
+    let provider = LocalisationProviderSqlite3::try_new(
+        path,
+        &registry,
+        false,
+    )?;
+    let details = provider.component_details(
+        "i18n_provider_sqlite3",
+    )?;
+    assert_eq!( details.default, registry.tag( "en-ZA" )?, "Should be en-ZA." );
+    assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
+    assert_eq!( details.total_strings, 12, "Should be 12 strings for component" );
+    Ok( () )
+}
+
+#[test]
+fn repository_details() -> Result<(), Box<dyn Error>> {
+    let path = "./l10n/";
+    let registry = RefCount::new( LanguageTagRegistry::new() );
+    let provider = LocalisationProviderSqlite3::try_new(
+        path,
+        &registry,
+        false,
+    )?;
+    let details = provider.repository_details()?;
+    assert_eq!( details.default.as_ref().unwrap(), &registry.tag( "en-US" )?, "Should be en-US." );
+    assert_eq!( details.languages.iter().count(), 3, "Should be 3 languages" );
+    assert_eq!( details.total_strings, 16, "Should be 16 strings for repository" );
+    assert_eq!( details.components.iter().count(), 2, "Should be 2 components" );
+    assert_eq!( details.contributors.iter().count(), 2, "Should be contributors" );
     Ok( () )
 }

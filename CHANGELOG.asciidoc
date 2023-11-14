@@ -3,91 +3,165 @@ Rizzen Yazston
 
 == i18n 0.7.0 (2023-??-??)
 
-WARNING: This update has API breaking changes for all `i18n` crates.
+WARNING: This update has API breaking changes for almost all `i18n` crates.
 
-* Redesigning of `IcuDataProvider` to make use of new internal data feature in `icu` 1.3.0, and to resolve issue related to generic `DataProvider` issue with `main()`.
+=== Overview
 
-* Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that `i18n` depends on.
+* Redesigned `IcuDataProvider` to make use of new internal data feature in `icu` 1.3.0, and to resolve issue related to generic `DataProvider` issue with applications' `main()` method.
+
+* Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that this project depends on.
 
 * Changed `LString` to `TaggedString` considering it is a string being tagged to some identifier, and is generic in design to be used outside of the project, where tagged strings are required.
 
-* Changed method `get_language_tag` of `LanguageTagRegistry` to `get_tag`.
-
-* Redesigned of `LStringProvider` for clearer usage including name changing to `LanguageStringProvider`, and added information methods for the data repository. There may be additional methods in the future. `LStringProviderSqlite3` updated to implement the changes, and implement new required methods.
+* Redesigned of `LStringProvider` for clearer usage including name changed to `LocalisationProvider`, and added information methods for the data repository. `LStringProviderSqlite3` updated to implement the changes, including name changed to `LocalisationProviderSqlite3`, and implement new required methods. There may be additional methods in the future.
 
 * Added log support to various crates.
 
-* Updated `i18n` crate:
+* Next version: See what new ICU4X features is available to add to pattern.
 
-** Added new features of various crates.
+=== General changes to multiple crates
 
-** Adjusted `Cargo.toml` and documentation to reflect the changes.
+* Moved many shared package attributes from the various crates' `Cargo.toml` to workspace's `Cargo.toml` for easier management of project details.
 
-* Updated `i18n_icu` crate:
+* Moved all project dependency details to workspace's `Cargo.toml` for easier management of project dependencies.
 
-** Added new enum `DataProvider` to specify the supported data provider to use.
+* Adjusted `Cargo.toml`, tests, and documentation to reflect the changes.
 
-** Reworked `IcuDataProvider` to use new `DataProvider`. Also included sanity check to ensure that there is a data provider.
+=== `i18n` crate
 
-** Added Sqlite3 file for supported error language strings.
+* Added new crate features of included crates.
 
-** Added logging.
+=== `i18n_icu` crate
 
-** Adjusted `Cargo.toml` and documentation to reflect the changes.
+* Added new enum `DataProvider` to specify the supported data provider to use.
 
-* Updated `i18n_lexer` crate:
+* Reworked `IcuDataProvider` to use new `DataProvider`. Also included sanity check to ensure that there is a data provider.
 
-** Changed `Lexer` struct to be public, moved `tokenise()` function to be method of `Lexer`, and created new method `new()` to initialise the lexer, by moving 2 parameters from `tokenise() to new()`.
+* Added Sqlite3 file for supported error language strings.
 
-** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+* Added logging.
 
-* Updated `i18n_pattern` crate:
+=== `i18n_lexer` crate
 
-** Changed `Formatter::format()` to use the new `IcuDataProvider`.
+* Changed `Lexer` struct to be public, moved `tokenise()` function to be method of `Lexer`, and created new method `new()` to initialise the lexer, by moving 2 parameters from `tokenise() to new()`.
 
-** Added 5 new helper functions to obtain the required ICU formatter instance. Allows for easier support for new data providers.
+=== `i18n_pattern` crate
 
-** Updated `.sqlite3`: add missing language strings for `NeverReach` error, and languages strings for new error `NoIcuProvider` (separated from `NeverReach` error) for easier error distinction.
+* Changed `Formatter::format()` to use the new `IcuDataProvider`.
 
-** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+* Added 5 new helper functions to obtain the required ICU formatter instance. Allows for easier support for new data providers.
 
-* Updated `i18n_message` crate:
+* Updated `.sqlite3`: add missing language strings for `NeverReach` error, and languages strings for new error `NoIcuProvider` (separated from `NeverReach` error) for easier error distinction.
 
-** Changed `Message` to use new `IcuDataProvider` and new `Lexer`.
+=== `i18n_localiser` crate
 
-** Added a default language field to `Message` and parameter for `new()`.
+* Renamed directory `message` to `localiser`.
 
-** Added 3 new methods to obtain language strings: `format_with_defaults`, `get`, and `get_with_defaults`, and change the type of `language_tag` parameter of `format` to `AsRef<&str>`.
+* Renamed `message.rs` to `localiser.rs`.
 
-** Added new method for setting the defaults.
+* Changed `Message` to use new `IcuDataProvider` and new `Lexer`.
 
-** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
+* Added a default language field to `Message` and parameter for `new()`.
 
-** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+* Added new method for setting the defaults.
 
-* Updated `i18n_provider` crate:
+* Added 3 new methods to obtain language strings: `format_with_defaults`, `get`, and `get_with_defaults`, and change the type of `language_tag` parameter of `format` to `AsRef<&str>`.
 
-** Updated existing methods signatures, to have separate `component` and `identifier`.
+* Added 3 new methods to get the shareable i18n components: `language_tag_registry`, `command_registry`, and `icu_data_provider`.
 
-** Added new method signatures to retrieve information on the data repository.
+* Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
 
-** Adjusted `Cargo.toml` and documentation to reflect the changes.
+=== `i18n_provider` crate
 
-* Updated `i18n_provider_sqlite3` crate:
+* Renamed `LStringProvider` to `LocalisationProvider`.
 
-** Added implementations of the new methods to retrieve information on the data repository.
+* Renamed `ProviderError` to `LocalisationProviderError`.
 
-** Moved contributors information into `i18n_message.sqlite3` from `.asciidoc` file for easier combining of `i18n` translation directories.
+* Updated existing methods signatures, split the `identifier` parameter into the `component` and `identifier` parameters.
 
-** Adjusted `Cargo.toml`, tests and documentation to reflect the changes.
+* Renamed `get()` to `strings()`.
 
-* Updated `i18n_utility` crate:
+* Renamed `get_one()` to `string()`.
 
-** Renamed `lstring.rs` to `taggedstring.rs`.
+* Added new method signatures to retrieve information on the data repository:
 
-** Renamed `LString` to `TaggedString`, and `language_tag()` to `tag()`.
+** `string_exact_match()`,
 
-** Adjusted `Cargo.toml` and documentation to reflect the changes.
+** `identifier_details()`,
+
+** `component_details()`,
+
+** `repository_details()`.
+
+* Removed redundant struct and trait.
+
+=== `i18n_provider_sqlite3` crate
+
+* Almost complete rewrite of `provider.rs`, smaller code size and performance improvement with caching of information data.
+
+* Renamed `LStringProviderSqlite3` to `LocalisationProviderSqlite3`.
+
+* Renamed `ProviderSqlite3Error` to `LocalisationProviderSqlite3Error`.
+
+* Added implementations of the new methods to retrieve information on the data repository.
+
+* Added caching to information methods.
+
+* Moved contributors information into `i18n_provider_sqlite3.sqlite3` from `.asciidoc` file for easier combining of `l10n` translation directories.
+
+* Added templates `all_in_one.sqlite3` and `application.sqlite3` to `l10n`, and unit tests still pass, indicating search progressing from `all_in_one.sqlite3` to respective component Sqlite file.
+
+* Updated unit tests for changed methods, and adding new unit tests for information methods.
+
+* Removed redundant struct and trait.
+
+=== `i18n_utility` crate
+
+* `tagged_string.rs`:
+
+** Renamed `lstring.rs` to `tagged_string.rs`.
+
+** Renamed `LString` to `TaggedString`.
+
+** Renamed `language_tag()` to `tag()`.
+
+** Implemented `Display` trait on `TaggedString` to obtain `to_string()` method, to create a string stripped of the tag.
+
+* `registry.rs`:
+
+** Changed method `get_language_tag` of `LanguageTagRegistry` to `tag`.
+
+** Changed method `get_locale` of `LanguageTagRegistry` to `locale`.
+
+** Changed method `get` of `LanguageTagRegistry` to `tag_and_locale`.
+
+=== Dependencies changes:
+
+* bumped icu_provider to 1.3.2
+
+* bumped icu_provider_fs to 1.3.2
+
+* bumped icu_provider_blob to 1.3.2
+
+* bumped icu_properties to 1.3.2
+
+* bumped icu_locid to 1.3.2
+
+* bumped icu_plurals to 1.3.2
+
+* bumped icu_decimal to 1.3.2
+
+* bumped icu_calendar to 1.3.2
+
+* bumped icu_datetime to 1.3.2
+
+* bumped icu_segmenter to 1.3.2
+
+* bumped fixed_decimal to 0.5.4
+
+* bumped rusqlite to 0.29.0
+
+* added log 0.4.20
 
 == i18n 0.6.1 (2023-07-06)
 

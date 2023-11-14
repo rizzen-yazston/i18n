@@ -1,0 +1,97 @@
+= Checklist for next release
+Rizzen Yazston
+
+== Workspace
+
+* [ ] Version number bumped
+* [ ] Dependencies updated
+* [ ] README.asciidoc checked
+* [ ] CHANGELOG.asciidoc updated
+
+== `i18n` crate (meta crate)
+
+* [ ] cargo build compiles (also features)
+* [ ] CHANGELOG.asciidoc updated
+* [ ] cargo test compiles (including doc examples)
+* [ ] lib.rs doc block checked
+* [ ] cargo doc compiles
+* [ ] README.asciidoc checked
+
+== `i18n_icu` crate
+
+* [ ] cargo build compiles (also features)
+* [ ] CHANGELOG.asciidoc updated
+* [ ] cargo test compiles (including doc examples)
+* [ ] doc blocks of structs, enums, traits, functions checked
+* [ ] lib.rs doc block checked
+* [ ] cargo doc compiles
+* [ ] README.asciidoc checked
+
+== `i18n_icu` crate
+
+* [ ] cargo build compiles (also features)
+* [ ] CHANGELOG.asciidoc updated
+* [ ] cargo test compiles (including doc examples)
+* [ ] doc blocks of structs, enums, traits, functions checked
+* [ ] lib.rs doc block checked
+* [ ] cargo doc compiles
+* [ ] README.asciidoc checked
+
+== `i18n_lexer` crate
+
+* [ ] cargo build compiles (also features)
+* [ ] CHANGELOG.asciidoc updated
+* [ ] cargo test compiles (including doc examples)
+* [ ] doc blocks of structs, enums, traits, functions checked
+* [ ] lib.rs doc block checked
+* [ ] cargo doc compiles
+* [ ] README.asciidoc checked
+
+== `i18n_localiser` crate
+
+* [ ] cargo build compiles (also features)
+* [ ] CHANGELOG.asciidoc updated
+* [ ] cargo test compiles (including doc examples)
+* [ ] doc blocks of structs, enums, traits, functions checked
+* [ ] lib.rs doc block checked
+* [ ] cargo doc compiles
+* [ ] README.asciidoc checked
+
+== `i18n_pattern` crate
+
+* [ ] cargo build compiles (also features)
+* [ ] CHANGELOG.asciidoc updated
+* [ ] cargo test compiles (including doc examples)
+* [ ] doc blocks of structs, enums, traits, functions checked
+* [ ] lib.rs doc block checked
+* [ ] cargo doc compiles
+* [ ] README.asciidoc checked
+
+== `i18n_provider` (core) crate
+
+* [x] cargo build compiles (also features)
+* [x] CHANGELOG.asciidoc updated
+* [x] doc blocks of structs, enums, traits, functions checked
+* [x] lib.rs doc block checked
+* [x] cargo doc compiles
+* [x] README.asciidoc checked
+
+== `i18n_provider_sqlite3` crate
+
+* [x] cargo build compiles (also features)
+* [x] CHANGELOG.asciidoc updated
+* [x] cargo test compiles (including doc examples)
+* [x] doc blocks of structs, enums, traits, functions checked
+* [x] lib.rs doc block checked
+* [x] cargo doc compiles
+* [x] README.asciidoc checked
+
+== `i18n_utility` crate
+
+* [x] cargo build compiles (also features)
+* [x] CHANGELOG.asciidoc updated
+* [x] cargo test compiles (including doc examples)
+* [x] doc blocks of structs, enums, traits, functions checked
+* [x] lib.rs doc block checked
+* [x] cargo doc compiles
+* [x] README.asciidoc checked

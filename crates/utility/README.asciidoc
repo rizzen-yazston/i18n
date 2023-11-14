@@ -10,13 +10,7 @@ This crate consists of two modules:
 
 * `registry`: Registry for Language Tags and ICU4X's `Locale` instances,
 
-* `lstring`: Simple tagged string type.
-
-== Features
-
-Available features for `i18n_provider` crate:
-
-* `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+* `tagged_string`: Simple tagged string type.
 
 == Registry for holding _ICU4X_ `Locale` objects.
 
@@ -41,46 +35,3 @@ Available features for `i18n_utility` crate:
 == Acknowledgements
 
 Stefano Angeleri for advice on various design aspects of implementing the library of the Internationalisation project, and also providing the Italian translation of error message strings.
-
-== Usage
-
-Simply include the `i18n_utility-rizzen-yazston` crate in the `Cargo.toml` to make it available to the application or library.
-
-=== Cargo.toml
-
-```
-[dependencies]
-i18n_utility-rizzen-yazston = "0.6.1"
-icu_locid = "1.2.0"
-```
-
-=== Examples
-
-==== `LanguageTagRegistry`
-```
-use icu_locid::Locale;
-use std::rc::Rc;
-use i18n_utility::registry::LanguageTagRegistry;
-
-let mut registry = LanguageTagRegistry::new();
-let result = registry.get( "en_ZA" ).expect( "Failed to parse language tag." );
-let tags = registry.list().iter().count();
-
-assert_eq!( result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format." );
-assert_eq!( tags, 1, "Supposed to be 1 entries: en-ZA." )
-```
-
-==== `TaggedString`
-```
-use icu_locid::Locale;
-use std::rc::Rc;
-use i18n_utility::TaggedString;
-
-let string = "This is a test string.";
-let tag = Rc::new(
-    Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
-);
-let lang_string = TaggedString::new( string, &tag );
-assert_eq!( lang_string.as_str(), string, "String failed." );
-assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
-```
