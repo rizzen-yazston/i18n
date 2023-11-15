@@ -9,7 +9,7 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 * Redesigned `IcuDataProvider` to make use of new internal data feature in `icu` 1.3.0, and to resolve issue related to generic `DataProvider` issue with applications' `main()` method.
 
-* Added support for rust's concurrency to all the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that this project depends on.
+* Added support for rust's concurrency to the `i18n_` crates, by using `Arc` and `Mutex` instead `Rc` and `RefCell` when enabling the crate feature `sync`. Where necessary also passes `sync` also to the ICU4X crates, that this project depends on.
 
 * Changed `LString` to `TaggedString` considering it is a string being tagged to some identifier, and is generic in design to be used outside of the project, where tagged strings are required.
 

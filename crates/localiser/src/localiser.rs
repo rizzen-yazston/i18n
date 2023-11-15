@@ -20,6 +20,9 @@ use std::sync::{ Arc as RefCount, RwLock as MutCell};
 
 use std::collections::HashMap;
 
+#[cfg( feature = "log" )]
+use log::debug;
+
 #[cfg( doc )]
 use std::sync::Arc;
 
@@ -64,7 +67,7 @@ where
     /// ```
     /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_utility::LanguageTagRegistry;
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
@@ -74,12 +77,13 @@ where
     /// fn message() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let localisation_provider = ProviderSqlite3::try_new(
-    ///         "./l10n/", &language_tag_registry
+    ///     let localisation_provider = LocalisationProviderSqlite3::try_new(
+    ///         "./l10n/", &language_tag_registry, false
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Localiser::try_new(
-    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider,
+    ///         &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -102,7 +106,7 @@ where
     ///         "i18n_localiser",
     ///         "string_not_found",
     ///         &values,
-    ///         &language_tag_registry.get_tag( "en-ZA" ).unwrap(),
+    ///         &language_tag_registry.tag( "en-ZA" ).unwrap(),
     ///         None,
     ///         None
     ///     )?;
@@ -148,7 +152,7 @@ where
     /// ```
     /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_utility::LanguageTagRegistry;
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
@@ -158,12 +162,13 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let localisation_provider = ProviderSqlite3::try_new(
-    ///         "./l10n/", &language_tag_registry
+    ///     let localisation_provider = LocalisationProviderSqlite3::try_new(
+    ///         "./l10n/", &language_tag_registry, false
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Localiser::try_new(
-    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA"
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider,
+    ///         &command_registry, true, true, "en-ZA"
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -208,6 +213,9 @@ where
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
+        #[cfg( feature = "log" )]
+        debug!( "Localiser is using format().");
+
         let tag = self.language_registry.tag( language_tag )?;
 
         #[cfg( not( feature = "sync" ) )]
@@ -242,7 +250,7 @@ where
     /// ```
     /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_utility::LanguageTagRegistry;
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
@@ -252,12 +260,13 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let localisation_provider = ProviderSqlite3::try_new(
-    ///         "./l10n/", &language_tag_registry
+    ///     let localisation_provider = LocalisationProviderSqlite3::try_new(
+    ///         "./l10n/", &language_tag_registry, false
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Localiser::try_new(
-    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider,
+    ///         &command_registry, true, true, "en-ZA",
     ///     )?;
     ///     let mut values = HashMap::<String, PlaceholderValue>::new();
     ///     values.insert(
@@ -283,6 +292,8 @@ where
         identifier: T,
         values: &HashMap<String, PlaceholderValue>,
     ) -> Result<TaggedString, LocaliserError> {
+        #[cfg( feature = "log" )]
+        debug!( "Localiser is using format_with_defaults().");
 
         #[cfg( not( feature = "sync" ) )]
         let tag = &RefCount::clone( &self.language_tag.borrow() );
@@ -319,7 +330,7 @@ where
     /// ```
     /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_utility::LanguageTagRegistry;
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
@@ -329,14 +340,15 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let localisation_provider = ProviderSqlite3::try_new(
-    ///         "./l10n/", &language_tag_registry
+    ///     let localisation_provider = LocalisationProviderSqlite3::try_new(
+    ///         "./l10n/", &language_tag_registry, false
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Localiser::try_new(
-    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider,
+    ///         &command_registry, true, true, "en-ZA",
     ///     )?;
-    ///     let lstring = message_system.get(
+    ///     let lstring = message_system.literal(
     ///         "i18n_localiser",
     ///         "no_default_language_tag",
     ///         "en-ZA",
@@ -351,7 +363,7 @@ where
     ///     Ok( () )
     /// }
     /// ```
-    pub fn get<T: AsRef<str>>(
+    pub fn literal<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
@@ -359,6 +371,9 @@ where
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
+        #[cfg( feature = "log" )]
+        debug!( "Localiser is using literal().");
+
         let tag = self.language_registry.tag( language_tag )?;
 
         #[cfg( not( feature = "sync" ) )]
@@ -373,7 +388,7 @@ where
         #[cfg( feature = "sync" )]
         let bool_caching = caching.unwrap_or( self.caching.read().unwrap().clone() );
 
-        self.actual_get(
+        self.actual_literal(
             component,
             identifier,
             &tag,
@@ -390,7 +405,7 @@ where
     /// ```
     /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_utility::LanguageTagRegistry;
-    /// use i18n_provider_sqlite3::ProviderSqlite3;
+    /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
     /// use i18n_pattern::{ PlaceholderValue, CommandRegistry };
     /// use i18n_localiser::Localiser;
     /// use std::collections::HashMap;
@@ -400,14 +415,15 @@ where
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    ///     let localisation_provider = ProviderSqlite3::try_new(
-    ///         "./l10n/", &language_tag_registry
+    ///     let localisation_provider = LocalisationProviderSqlite3::try_new(
+    ///         "./l10n/", &language_tag_registry, false
     ///     )?;
     ///     let command_registry = Rc::new( CommandRegistry::new() );
     ///     let mut message_system = Localiser::try_new(
-    ///         &icu_data_provider, &language_tag_registry, localisation_provider, &command_registry, true, true, "en-ZA",
+    ///         &icu_data_provider, &language_tag_registry, localisation_provider,
+    ///         &command_registry, true, true, "en-ZA",
     ///     )?;
-    ///     let lstring = message_system.get_with_defaults(
+    ///     let lstring = message_system.literal_with_defaults(
     ///         "i18n_localiser",
     ///         "no_default_language_tag",
     ///     )?;
@@ -419,11 +435,13 @@ where
     ///     Ok( () )
     /// }
     /// ```
-    pub fn get_with_defaults<T: AsRef<str>>(
+    pub fn literal_with_defaults<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
     ) -> Result<TaggedString, LocaliserError> {
+        #[cfg( feature = "log" )]
+        debug!( "Localiser is using literal_with_defaults().");
 
         #[cfg( not( feature = "sync" ) )]
         let tag = &RefCount::clone( &self.language_tag.borrow() );
@@ -443,7 +461,7 @@ where
         #[cfg( feature = "sync" )]
         let bool_caching = self.caching.read().unwrap().clone();
 
-        self.actual_get(
+        self.actual_literal(
             component,
             identifier,
             tag,
@@ -578,7 +596,7 @@ where
 
         // Not in cache.
         // Get pattern string for specified language, though returned `TaggedString` may be for another language.
-        let lstring = match self.localisation_provider.get_one(
+        let lstring = match self.localisation_provider.string(
             component.as_ref().to_string(), identifier.as_ref().to_string(), language_tag
         )? {
             Some( result ) => result,
@@ -591,13 +609,10 @@ where
                         false
                     ) );
                 }
-                let default_language = match self.localisation_provider.default_language(
+                let default_language = &self.localisation_provider.component_details(
                     component.as_ref()
-                )? {
-                    None => return Err( LocaliserError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
-                    Some( result ) => result
-                };
-                match self.localisation_provider.get_one(
+                )?.default;
+                match self.localisation_provider.string(
                     component.as_ref().to_string(),
                     identifier.as_ref().to_string(),
                     &default_language
@@ -679,6 +694,9 @@ where
 
         // Cache the `Formatter`.
         {
+            #[cfg( feature = "log" )]
+            debug!( "Caching formatting string.");
+
             if !_language_entry {
                 let mut data_entry = HashMap::<String, CacheData>::new();
                 data_entry.insert(
@@ -734,7 +752,7 @@ where
     }
 
     // Simply get the language string without any formatting being done.
-    fn actual_get<T: AsRef<str>>(
+    fn actual_literal<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
@@ -770,7 +788,7 @@ where
 
         // Not in cache.
         // Get pattern string for specified language, though returned `TaggedString` may be for another language.
-        let lstring = match self.localisation_provider.get_one(
+        let lstring = match self.localisation_provider.string(
             component.as_ref().to_string(), identifier.as_ref().to_string(), language_tag
         )? {
             Some( result ) => result,
@@ -783,13 +801,10 @@ where
                         false
                     ) );
                 }
-                let default_language = match self.localisation_provider.default_language(
+                let default_language = &self.localisation_provider.component_details(
                     component.as_ref()
-                )? {
-                    None => return Err( LocaliserError::NoDefaultLanguageTag( component.as_ref().to_string() ) ),
-                    Some( result ) => result
-                };
-                match self.localisation_provider.get_one(
+                )?.default;
+                match self.localisation_provider.string(
                     component.as_ref().to_string(),
                     identifier.as_ref().to_string(),
                     &default_language
@@ -807,6 +822,9 @@ where
 
         // If pattern string has no grammar syntax characters, simply cache (if allowed) and return the string.
         if caching {
+            #[cfg( feature = "log" )]
+            debug!( "Caching literal string.");
+
             if !_language_entry {
                 let mut data_entry = HashMap::<String, CacheData>::new();
                 data_entry.insert(

@@ -39,6 +39,8 @@ Available features for `i18n` crate:
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
 
+* `log`: To provide some logging information.
+
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.

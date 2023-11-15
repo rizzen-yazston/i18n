@@ -107,7 +107,7 @@ fn format_with_defaults() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn get() -> Result<(), Box<dyn Error>> {
+fn literal() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
     let lstring_provider = LocalisationProviderSqlite3::try_new(
@@ -123,7 +123,7 @@ fn get() -> Result<(), Box<dyn Error>> {
         true,
         "en-ZA",
     )?;
-    let lstring = localiser.get(
+    let lstring = localiser.literal(
         "i18n_localiser",
         "no_default_language_tag",
         "en-ZA",
@@ -139,7 +139,7 @@ fn get() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn get_with_defaults() -> Result<(), Box<dyn Error>> {
+fn literal_with_defaults() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let language_tag_registry = RefCount::new( LanguageTagRegistry::new() );
     let lstring_provider = LocalisationProviderSqlite3::try_new(
@@ -155,7 +155,7 @@ fn get_with_defaults() -> Result<(), Box<dyn Error>> {
         true,
         "en-ZA",
     )?;
-    let lstring = localiser.get_with_defaults(
+    let lstring = localiser.literal_with_defaults(
         "i18n_localiser",
         "no_default_language_tag",
     )?;

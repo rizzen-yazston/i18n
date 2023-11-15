@@ -3,13 +3,13 @@ Rizzen Yazston
 
 == Message system
 
-The `i18n_message` crate contains the messaging system.
+The `i18n_message` crate contains the localiser.
 
-A message system that connects to a string data store, to obtain strings for the specified language using a string identifier, and formatting the string to replace any placeholders within the string with provided values.
+A localiser that connects to a string data store, to obtain strings for the specified language using a string identifier, and formatting the string to replace any placeholders within the string with provided values.
 
-The message is capable of caching retrieved strings that are prepared for placeholder replacement, thus can be reused without the need to parse the string for placeholders.
+The localiseris capable of caching retrieved strings that are prepared for placeholder replacement, thus can be reused without the need to parse the string for placeholders.
 
-The message system makes use of all the other component crates that make up the `i18n` project. Ideally one only needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
+The localiser makes use of all the other component crates that make up the `i18n` project. Ideally one only needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
 
 == Features
 
@@ -23,77 +23,8 @@ Available features for `i18n_icu` crate:
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
 
+* `log`: To provide some logging information.
+
 == Acknowledgement
 
 Stefano Angeleri for advice on various design aspects of implementing the components of the internationalisation project, and also providing the Italian translation of error message strings.
-
-== Cargo.toml
-
-```
-[dependencies]
-i18n_message-rizzen-yazston = "0.6.1"
-i18n_icu-rizzen-yazston = "0.6.1"
-i18n_lexer-rizzen-yazston = "0.6.1" # Needed for Token, TokenType
-i18n_pattern-rizzen-yazston = "0.6.1"
-i18n_provider-rizzen-yazston = "0.6.1"
-i18n_provider_sqlite3-rizzen-yazston = "0.6.1"
-i18n_utility-rizzen-yazston = "0.6.1"
-tree-rizzen-yazston = "0.4.0"
-```
-
-== Examples
-
-```
-use i18n_icu::{ IcuDataProvider, DataProvider };
-use i18n_registry::LanguageTagRegistry;
-use i18n_provider_sqlite3::ProviderSqlite3;
-use i18n_pattern::{PlaceholderValue, CommandRegistry};
-use i18n_message::Message;
-use std::collections::HashMap;
-use std::rc::Rc;
-use std::error::Error;
-
-fn message() -> Result<(), Box<dyn Error>> {
-    let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
-    let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-    let lstring_provider = ProviderSqlite3::try_new(
-        "./i18n/", &language_tag_registry
-    )?;
-    let command_registry = Rc::new( CommandRegistry::new() );
-    let message_system = Message::try_new(
-        &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true
-    )?;
-    let mut values = HashMap::<String, PlaceholderValue>::new();
-    values.insert(
-        "component".to_string(),
-        PlaceholderValue::String( "i18n_message".to_string() )
-    );
-    values.insert(
-        "identifier".to_string(),
-        PlaceholderValue::String( "string_not_found".to_string() )
-    );
-    values.insert(
-        "language_tag".to_string(),
-        PlaceholderValue::String( "en-ZA".to_string() )
-    );
-    values.insert(
-        "fallback".to_string(),
-        PlaceholderValue::String( "true".to_string() )
-    );
-    let lstring = message_system.format(
-        "i18n_message",
-        "string_not_found",
-        &values,
-        "en-ZA",
-        None,
-        None
-    )?;
-    assert_eq!(
-        lstring.as_str(),
-        "No string was found for the component ‘i18n_message’ with identifier ‘string_not_found’ for the language \
-            tag ‘en-ZA’. Fallback was used: True.",
-        "Check placeholder values."
-    );
-    Ok( () )
-}
-```

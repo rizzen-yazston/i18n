@@ -1,15 +1,15 @@
 // This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
 // called LICENSE-BSD-3-Clause at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-//! The `i18n_localiser` crate contains the messaging system.
+//! The `i18n_localiser` crate contains the localiser.
 //!
-//! A message system that connects to a string data store, to obtain strings for the specified language using a
+//! A localiser that connects to a string data store, to obtain strings for the specified language using a
 //! string identifier, and formatting the string to replace any placeholders within the string with provided values.
 //! 
-//! The message is capable of caching retrieved strings that are prepared for placeholder replacement, thus can be
+//! The localiser is capable of caching retrieved strings that are prepared for placeholder replacement, thus can be
 //! reused without the need to parse the string for placeholders.
 //! 
-//! The message system makes use of all the other component crates that make up the `i18n` project. Ideally one only
+//! The localiser makes use of all the other component crates that make up the `i18n` project. Ideally one only
 //! needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_localiser` crate.
 //! 
 //! # Features
@@ -18,33 +18,36 @@
 //! 
 //! * `compiled_data`: Allow for the internal data of the various ICU4X components.
 //! 
-//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports [`BufferProvider`].
+//! * `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports
+//! [`BufferProvider`].
 //! 
 //! * `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
 //! 
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
 //! [`RefCell`].
 //! 
+//! * `log`: To provide some logging information.
+//! 
 //! # Examples
 //! 
 //! ```
 //! use i18n_icu::{ IcuDataProvider, DataProvider };
 //! use i18n_utility::LanguageTagRegistry;
-//! use i18n_provider_sqlite3::ProviderSqlite3;
+//! use i18n_provider_sqlite3::LocalisationProviderSqlite3;
 //! use i18n_pattern::{ PlaceholderValue, CommandRegistry };
-//! use i18n_localiser::Message;
+//! use i18n_localiser::Localiser;
 //! use std::collections::HashMap;
 //! use std::rc::Rc;
 //! use std::error::Error;
 //! 
-//! fn message() -> Result<(), Box<dyn Error>> {
+//! fn main() -> Result<(), Box<dyn Error>> {
 //!     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
 //!     let language_tag_registry = Rc::new( LanguageTagRegistry::new() );
-//!     let lstring_provider = ProviderSqlite3::try_new(
-//!         "./l10n/", &language_tag_registry
+//!     let lstring_provider = LocalisationProviderSqlite3::try_new(
+//!         "./l10n/", &language_tag_registry, false
 //!     )?;
 //!     let command_registry = Rc::new( CommandRegistry::new() );
-//!     let mut message_system = Message::try_new(
+//!     let mut message_system = Localiser::try_new(
 //!         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA",
 //!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
@@ -74,8 +77,8 @@
 //!     )?;
 //!     assert_eq!(
 //!         lstring.as_str(),
-//!         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the language \
-//!             tag ‘en-ZA’. Fallback was used: True.",
+//!         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the \
+//!             language tag ‘en-ZA’. Fallback was used: True.",
 //!         "Check placeholder values."
 //!     );
 //!     Ok( () )

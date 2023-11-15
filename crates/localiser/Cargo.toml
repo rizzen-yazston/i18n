@@ -35,6 +35,7 @@ sync = [
 ]
 log = [
     "i18n_icu-rizzen-yazston/log",
+    "i18n_pattern-rizzen-yazston/log",
     "i18n_provider_sqlite3-rizzen-yazston/log",
 ]
 
@@ -46,6 +47,7 @@ i18n_provider-rizzen-yazston = { workspace = true }
 i18n_provider_sqlite3-rizzen-yazston = { workspace = true }
 i18n_utility-rizzen-yazston = { workspace = true }
 tree-rizzen-yazston = { workspace = true }
+log = { workspace = true }
 
 [dev-dependencies]
 i18n_icu-rizzen-yazston = { workspace = true, features = [ "compiled_data" ] }

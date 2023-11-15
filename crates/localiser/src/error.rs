@@ -19,8 +19,6 @@ use core::fmt::{ Display, Formatter, Result };
 /// 
 /// * `StringNotFound`: Indicates the pattern string was not found in localisation repository,
 /// 
-/// * `NoDefaultLanguageTag`: Indicates no default language tag for component,
-/// 
 /// * `CacheEntry`: Indicates error occurred when accessing internal cache.
 #[derive( Debug )]
 #[non_exhaustive]
@@ -30,7 +28,6 @@ pub enum LocaliserError {
     Formatter( FormatterError ),
     Provider( LocalisationProviderError ),
     StringNotFound( String, String, String, bool ), // component, identifier, language_tag, fallback
-    NoDefaultLanguageTag( String ), // component
     CacheEntry( String, String ),
 }
 
@@ -58,8 +55,6 @@ impl Display for LocaliserError {
                     string,
                 )
             },
-            LocaliserError::NoDefaultLanguageTag( component ) =>
-                write!( formatter, "No default language tag was found for the component ‘{}’.", component ),
             LocaliserError::CacheEntry( component, identifier ) =>
                 write!(
                     formatter,

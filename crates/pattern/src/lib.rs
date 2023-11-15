@@ -26,6 +26,8 @@
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
 //! [`RefCell`].
 //! 
+//! * `log`: To provide some logging information.
+//! 
 //! # Examples
 //! 
 //! ```

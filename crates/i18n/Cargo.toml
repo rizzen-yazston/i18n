@@ -45,7 +45,9 @@ sync = [
 ]
 log = [
     "i18n_icu-rizzen-yazston/log",
+    "i18n_pattern-rizzen-yazston/log",
     "i18n_provider_sqlite3-rizzen-yazston/log",
+    "i18n_localiser-rizzen-yazston/log",
 ]
 
 [dependencies]
