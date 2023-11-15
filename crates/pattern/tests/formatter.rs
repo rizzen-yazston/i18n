@@ -110,7 +110,7 @@ fn pattern_decimal() -> Result<(), Box<dyn Error>> {
     let result = formatter.format( &values )?;
     assert_eq!(
         result.as_str(),
-        "There is 3,678 kg of rice in the container.",
+        "There is 3.678 kg of rice in the container.",
         "Strings must be the same."
     );
     Ok( () )
@@ -136,7 +136,7 @@ fn pattern_decimal_with_option() -> Result<(), Box<dyn Error>> {
     let result = formatter.format( &values )?;
     assert_eq!(
         result.as_str(),
-        "There is +3,678 kg of rice in the container.",
+        "There is +3.678 kg of rice in the container.",
         "Strings must be the same."
     );
     Ok( () )

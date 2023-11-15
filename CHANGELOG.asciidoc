@@ -17,7 +17,7 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 * Added log support to various crates.
 
-* Next version: See what new ICU4X features is available to add to pattern.
+* Next version: See what new ICU4X features is available to add to `pattern.rs`.
 
 === General changes to multiple crates
 
@@ -48,6 +48,8 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 === `i18n_pattern` crate
 
 * Changed `Formatter::format()` to use the new `IcuDataProvider`.
+
+* For `CommandRegistry` renamed `get()` to `command()`.
 
 * Added 5 new helper functions to obtain the required ICU formatter instance. Allows for easier support for new data providers.
 

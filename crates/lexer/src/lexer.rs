@@ -22,8 +22,11 @@ use std::rc::Rc;
 /// 
 /// A simple generic token struct, which contains a string slice of the original string and information pertaining to
 /// the slice. The information assigned to the string slice are:
+/// 
 /// - a token type;
+/// 
 /// - the starting position of token in terms of bytes, characters and graphemes;
+/// 
 /// - the length of token in terms of bytes, characters and graphemes.
 #[derive( Debug )]
 pub struct Token {
@@ -38,9 +41,13 @@ pub struct Token {
 }
 
 /// The available token types:
+/// 
 /// - WhiteSpace contains only white space (Pattern_White_Space ([UAX #31])) characters;
+/// 
 /// - Identifier contains only characters, that are not white space or grammar;
+/// 
 /// - Grammar contains a single syntax character: any of the valid grammar syntax characters;
+/// 
 /// - Syntax contains only syntax (Pattern_Syntax (UAX #31)) characters, which generally consists of punctuation and
 /// control characters, and not including grammar syntax characters.
 /// 

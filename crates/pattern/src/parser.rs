@@ -13,6 +13,9 @@ use std::rc::Rc as RefCount;
 #[cfg( target_has_atomic = "ptr" )]
 use std::sync::Arc as RefCount;
 
+#[cfg( feature = "log" )]
+use log::{ debug, trace };
+
 use std::collections::HashMap;
 use core::fmt::{ Display, Formatter, Result as FmtResult };
 
@@ -63,6 +66,9 @@ use std::rc::Rc;
 /// }
 /// ```
 pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
+    #[cfg( feature = "log" )]
+    debug!( "Parsing the token vector created by the lexer." );
+
     let mut tree = Tree::new();
     if tokens.len() == 0 {
         return Ok( tree );
@@ -89,6 +95,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
     while let Some( token ) = iterator.next() {
         match parser.state {
             ParserStates::String => {//  Valid tokens: PWS, `, #, {, Identifier, Syntax
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::String" );
+
                 if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string == "`" {
@@ -134,6 +143,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 }
             },
             ParserStates::SubString => {//  Valid tokens: PWS, `, #, {, }, Identifier, Syntax
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::SubString" );
+
                 if token.token_type == TokenType::Grammar {
                     let string = token.string.as_str();
                     if string == "#" {
@@ -206,6 +218,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 }
             },
             ParserStates::Pattern => {//  Valid tokens: PWS (separator - ignore), }, Identifier
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::Pattern" );
+
                 if token.token_type == TokenType::Identifier {
                     create_node_add_token(
                         &mut tree,
@@ -230,6 +245,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 }
             },
             ParserStates::Keyword => {//  Valid tokens: PWS (separator - ignore), }, Identifier
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::Keyword" );
+
                 if token.token_type == TokenType::Identifier {
                     create_node( &mut tree, &mut parser, NodeType::Selector, ALLOW_CHILDREN );
                     add_token(
@@ -271,6 +289,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 }
             },
             ParserStates::LiteralText => {//  Valid tokens: PWS, `, #, {, }, Identifier, Syntax
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::LiteralText" );
+
                 if token.token_type == TokenType::Grammar {
                     if token.string.as_str() == "`" {
                         let mut iterator_peeking = iterator.clone();
@@ -296,6 +317,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 add_token( &mut tree, &mut parser, NodeType::Text, ALLOW_DATA, token );
             },
             ParserStates::Literal => {//  Valid tokens: }
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::Literal" );
+
                 if token.token_type == TokenType::Grammar {
                     if token.string.as_str() == "}" {
                         end_nested_state( &tree, &mut parser );
@@ -305,6 +329,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );
             },
             ParserStates::Command => {//  Valid tokens: PWS (separator - ignore), `, }, #, Identifier
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::Command" );
+
                 if token.token_type == TokenType::Identifier {
                     create_node_add_token(
                         &mut tree,
@@ -364,6 +391,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 }
             },
             ParserStates::NamedString => {//  Valid tokens: PWS (ignored - separator), `, #, {, Identifier, Syntax
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::NamedString" );
+
                 if token.token_type == TokenType::Identifier {
                     let current = *parser.current.as_ref().unwrap();
                     let len = tree.children( current ).ok().as_ref().unwrap().len();
@@ -504,6 +534,9 @@ pub fn parse( tokens: Vec<RefCount<Token>> ) -> Result<Tree, ParserError> {
                 }
             },
             ParserStates::NamedGroup => {// Valid tokens: PWS (ignored - human readability), {
+                #[cfg( feature = "log" )]
+                trace!( "ParserStates::NamedGroup" );
+
                 if token.token_type == TokenType::Grammar {
                     if token.string.as_str() != "{" {
                         return Err( ParserError::InvalidToken( token.position_grapheme, RefCount::clone( &token ) ) );

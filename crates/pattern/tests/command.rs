@@ -29,7 +29,7 @@ fn command_registry() -> Result<(), Box<dyn Error>> {
     let mut strings = Vec::<PlaceholderValue>::new();
     strings.push( PlaceholderValue::String( "file_path".to_string() ) );
     strings.push( PlaceholderValue::String( "tests/command.rs".to_string() ) );
-    let function = registry.get( "file_path" )?;
+    let function = registry.command( "file_path" )?;
     let string = function( strings )?;
     assert_eq!( string.as_str(), "tests/command.rs", "Strings must be the same." );
     Ok( () )

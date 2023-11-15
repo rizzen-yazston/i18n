@@ -22,7 +22,7 @@ use std::str::FromStr;
 ///     let mut strings = Vec::<PlaceholderValue>::new();
 ///     strings.push( PlaceholderValue::String( "file_path".to_string() ) );
 ///     strings.push( PlaceholderValue::String( "tests/command.rs".to_string() ) );
-///     let function = registry.get( "file_path" )?;
+///     let function = registry.command( "file_path" )?;
 ///     let string = function( strings )?;
 ///     assert_eq!( string.as_str(), "tests/command.rs", "Strings must be the same." );
 ///     Ok( () )
@@ -47,7 +47,7 @@ impl CommandRegistry {
     ///     let mut strings = Vec::<PlaceholderValue>::new();
     ///     strings.push( PlaceholderValue::String( "file_path".to_string() ) );
     ///     strings.push( PlaceholderValue::String( "tests/command.rs".to_string() ) );
-    ///     let function = registry.get( "file_path" )?;
+    ///     let function = registry.command( "file_path" )?;
     ///     let string = function( strings )?;
     ///     assert_eq!( string.as_str(), "tests/command.rs", "Strings must be the same." );
     ///     Ok( () )
@@ -79,7 +79,7 @@ impl CommandRegistry {
     ///     let mut strings = Vec::<PlaceholderValue>::new();
     ///     strings.push( PlaceholderValue::String( "file_path".to_string() ) );
     ///     strings.push( PlaceholderValue::String( "tests/command.rs".to_string() ) );
-    ///     let function = registry.get( "file_path" )?;
+    ///     let function = registry.command( "file_path" )?;
     ///     let string = function( strings )?;
     ///     assert_eq!( string.as_str(), "tests/command.rs", "Strings must be the same." );
     ///     Ok( () )
@@ -113,13 +113,13 @@ impl CommandRegistry {
     ///     let mut strings = Vec::<PlaceholderValue>::new();
     ///     strings.push( PlaceholderValue::String( "file_path".to_string() ) );
     ///     strings.push( PlaceholderValue::String( "tests/command.rs".to_string() ) );
-    ///     let function = registry.get( "file_path" )?;
+    ///     let function = registry.command( "file_path" )?;
     ///     let string = function( strings )?;
     ///     assert_eq!( string.as_str(), "tests/command.rs", "Strings must be the same." );
     ///     Ok( () )
     /// }
     /// ```
-    pub fn get<T: AsRef<str>>(
+    pub fn command<T: AsRef<str>>(
         &self,
         command: T,
     ) -> Result<fn( Vec<PlaceholderValue> ) -> Result<String, CommandError>, CommandError> {
@@ -151,6 +151,10 @@ impl CommandRegistry {
     }
 }
 
+/// # Available commands
+/// 
+/// The following commands are provided by this crate.
+///
 /// Format a file path according to the OS being used.
 /// Requires 1 parameter having type of [`PlaceholderValue`]`::String`.
 /// Additional parameters are simply ignored.
@@ -158,7 +162,7 @@ pub fn file_path( parameters: Vec<PlaceholderValue> ) -> Result<String, CommandE
     let command = match &parameters[ 0 ] {
         PlaceholderValue::String( string ) => string,
 
-        // Called from within `Formatter` methods, this is never reached.
+        // When called from within the `Formatter` methods, this branch is never reached.
         _ => return Err( CommandError::InvalidType( "command identifier".to_string(), 0 ) )
     };
     if parameters.len() < 2 {
@@ -179,7 +183,7 @@ pub fn english_a_or_an( parameters: Vec<PlaceholderValue> ) -> Result<String, Co
     let command = match &parameters[ 0 ] {
         PlaceholderValue::String( string ) => string,
 
-        // Called from within `Formatter` methods, this is never reached.
+        // When called from within the `Formatter` methods, this branch is never reached.
         _ => return Err( CommandError::InvalidType( "command identifier".to_string(), 0 ) )
     };
     if parameters.len() < 2 {

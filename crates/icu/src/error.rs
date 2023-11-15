@@ -22,7 +22,7 @@ use icu_provider::DataError;
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
-/// The `LocalisationProviderSqlite3Error` type consists of the follow:
+/// The `IcuError` type consists of the follow:
 /// 
 /// * `Properties`: Requires `buffer` feature. Wraps the ICU4X [`PropertiesError`],
 /// 

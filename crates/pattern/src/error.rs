@@ -21,6 +21,17 @@ use std::sync::Arc as RefCount;
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
+/// The `ParserError` type consists of the follow:
+/// 
+/// * `EndedAbruptly`: Indicates the string ended abruptly,
+/// 
+/// * `UniqueNamed`: Indicates named substring identifiers are not unique,
+/// 
+/// * `InvalidToken`: Indicates the token is in an invalid position in the string,
+/// 
+/// * `MultiNumberSign`: Indicates sequential number signs was found.
+/// 
+/// * `UniquePattern`: Indicates pattern identifiers are not unique.
 #[derive( Debug )]
 #[non_exhaustive]
 pub enum ParserError {
@@ -61,6 +72,17 @@ impl Display for ParserError {
     }
 }
 
+/// The `CommandError` type consists of the follow:
+/// 
+/// * `AlreadyExists`: Indicates command already present in command registry,
+/// 
+/// * `NotFound`: Indicates command was not found in command registry,
+/// 
+/// * `ParameterMissing`: Indicates a parameter is missing for the command,
+/// 
+/// * `InvalidType`: Indicates the command's parameter has incorrect type,
+/// 
+/// * `Custom`: Wraps a custom error.
 #[derive( Debug )]
 #[non_exhaustive]
 pub enum CommandError {
@@ -68,7 +90,7 @@ pub enum CommandError {
     NotFound( String ),
     ParameterMissing( String, usize ),
     InvalidType( String, usize ),
-    Other( Box<dyn Error> ), // For custom commands returning errors not of this enum.
+    Custom( Box<dyn Error> ), // For custom commands returning errors not of this enum.
 }
 
 impl Error for CommandError {}
@@ -84,11 +106,78 @@ impl Display for CommandError {
                 write!( formatter, "The parameter number {} is missing for the command ‘{}’.", index, command ),
             CommandError::InvalidType( command, index ) =>
                 write!( formatter, "The parameter number {} has invalid type for the command ‘{}’.", index, command ),
-            CommandError::Other( ref error ) => error.fmt( formatter ),
+            CommandError::Custom( ref error ) => error.fmt( formatter ),
         }
     }
 }
 
+/// The `FormatterError` type consists of the follow:
+/// 
+/// * `InvalidRoot`: Indicates the token tree did not have a `NodeType::Root` node for the root,
+/// 
+/// * `RetrieveChildren`: Indicates not children was retrieved,
+/// 
+/// * `NodeNotFound`: Indicates the expected node was not found,
+/// 
+/// * `FirstChild`: Indicates the first child of the node was not found,
+/// 
+/// * `RetrieveNodeData`: Indicates the data was not retrieved from the node,
+/// 
+/// * `RetrieveNodeToken`: Indicates the token was not retrieved from the node,
+/// 
+/// * `LastChild`: Indicates the last child of the node was not found,
+/// 
+/// * `InvalidNode`: Indicates the child not is invalid,
+/// 
+/// * `PatternNamed`: Indicates the pattern substring was not retrieved for the named string,
+/// 
+/// * `PatternPart`: Indicates a part of the pattern substring was not retrieved for the named string,
+/// 
+/// * `InvalidOptionValue`: Indicates the value for the option is invalid,
+/// 
+/// * `InvalidKeyword`: Indicates an invalid keyword was found for the pattern substring,
+/// 
+/// * `SelectorNamed`: Indicates the named string identifier was not found for placeholder,
+/// 
+/// * `SelectorOther`: Indicates the required `other` selector was not found in the pattern substring,
+/// 
+/// * `NoChildren`: Indicates no children was found for the node,
+/// 
+/// * `InvalidOption`: Indicates an invalid option was found for the pattern substring,
+/// 
+/// * `InvalidSelector`: Indicates an invalid selector was found for the pattern substring,
+/// 
+/// * `Locale`: Wraps the ICU4X locale error [`IcuParserError`],
+/// 
+/// * `Calendar`: Wraps the ICU4X calendar error [`CalendarError`],
+/// 
+/// * `ParseInt`: Wraps the integer parsing error [`ParseIntError`],
+/// 
+/// * `NumberSignString`: Indicates the formatted string was not retrieved for the number sign index,
+/// 
+/// * `SelectorsIndex`: Indicates the index was not found in the collected selectors,
+/// 
+/// * `SelectorsIndexNamed`: Indicates the named string was not found for the selector index,
+/// 
+/// * `PlaceholderValue`: Indicates the placeholder value was not found for the placeholder of the pattern,
+/// 
+/// * `InvalidValue`: Indicates an invalid value type for the placeholder of the pattern,
+/// 
+/// * `Decimal`: Wraps the ICU4X decimal error [`DecimalError`],
+/// 
+/// * `DateTime`: Wraps the ICU4X date time error [`DateTimeError`],
+/// 
+/// * `PluralRules`: Wraps the ICU4X plural error [`PluralError`],
+/// 
+/// * `FixedDecimal`: Wraps the ICU4X fixed error [`FixedDecimalError`],
+/// 
+/// * `NamedStringIdentifier`: Indicates the named string identifiers must be unique,
+/// 
+/// * `Command`: Wraps the crate's command error [`CommandError`],
+/// 
+/// * `NoIcuProvider`: Indicates no ICU4X data provider was provided,
+/// 
+/// * `NeverReached`: Indicates this branch should never be reached. A serious bug has occurred.
 #[derive( Debug )]
 #[non_exhaustive]
 pub enum FormatterError {
