@@ -42,6 +42,7 @@ sync = [ "icu_provider/sync" ]
 log = []#[ "dep:log" ]
 
 [dependencies]
+i18n_utility-rizzen-yazston = { workspace = true }
 icu_provider = { workspace = true }
 icu_provider_fs = { workspace = true }
 icu_provider_blob = { workspace = true }

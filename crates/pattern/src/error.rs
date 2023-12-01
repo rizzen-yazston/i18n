@@ -3,6 +3,7 @@
 
 use crate::NodeType;
 use i18n_lexer::Token;
+use i18n_utility::{ LocalisationTrait, LocalisationErrorTrait };
 use icu_locid::ParserError as IcuParserError;
 use icu_calendar::CalendarError;
 use icu_decimal::Error as DecimalError;
@@ -42,37 +43,75 @@ pub enum ParserError {
     UniquePattern( String ),
 }
 
-impl Error for ParserError {}
+impl LocalisationTrait for ParserError {
+    fn identifier( &self ) -> &str {
+        match *self {
+            ParserError::EndedAbruptly => "string_ended_abruptly",
+            ParserError::UniqueNamed( _ ) => "unique_named",
+            ParserError::InvalidToken( _, _ ) => "invalid_token",
+            ParserError::MultiNumberSign( _ ) => "multi_number_sign",
+            ParserError::UniquePattern( _ ) => "unique_pattern",
+        }
+    }
+
+    fn component( &self ) -> &str {
+        "i18n_pattern"
+    }
+}
+
+impl LocalisationErrorTrait for ParserError {
+    fn error_type( &self ) -> &str {
+        "ParserError"
+    }
+
+    fn error_variant( &self ) -> &str {
+        match *self {
+            ParserError::EndedAbruptly => "EndedAbruptly",
+            ParserError::UniqueNamed( _ ) => "UniqueNamed",
+            ParserError::InvalidToken( _, _ ) => "InvalidToken",
+            ParserError::MultiNumberSign( _ ) => "MultiNumberSign",
+            ParserError::UniquePattern( _ ) => "UniquePattern",
+        }
+    }    
+}
 
 impl Display for ParserError {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match self {
-            ParserError::EndedAbruptly => write!( formatter, "The string ended abruptly." ),
-            ParserError::UniqueNamed( identifier) =>
-                write!( formatter,
-                    "Named substrings must have unique identifiers. The identifier ‘{}’ already exists.",
-                    identifier
-                ),
-            ParserError::InvalidToken( position, token ) =>
-                write!(
-                    formatter,
-                    "Invalid token ‘{}’ was found at the position {} of the string.",
-                    token.string,
-                    position
-                ),
-            ParserError::MultiNumberSign( position ) =>
-                write!( formatter, "Found sequential number signs at the position {} of the string.", position ),
-            ParserError::UniquePattern( identifier) =>
-                write!(
-                    formatter,
-                    "Pattern identifiers must be unique. The identifier ‘{}’ already exists.",
-                    identifier
-                ),
+            ParserError::EndedAbruptly => write!(
+                formatter, "ParserError::EndedAbruptly: The string ended abruptly."
+            ),
+            ParserError::UniqueNamed( identifier) => write!(
+                formatter,
+                "ParserError::UniqueNamed: Named substrings must have unique identifiers. The identifier ‘{}’ already \
+                exists.",
+                identifier
+            ),
+            ParserError::InvalidToken( position, token ) => write!(
+                formatter,
+                "ParserError::InvalidToken: Invalid token ‘{}’ was found at the position {} of the string.",
+                token.string,
+                position
+            ),
+            ParserError::MultiNumberSign( position ) => write!(
+                formatter,
+                "ParserError::MultiNumberSign: Found sequential number signs at the position {} of the string.",
+                position
+            ),
+            ParserError::UniquePattern( identifier) => write!(
+                formatter,
+                "ParserError::UniquePattern: Pattern identifiers must be unique. The identifier ‘{}’ already exists.",
+                identifier
+            ),
         }
     }
 }
 
+impl Error for ParserError {}
+
 /// The `CommandError` type consists of the follow:
+/// 
+/// * `Custom`: Wraps a custom error.
 /// 
 /// * `AlreadyExists`: Indicates command already present in command registry,
 /// 
@@ -81,37 +120,99 @@ impl Display for ParserError {
 /// * `ParameterMissing`: Indicates a parameter is missing for the command,
 /// 
 /// * `InvalidType`: Indicates the command's parameter has incorrect type,
-/// 
-/// * `Custom`: Wraps a custom error.
 #[derive( Debug )]
 #[non_exhaustive]
 pub enum CommandError {
+    Custom( Box<dyn Error> ), // For custom commands returning errors not of this enum.
     AlreadyExists( String ),
     NotFound( String ),
     ParameterMissing( String, usize ),
     InvalidType( String, usize ),
-    Custom( Box<dyn Error> ), // For custom commands returning errors not of this enum.
 }
 
-impl Error for CommandError {}
+impl LocalisationTrait for CommandError {
+    fn identifier( &self ) -> &str {
+        match *self {
+            CommandError::AlreadyExists( _ ) => "already_exists",
+            CommandError::NotFound( _ ) => "command_not_found",
+            CommandError::ParameterMissing( _, _ ) => "parameter_missing",
+            CommandError::InvalidType( _, _ ) => "invalid_type",
+            _ => "",
+        }
+    }
+
+    fn component( &self ) -> &str {
+        "i18n_pattern"
+    }
+}
+
+impl LocalisationErrorTrait for CommandError {
+    fn error_type( &self ) -> &str {
+        "CommandError"
+    }
+
+    fn error_variant( &self ) -> &str {
+        match *self {
+            CommandError::Custom( _ ) => "Custom",
+            CommandError::AlreadyExists( _ ) => "AlreadyExists",
+            CommandError::NotFound( _ ) => "NotFound",
+            CommandError::ParameterMissing( _, _ ) => "ParameterMissing",
+            CommandError::InvalidType( _, _ ) => "InvalidType",
+        }
+    }    
+}
 
 impl Display for CommandError {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match self {
-            CommandError::AlreadyExists( command ) =>
-                write!( formatter, "The command ‘{}’ already exists in the CommandRegistry.", command ),
-            CommandError::NotFound( command ) =>
-                write!( formatter, "The command ‘{}’ was not found in the CommandRegistry.", command ),
-            CommandError::ParameterMissing( command, index ) =>
-                write!( formatter, "The parameter number {} is missing for the command ‘{}’.", index, command ),
-            CommandError::InvalidType( command, index ) =>
-                write!( formatter, "The parameter number {} has invalid type for the command ‘{}’.", index, command ),
-            CommandError::Custom( ref error ) => error.fmt( formatter ),
+            CommandError::Custom( ref error ) => write!(
+                formatter, "CommandError::Custom: [{}].", error.to_string()
+            ),
+            CommandError::AlreadyExists( command ) => write!(
+                formatter,
+                "CommandError::AlreadyExists: The command ‘{}’ already exists in the CommandRegistry.",
+                command
+            ),
+            CommandError::NotFound( command ) => write!(
+                formatter,
+                "CommandError::NotFound: The command ‘{}’ was not found in the CommandRegistry.",
+                command
+            ),
+            CommandError::ParameterMissing( command, index ) => write!(
+                formatter,
+                "CommandError::ParameterMissing: The parameter number {} is missing for the command ‘{}’.",
+                index,
+                command
+            ),
+            CommandError::InvalidType( command, index ) => write!(
+                formatter,
+                "CommandError::InvalidType: The parameter number {} has invalid type for the command ‘{}’.",
+                index,
+                command
+            ),
         }
     }
 }
 
+impl Error for CommandError {}
+
 /// The `FormatterError` type consists of the follow:
+/// 
+/// * `Locale`: Wraps the ICU4X locale error [`IcuParserError`],
+/// 
+/// * `Calendar`: Wraps the ICU4X calendar error [`CalendarError`],
+/// 
+/// * `ParseInt`: Wraps the integer parsing error [`ParseIntError`],
+/// 
+/// * `Decimal`: Wraps the ICU4X decimal error [`DecimalError`],
+/// 
+/// * `DateTime`: Wraps the ICU4X date time error [`DateTimeError`],
+/// 
+/// * `PluralRules`: Wraps the ICU4X plural error [`PluralError`],
+/// 
+/// * `FixedDecimal`: Wraps the ICU4X fixed error [`FixedDecimalError`],
+/// 
+/// * `Command`: Wraps the crate's command error [`CommandError`],
 /// 
 /// * `InvalidRoot`: Indicates the token tree did not have a `NodeType::Root` node for the root,
 /// 
@@ -147,12 +248,6 @@ impl Display for CommandError {
 /// 
 /// * `InvalidSelector`: Indicates an invalid selector was found for the pattern substring,
 /// 
-/// * `Locale`: Wraps the ICU4X locale error [`IcuParserError`],
-/// 
-/// * `Calendar`: Wraps the ICU4X calendar error [`CalendarError`],
-/// 
-/// * `ParseInt`: Wraps the integer parsing error [`ParseIntError`],
-/// 
 /// * `NumberSignString`: Indicates the formatted string was not retrieved for the number sign index,
 /// 
 /// * `SelectorsIndex`: Indicates the index was not found in the collected selectors,
@@ -163,17 +258,7 @@ impl Display for CommandError {
 /// 
 /// * `InvalidValue`: Indicates an invalid value type for the placeholder of the pattern,
 /// 
-/// * `Decimal`: Wraps the ICU4X decimal error [`DecimalError`],
-/// 
-/// * `DateTime`: Wraps the ICU4X date time error [`DateTimeError`],
-/// 
-/// * `PluralRules`: Wraps the ICU4X plural error [`PluralError`],
-/// 
-/// * `FixedDecimal`: Wraps the ICU4X fixed error [`FixedDecimalError`],
-/// 
 /// * `NamedStringIdentifier`: Indicates the named string identifiers must be unique,
-/// 
-/// * `Command`: Wraps the crate's command error [`CommandError`],
 /// 
 /// * `NoIcuProvider`: Indicates no ICU4X data provider was provided,
 /// 
@@ -181,6 +266,14 @@ impl Display for CommandError {
 #[derive( Debug )]
 #[non_exhaustive]
 pub enum FormatterError {
+    Locale( IcuParserError ),
+    Calendar( CalendarError ),
+    ParseInt( ParseIntError ),
+    Decimal( DecimalError ),
+    DateTime( DateTimeError ),
+    PluralRules( PluralError ),
+    FixedDecimal( FixedDecimalError ),
+    Command( CommandError ),
     InvalidRoot,
     RetrieveChildren( NodeType ),
     NodeNotFound( NodeType ),
@@ -198,29 +291,124 @@ pub enum FormatterError {
     NoChildren( NodeType ),
     InvalidOption( String, String, String ),
     InvalidSelector( String, String, String ),
-    Locale( IcuParserError ),
-    Calendar( CalendarError ),
-    ParseInt( ParseIntError ),
     NumberSignString( usize ),
     SelectorsIndex( usize ),
     SelectorsIndexNamed( String, usize ),
     PlaceholderValue( String, String ),
     InvalidValue( String ),
-    Decimal( DecimalError ),
-    DateTime( DateTimeError ),
-    PluralRules( PluralError ),
-    FixedDecimal( FixedDecimalError ),
     NamedStringIdentifier( String ),
-    Command( CommandError ),
     NoIcuProvider,
     NeverReached,
 }
 
-impl Error for FormatterError {}
+impl LocalisationTrait for FormatterError {
+    fn identifier( &self ) -> &str {
+        match *self {
+            FormatterError::InvalidRoot => "invalid_root",
+            FormatterError::RetrieveChildren( _ ) => "retrieve_children",
+            FormatterError::NodeNotFound( _ ) => "node_not_found",
+            FormatterError::FirstChild( _ ) => "first_child",
+            FormatterError::RetrieveNodeData( _ ) => "retrieve_node_data",
+            FormatterError::RetrieveNodeToken( _ ) => "retrieve_node_token",
+            FormatterError::LastChild( _ ) => "last_child",
+            FormatterError::InvalidNode( _ ) => "invalid_node",
+            FormatterError::PatternNamed( _ ) => "pattern_named",
+            FormatterError::PatternPart( _, _ ) => "pattern_part",
+            FormatterError::InvalidOptionValue( _, _, _ ) => "invalid_option_value",
+            FormatterError::InvalidKeyword( _, _ ) => "invalid_keyword",
+            FormatterError::SelectorNamed( _, _, _ ) => "selector_named",
+            FormatterError::SelectorOther( _, _ ) => "selector_other",
+            FormatterError::NoChildren( _ ) => "no_children",
+            FormatterError::InvalidOption( _, _, _ ) => "invalid_option",
+            FormatterError::InvalidSelector( _, _, _ ) => "invalid_selector",
+            FormatterError::NumberSignString( _ ) => "number_sign_string",
+            FormatterError::SelectorsIndex( _ ) => "selectors_index",
+            FormatterError::SelectorsIndexNamed( _, _ ) => "selectors_index_named",
+            FormatterError::PlaceholderValue( _, _ ) => "placeholder_value",
+            FormatterError::InvalidValue( _ ) => "invalid_value",
+            FormatterError::NamedStringIdentifier( _ ) => "named_string_identifier",
+            FormatterError::NoIcuProvider => "no_icu_provider",
+            FormatterError::NeverReached => "never_reach",
+            _ => "",
+        }
+    }
+
+    fn component( &self ) -> &str {
+        "i18n_pattern"
+    }
+}
+
+impl LocalisationErrorTrait for FormatterError {
+    fn error_type( &self ) -> &str {
+        "FormatterError"
+    }
+
+    fn error_variant( &self ) -> &str {
+        match *self {
+            FormatterError::Locale( _ ) => "Locale",
+            FormatterError::Calendar( _ ) => "Calendar",
+            FormatterError::ParseInt( _ ) => "ParseInt",
+            FormatterError::Decimal( _ ) => "Decimal",
+            FormatterError::DateTime( _ ) => "DateTime",
+            FormatterError::PluralRules( _ ) => "PluralRules",
+            FormatterError::FixedDecimal( _ ) => "FixedDecimal",
+            FormatterError::Command( _ ) => "Command",
+            FormatterError::InvalidRoot => "InvalidRoot",
+            FormatterError::RetrieveChildren( _ ) => "RetrieveChildren",
+            FormatterError::NodeNotFound( _ ) => "NodeNotFound",
+            FormatterError::FirstChild( _ ) => "FirstChild",
+            FormatterError::RetrieveNodeData( _ ) => "RetrieveNodeData",
+            FormatterError::RetrieveNodeToken( _ ) => "RetrieveNodeToken",
+            FormatterError::LastChild( _ ) => "LastChild",
+            FormatterError::InvalidNode( _ ) => "InvalidNode",
+            FormatterError::PatternNamed( _ ) => "PatternNamed",
+            FormatterError::PatternPart( _, _ ) => "PatternPart",
+            FormatterError::InvalidOptionValue( _, _, _ ) => "InvalidOptionValue",
+            FormatterError::InvalidKeyword( _, _ ) => "InvalidKeyword",
+            FormatterError::SelectorNamed( _, _, _ ) => "SelectorNamed",
+            FormatterError::SelectorOther( _, _ ) => "SelectorOther",
+            FormatterError::NoChildren( _ ) => "NoChildren",
+            FormatterError::InvalidOption( _, _, _ ) => "InvalidOption",
+            FormatterError::InvalidSelector( _, _, _ ) => "InvalidSelector",
+            FormatterError::NumberSignString( _ ) => "NumberSignString",
+            FormatterError::SelectorsIndex( _ ) => "SelectorsIndex",
+            FormatterError::SelectorsIndexNamed( _, _ ) => "SelectorsIndexNamed",
+            FormatterError::PlaceholderValue( _, _ ) => "PlaceholderValue",
+            FormatterError::InvalidValue( _ ) => "InvalidValue",
+            FormatterError::NamedStringIdentifier( _ ) => "NamedStringIdentifier",
+            FormatterError::NoIcuProvider => "NoIcuProvider",
+            FormatterError::NeverReached => "NeverReached",
+        }
+    }    
+}
 
 impl Display for FormatterError {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match self {
+            FormatterError::Locale( ref error ) => write!(
+                formatter, "FormatterError::Locale: [{}].", error.to_string()
+            ),
+            FormatterError::Calendar( ref error ) => write!(
+                formatter, "FormatterError::Calendar: [{}].", error.to_string()
+            ),
+            FormatterError::ParseInt( ref error ) => write!(
+                formatter, "FormatterError::ParseInt: [{}].", error.to_string()
+            ),
+            FormatterError::Decimal( ref error ) => write!(
+                formatter, "FormatterError::Decimal: [{}].", error.to_string()
+            ),
+            FormatterError::DateTime( ref error ) => write!(
+                formatter, "FormatterError::DateTime: [{}].", error.to_string()
+            ),
+            FormatterError::PluralRules( ref error ) => write!(
+                formatter, "FormatterError::PluralRules: [{}].", error.to_string()
+            ),
+            FormatterError::FixedDecimal( ref error ) => write!(
+                formatter, "FormatterError::FixedDecimal: [{}].", error.to_string()
+            ),
+            FormatterError::Command( ref error ) => write!(
+                formatter, "FormatterError::Command: [{}].", error.to_string()
+            ),
             FormatterError::InvalidRoot => write!( formatter, "The tree root must be a ‘Root’ node." ),
             FormatterError::RetrieveChildren( node_type ) =>
                 write!( formatter, "Failed to retrieve the children for the ‘{}’ node.", node_type ),
@@ -278,9 +466,6 @@ impl Display for FormatterError {
                     "Invalid selector ‘{}’ for the keyword ‘{}’ of the placeholder ‘{}’.",
                     option, keyword, placeholder
                 ),
-            FormatterError::Locale( ref error ) => error.fmt( formatter ),
-            FormatterError::Calendar( ref error ) => error.fmt( formatter ),
-            FormatterError::ParseInt( ref error ) => error.fmt( formatter ),
             FormatterError::NumberSignString( index ) =>
                 write!( formatter, "Unable to retrieve the formatted string for the NumberSign index {}.", index ),
             FormatterError::SelectorsIndex( index ) =>
@@ -300,17 +485,12 @@ impl Display for FormatterError {
                 ),
             FormatterError::InvalidValue( part ) =>
                 write!( formatter, "Invalid value type was provided for the pattern part ‘{}’.", part ),
-            FormatterError::Decimal( ref error ) => error.fmt( formatter ),
-            FormatterError::DateTime( ref error ) => error.fmt( formatter ),
-            FormatterError::PluralRules( ref error ) => error.fmt( formatter ),
-            FormatterError::FixedDecimal( ref error ) => error.fmt( formatter ),
             FormatterError::NamedStringIdentifier( identifier ) =>
                 write!(
                     formatter,
                     "The named string identifier ‘{}’ already exists. The identifiers must be unique and not ‘_’.",
                     identifier
                 ),
-            FormatterError::Command( ref error ) => error.fmt( formatter ),
             FormatterError::NoIcuProvider => write!(
                 formatter,
                 "Build error: At least one ICU4X data provider must be specified for the crate ‘i18n_icu’ using the \
@@ -321,6 +501,8 @@ impl Display for FormatterError {
         }
     }
 }
+
+impl Error for FormatterError {}
 
 impl From<IcuParserError> for FormatterError {
     fn from( error: IcuParserError ) -> FormatterError {

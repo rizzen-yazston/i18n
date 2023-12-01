@@ -94,3 +94,5 @@ pub mod registry;
 pub use registry::*;
 pub mod error;
 pub use error::*;
+pub mod traits;
+pub use traits::*;

@@ -273,14 +273,19 @@ where
     ///         "component".to_string(),
     ///         PlaceholderValue::String( "i18n_localiser".to_string() )
     ///     );
+    ///     values.insert(
+    ///         "identifier".to_string(),
+    ///         PlaceholderValue::String( "cache_entry".to_string() )
+    ///     );
     ///     let lstring = message_system.format_with_defaults(
     ///         "i18n_localiser",
-    ///         "no_default_language_tag",
+    ///         "cache_entry",
     ///         &values,
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No default language tag was found for the component ‘i18n_localiser’.",
+    ///         "Unable to get the string for the component ‘i18n_localiser’ with the identifier ‘cache_entry’ as the \
+    ///         cache entry requires values for formatting.",
     ///         "Check placeholder values."
     ///     );
     ///     Ok( () )
@@ -350,14 +355,15 @@ where
     ///     )?;
     ///     let lstring = message_system.literal(
     ///         "i18n_localiser",
-    ///         "no_default_language_tag",
+    ///         "cache_entry",
     ///         "en-ZA",
     ///         None,
     ///         None
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No default language tag was found for the component ‘{component}’.",
+    ///         "Unable to get the string for the component ‘{component}’ with the identifier ‘{identifier}’ as the \
+    ///         cache entry requires values for formatting.",
     ///         "Check placeholder values."
     ///     );
     ///     Ok( () )
@@ -425,11 +431,12 @@ where
     ///     )?;
     ///     let lstring = message_system.literal_with_defaults(
     ///         "i18n_localiser",
-    ///         "no_default_language_tag",
+    ///         "cache_entry",
     ///     )?;
     ///     assert_eq!(
     ///         lstring.as_str(),
-    ///         "No default language tag was found for the component ‘{component}’.",
+    ///         "Unable to get the string for the component ‘{component}’ with the identifier ‘{identifier}’ as the \
+    ///         cache entry requires values for formatting.",
     ///         "Check placeholder values."
     ///     );
     ///     Ok( () )

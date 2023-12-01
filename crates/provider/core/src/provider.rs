@@ -1,7 +1,7 @@
 // This file is part of `i18n_provider-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider-rizzen-yazston` crate.
 
-use crate::LocalisationProviderError;
+use crate::ProviderError;
 use i18n_utility::TaggedString;
 
 #[cfg( not( feature = "sync" ) )]
@@ -43,107 +43,58 @@ pub trait LocalisationProvider {
     /// specify how the string is to be selected to be returned, thus varied results may be experienced. Look at
     /// `strings()` method to obtain all the strings, that matches the requested tag.
     ///  
-    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository.
+    /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
     fn string<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
         language_tag: &RefCount<String>,
-    ) -> Result<Option<TaggedString>, LocalisationProviderError>;
+    ) -> Result<Option<TaggedString>, ProviderError>;
 
     /// Obtain a localisation string ([`TaggedString`]) only if there is an exact match in the data repository for the
     /// provided parameters, else [`None`] returned indicating no match was found.
     /// 
-    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository.
+    /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
     fn string_exact_match<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
         language_tag: &RefCount<String>,
-    ) -> Result<Option<TaggedString>, LocalisationProviderError>;
+    ) -> Result<Option<TaggedString>, ProviderError>;
 
     /// Similar to `string()`, except all the strings are returned for the matching requested tag.
     /// 
     /// Empty [`Vec`] returned indicates no match was found.
     ///  
-    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository.
+    /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
     fn strings<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
         language_tag: &RefCount<String>,
-    ) -> Result<Vec<TaggedString>, LocalisationProviderError>;
+    ) -> Result<Vec<TaggedString>, ProviderError>;
 
     /// Obtain the information details [`IdentifierDetails`] of an identifier within a component. 
     /// 
-    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository.
+    /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
     fn identifier_details<T: AsRef<str>>(
         &self,
         component: T,
         identifier: T,
-    ) -> Result<IdentifierDetails, LocalisationProviderError>;
+    ) -> Result<IdentifierDetails, ProviderError>;
     
     /// Obtain the information details [`ComponentDetails`] of a component. 
     /// 
-    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository.
+    /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
     fn component_details<T: AsRef<str>>(
         &self,
         component: T,
-    ) -> Result<RefCount<ComponentDetails>, LocalisationProviderError>;
+    ) -> Result<RefCount<ComponentDetails>, ProviderError>;
     
     /// Obtain the information details [`RepositoryDetails`] of the provider's repository.
     /// 
-    /// Return of [`LocalisationProviderError`] indicates there was an error in accessing the data repository.
-    fn repository_details( &self ) -> Result<RefCount<RepositoryDetails>, LocalisationProviderError>;
-
-
-
-
-
-    /*
-    fn components( &self ) -> Result<&Vec<String>, LocalisationProviderError>; 
-
-    /// Retrieve the default language tag of the component in the data repository.
-    /// 
-    /// Return of `None` indicates no default language tag was found for the component.
-    /// 
-    /// Return of `LocalisationProviderError` indicates there was an error in accessing the data repository.
-    fn default_language<T: AsRef<str>>(
-        &self,
-        component: T,
-    ) -> Result<Option<RefCount<String>>, LocalisationProviderError>;
-
-    /// Obtain a list of all the supported languages for a specific identifier.
-    /// 
-    /// Return of `LocalisationProviderError` indicates there was an error in accessing the data repository.
-    fn identifier_languages<T: AsRef<str>>(
-        &self,
-        component: T,
-        identifier: T,
-    ) -> Result<Vec<RefCount<String>>, LocalisationProviderError>; 
-
-    /// Obtain a list of all the supported languages for a specific component.
-    /// 
-    /// Return of `LocalisationProviderError` indicates there was an error in accessing the data repository.
-    fn component_languages<T: AsRef<str>>(
-        &self,
-        component: T,
-    ) -> Result<&Vec<LanguageData>, LocalisationProviderError>; 
-
-    /// Obtain a list of all the languages having localisation pattern string in the entire repository.
-    /// 
-    /// Return of `LocalisationProviderError` indicates there was an error in accessing the data repository.
-    fn repository_languages( &self ) -> Result<&Vec<RefCount<String>>, LocalisationProviderError>;
-
-    // FUTURE: Idea to retrieve contributor list for a language of a component in the data repository.
-    /*
-    /// Return of `LocalisationProviderError` indicates there was an error in accessing the data repository.
-    fn component_contributors<T: AsRef<str>>(
-        &self,
-        component: T,
-    ) -> Result<Vec<LanguageContributor>, LocalisationProviderSqlite3Error>; 
-     */
-    */ 
+    /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
+    fn repository_details( &self ) -> Result<RefCount<RepositoryDetails>, ProviderError>;
 }
 
 /// Contains a list of available languages for an identifier of a component in the provider's repository, where there

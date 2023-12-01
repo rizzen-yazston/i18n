@@ -1,6 +1,7 @@
 // This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
+use crate::{ LocalisationTrait, LocalisationErrorTrait };
 use icu_locid::ParserError;
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
@@ -14,10 +15,28 @@ pub enum RegistryError {
     Locale( ParserError ),
 }
 
+impl LocalisationTrait for RegistryError {
+    fn component( &self ) -> &str {
+        "i18n_utility"
+    }
+}
+
+impl LocalisationErrorTrait for RegistryError {
+    fn error_type( &self ) -> &str {
+        "RegistryError"
+    }
+
+    fn error_variant( &self ) -> &str {
+        "Locale"
+    }
+}
+
 impl Display for RegistryError {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match *self {
-            RegistryError::Locale( ref error ) => error.fmt( formatter ),
+            RegistryError::Locale( ref error ) => write!(
+                formatter, "RegistryError::Locale: [{}].", error.to_string()
+            ),
         }
     }
 }

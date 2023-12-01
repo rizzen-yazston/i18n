@@ -1,9 +1,9 @@
 // This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-use i18n_utility::RegistryError;
+use i18n_utility::{ RegistryError, LocalisationTrait, LocalisationErrorTrait };
 use i18n_pattern::{ ParserError, FormatterError };
-use i18n_provider:: LocalisationProviderError;
+use i18n_provider:: ProviderError;
 use std::error::Error; // Experimental in `core` crate.
 use core::fmt::{ Display, Formatter, Result };
 
@@ -15,7 +15,7 @@ use core::fmt::{ Display, Formatter, Result };
 ///
 /// * `Formatter`: Wraps the pattern `Formatter`'s [`FormatterError`],
 /// 
-/// * `Provider`: Wraps the `LocalisationProvider`'s [`LocalisationProviderError`],
+/// * `Provider`: Wraps the `LocalisationProvider`'s [`ProviderError`],
 /// 
 /// * `StringNotFound`: Indicates the pattern string was not found in localisation repository,
 /// 
@@ -26,18 +26,57 @@ pub enum LocaliserError {
     Registry( RegistryError ),
     Parser( ParserError ),
     Formatter( FormatterError ),
-    Provider( LocalisationProviderError ),
+    Provider( ProviderError ),
     StringNotFound( String, String, String, bool ), // component, identifier, language_tag, fallback
     CacheEntry( String, String ),
+}
+
+impl LocalisationTrait for LocaliserError {
+    fn identifier( &self ) -> &str {
+        match *self {
+            LocaliserError::StringNotFound( _, _, _, _ ) => "string_not_found",
+            LocaliserError::CacheEntry( _, _ ) => "cache_entry",
+            _ => "",
+        }
+    }
+
+    fn component( &self ) -> &str {
+        "i18n_localiser"
+    }
+}
+
+impl LocalisationErrorTrait for LocaliserError {
+    fn error_type( &self ) -> &str {
+        "LocaliserError"
+    }
+
+    fn error_variant( &self ) -> &str {
+        match *self {
+            LocaliserError::Registry( _ ) => "Registry",
+            LocaliserError::Parser( _ ) => "Parser",
+            LocaliserError::Formatter( _ ) => "Formatter",
+            LocaliserError::Provider( _ ) => "Provider",
+            LocaliserError::StringNotFound( _, _, _, _ ) => "StringNotFound",
+            LocaliserError::CacheEntry( _, _ ) => "CacheEntry",
+        }
+    }    
 }
 
 impl Display for LocaliserError {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
         match self {
-            LocaliserError::Registry( ref error ) => error.fmt( formatter ),
-            LocaliserError::Parser( ref error ) => error.fmt( formatter ),
-            LocaliserError::Formatter( ref error ) => error.fmt( formatter ),
-            LocaliserError::Provider( ref error ) => error.fmt( formatter ),
+            LocaliserError::Registry( ref error ) => write!(
+                formatter, "LocaliserError::Registry: [{}].", error.to_string()
+            ),
+            LocaliserError::Parser( ref error ) => write!(
+                formatter, "LocaliserError::Parser: [{}].", error.to_string()
+            ),
+            LocaliserError::Formatter( ref error ) => write!(
+                formatter, "LocaliserError::Formatter: [{}].", error.to_string()
+            ),
+            LocaliserError::Provider( ref error ) => write!(
+                formatter, "LocaliserError::Provider: [{}].", error.to_string()
+            ),
             LocaliserError::StringNotFound(
                 component, identifier, language_tag, fallback
             ) => {
@@ -47,22 +86,21 @@ impl Display for LocaliserError {
                 };
                 write!(
                     formatter,
-                    "No string was found for the component ‘{}’ with identifier ‘{}’ for the language tag \
-                        ‘{}’. Fallback was used: {}.",
+                    "LocaliserError::StringNotFound: No string was found for the component ‘{}’ with identifier ‘{}’ \
+                    for the language tag ‘{}’. Fallback was used: {}.",
                     component,
                     identifier,
                     language_tag,
                     string,
                 )
             },
-            LocaliserError::CacheEntry( component, identifier ) =>
-                write!(
-                    formatter,
-                    "Unable to get the string for the component ‘{}’ with the identifier ‘{}’ as the cache entry \
-                        requires values for formatting.",
-                    component,
-                    identifier
-                ),
+            LocaliserError::CacheEntry( component, identifier ) => write!(
+                formatter,
+                "LocaliserError::CacheEntry: Unable to get the string for the component ‘{}’ with the identifier
+                ‘{}’ as the cache entry requires values for formatting.",
+                component,
+                identifier
+            ),
         }
     }
 }
@@ -88,8 +126,8 @@ impl From<FormatterError> for LocaliserError {
     }
 }
 
-impl From< LocalisationProviderError> for LocaliserError {
-    fn from( error:  LocalisationProviderError ) -> LocaliserError {
+impl From< ProviderError> for LocaliserError {
+    fn from( error: ProviderError ) -> LocaliserError {
         LocaliserError::Provider( error )
     }
 }

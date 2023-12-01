@@ -17,6 +17,8 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 * Added log support to various crates.
 
+* Added two traits for aiding in localising structs and enums. Implemented for the error types of the `i18n` crates.
+
 * Next version: See what new ICU4X features is available to add to `pattern.rs`.
 
 === General changes to multiple crates
@@ -24,6 +26,8 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 * Moved many shared package attributes from the various crates' `Cargo.toml` to workspace's `Cargo.toml` for easier management of project details.
 
 * Moved all project dependency details to workspace's `Cargo.toml` for easier management of project dependencies.
+
+* Implemented localisation traits for the error type(s) of the various crates. 
 
 * Adjusted `Cargo.toml`, tests, and documentation to reflect the changes.
 
@@ -77,8 +81,6 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 * Renamed `LStringProvider` to `LocalisationProvider`.
 
-* Renamed `ProviderError` to `LocalisationProviderError`.
-
 * Updated existing methods signatures, split the `identifier` parameter into the `component` and `identifier` parameters.
 
 * Renamed `get()` to `strings()`.
@@ -103,8 +105,6 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 * Renamed `LStringProviderSqlite3` to `LocalisationProviderSqlite3`.
 
-* Renamed `ProviderSqlite3Error` to `LocalisationProviderSqlite3Error`.
-
 * Added implementations of the new methods to retrieve information on the data repository.
 
 * Added caching to information methods.
@@ -118,6 +118,8 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 * Removed redundant struct and trait.
 
 === `i18n_utility` crate
+
+* Added `traits.rs` containing two localisation traits: `LocalisationTrait` and `LocalisationErrorTrait` (additional methods for localising of errors).
 
 * `tagged_string.rs`:
 
