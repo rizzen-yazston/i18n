@@ -38,7 +38,10 @@ buffer = [
     "icu_segmenter/serde", 
     "icu_properties/serde"
 ]
-sync = [ "icu_provider/sync" ]
+sync = [
+    "icu_provider/sync",
+    "i18n_utility-rizzen-yazston/sync",
+]
 log = []#[ "dep:log" ]
 
 [dependencies]
