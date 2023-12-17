@@ -4,6 +4,7 @@
 use crate::ProviderError;
 use i18n_utility::TaggedString;
 
+use std::collections::HashMap;
 #[cfg( not( feature = "sync" ) )]
 use std::rc::Rc as RefCount;
 
@@ -110,7 +111,7 @@ pub struct IdentifierDetails {
 /// and also total number of strings found for the component.
 //#[derive( Clone )]
 pub struct ComponentDetails {
-    pub languages: Vec<LanguageData>, // The list of available languages for the component. 
+    pub languages: HashMap<RefCount<String>, LanguageData>, // The list of available languages for the component. 
     pub default: RefCount<String>, // The default language of the component. 
     pub total_strings: usize, // The total number of strings for the component.
 }
@@ -118,7 +119,6 @@ pub struct ComponentDetails {
 /// Data about an available language of a component in the provider's repository.
 //#[derive( Clone )]
 pub struct LanguageData {
-    pub language: RefCount<String>,
     pub count: usize, // The number of strings for this language.
     pub ratio: f32, // The ratio between this language and the default language of the component.
     pub contributors: Vec<String>, // The list of contributors for this language.
@@ -126,11 +126,13 @@ pub struct LanguageData {
 
 /// Contains a list of available languages in the provider's repository. The default language is indicated, also total
 /// number of strings, and all the contributors for localisation.
+/// 
+/// Note: If there is no default language (default contains `None`), then the ratios of the languages will all be 0.0.
 //#[derive( Clone )]
 pub struct RepositoryDetails {
-    pub languages: Vec<RefCount<String>>, // The unique list of all the languages of all the components.
+    pub languages: HashMap<RefCount<String>,LanguageData>, // The unique list of all the components' languages.
     pub default: Option<RefCount<String>>, // The default language of repository, usually the application component.
     pub total_strings: usize, // The total number of localisation strings of all the components.
-    pub contributors: Vec<String>, // The unique list of all the contributors of all the components.
     pub components: Vec<String>, // The list of components.
+    pub contributors: Vec<String>, // The unique list of all the contributors of all the components.
 }

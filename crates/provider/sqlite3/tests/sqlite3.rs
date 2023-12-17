@@ -164,7 +164,7 @@ fn component_details() -> Result<(), Box<dyn Error>> {
     )?;
     assert_eq!( details.default, registry.tag( "en-ZA" )?, "Should be en-ZA." );
     assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
-    assert_eq!( details.total_strings, 18, "Should be 18 strings for component" );
+    assert_eq!( details.total_strings, 20, "Should be 18 strings for component" );
     Ok( () )
 }
 
@@ -180,7 +180,7 @@ fn repository_details() -> Result<(), Box<dyn Error>> {
     let details = provider.repository_details()?;
     assert_eq!( details.default.as_ref().unwrap(), &registry.tag( "en-US" )?, "Should be en-US." );
     assert_eq!( details.languages.iter().count(), 3, "Should be 3 languages" );
-    assert_eq!( details.total_strings, 22, "Should be 22 strings for repository" );
+    assert_eq!( details.total_strings, 24, "Should be 22 strings for repository" );
     assert_eq!( details.components.iter().count(), 2, "Should be 2 components" );
     assert_eq!( details.contributors.iter().count(), 2, "Should be contributors" );
     Ok( () )

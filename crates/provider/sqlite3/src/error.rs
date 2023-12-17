@@ -24,11 +24,11 @@ use core::fmt::{ Display, Formatter, Result };
 /// 
 /// * `DefaultLanguage`: Expected default language was not found,
 /// 
+/// * `InvalidDefaultLanguage`: Default language is nit in component's language.
+/// 
 /// * `NotExists`: Indicates path does not exists,
 /// 
 /// * `ComponentNotFound`: Indicates requested component is not found,
-/// 
-/// * `AlreadyTried`: Indicates there was a previous attempt to connect to the Sqlite3 file,
 /// 
 /// * `SchemaInvalid`: Indicates the schema of the Sqlite3 file is invalid.
 #[derive( Debug )]
@@ -41,9 +41,9 @@ pub enum ProviderSqlite3Error {
     NoSqlite3Files( PathBuf ),
     PathConversion,
     DefaultLanguage( String ),
+    InvalidDefaultLanguage( String ),
     NotExists( PathBuf ),
     ComponentNotFound( String ),
-    AlreadyTried( String ),
     SchemaInvalid( String ),
 }
 
@@ -54,9 +54,9 @@ impl LocalisationTrait for ProviderSqlite3Error {
             ProviderSqlite3Error::NoSqlite3Files( _ ) => "no_sqlite3",
             ProviderSqlite3Error::PathConversion => "path_conversion",
             ProviderSqlite3Error::DefaultLanguage( _ ) => "default_language",
+            ProviderSqlite3Error::InvalidDefaultLanguage( _ ) => "invalid_default_language",
             ProviderSqlite3Error::NotExists( _ ) => "path_not_exist",
             ProviderSqlite3Error::ComponentNotFound( _ ) => "component_not_found",
-            ProviderSqlite3Error::AlreadyTried( _ ) => "already_tried",
             ProviderSqlite3Error::SchemaInvalid( _ ) => "schema_invalid",
             _ => "",
         }
@@ -81,9 +81,9 @@ impl LocalisationErrorTrait for ProviderSqlite3Error {
             ProviderSqlite3Error::NoSqlite3Files( _ ) => "NoSqlite3Files",
             ProviderSqlite3Error::PathConversion => "PathConversion",
             ProviderSqlite3Error::DefaultLanguage( _ ) => "DefaultLanguage",
+            ProviderSqlite3Error::InvalidDefaultLanguage( _ ) => "InvalidDefaultLanguage",
             ProviderSqlite3Error::NotExists( _ ) => "NotExists",
             ProviderSqlite3Error::ComponentNotFound( _ ) => "ComponentNotFound",
-            ProviderSqlite3Error::AlreadyTried( _ ) => "AlreadyTried",
             ProviderSqlite3Error::SchemaInvalid( _ ) => "SchemaInvalid",
         }
     }    
@@ -119,17 +119,17 @@ impl Display for ProviderSqlite3Error {
                 "ProviderSqlite3Error::DefaultLanguage: The default language tag is missing for the component ‘{}’.",
                 component
             ),
+            ProviderSqlite3Error::InvalidDefaultLanguage( ref component ) => write!(
+                formatter,
+                "ProviderSqlite3Error::InvalidDefaultLanguage: The default language tag is invalid for the component \
+                ‘{}’.",
+                component
+            ),
             ProviderSqlite3Error::NotExists( ref path ) => write!(
                 formatter, "ProviderSqlite3Error::NotExists: Provided path ‘{}’ does not exist.", path.display()
             ),
             ProviderSqlite3Error::ComponentNotFound( ref component ) => write!(
                 formatter, "ProviderSqlite3Error::ComponentNotFound: The component ‘{}’ could not found.", component ),
-            ProviderSqlite3Error::AlreadyTried( ref component ) => write!(
-                formatter,
-                "ProviderSqlite3Error::AlreadyTried: Already tried connecting to the component ‘{}’ Sqlite3 file and \
-                failed.",
-                component
-            ),
             ProviderSqlite3Error::SchemaInvalid( ref component ) => write!(
                 formatter,
                 "ProviderSqlite3Error::SchemaInvalid: The Sqlite3 file schema is invalid for the component ‘{}’.",

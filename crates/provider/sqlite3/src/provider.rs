@@ -16,6 +16,7 @@ use rusqlite::{ Connection, OpenFlags, /* Statement */};
 #[cfg( feature = "log" )]
 use log::{ error, debug };
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 #[cfg( not( feature = "sync" ) )]
@@ -78,16 +79,15 @@ use std::path::PathBuf;
 /// 
 /// [`LocalisationProvider`]: i18n_provider::LocalisationProvider
 pub struct LocalisationProviderSqlite3 {
-    directory: PathBuf,
     language_tag_registry: RefCount<LanguageTagRegistry>,
-    all_in_one: bool,
     queries: MutCell<HashMap<String, String>>,
+    components: HashMap<String, ( bool, bool )>, // 1st: in all_in_one, 2nd: as own sqlite3 file.
 
     #[cfg( not( feature = "sync" ) ) ]
-    connections: MutCell<HashMap<String, Option<RefCount<Connection>>>>, // None => already tried and failed.
+    connections: HashMap<String, RefCount<Connection>>, // None => already tried and failed.
 
     #[cfg( feature = "sync" )] // remove the not()
-    connections: MutCell<HashMap<String, bool>>, // false = tried and failed verification.
+    connections: HashMap<String, PathBuf>, // None = tried and failed verification.
 
     // Cached data (long running sql queries)
     repository_details: OnceMut<RefCount<RepositoryDetails>>,
@@ -127,69 +127,114 @@ impl LocalisationProviderSqlite3 {
 
             return Err( ProviderSqlite3Error::NotDirectory( directory ) );
         }
-        let mut found = false;
+        let mut components = HashMap::<String, ( bool, bool )>::new();
+
+        #[cfg( not( feature = "sync" ) )]
+        let mut connections = HashMap::<String, RefCount<Connection>>::new();
+
+        #[cfg( feature = "sync" )]
+        let mut connections = HashMap::<String, PathBuf>::new();
+
         let iterator = directory.read_dir()?; // If IO error is returned, usually it is a permission issue.
         for entry in iterator {
-            let entry_data = entry?;
+            let entry_data = entry?; // If IO error is returned, usually it is a permission issue.
             if let Some( extension ) = entry_data.path().extension() {
                 if extension == "sqlite3" {
-                    found = true;
-                    break;
+                    let path = entry_data.path();
+                    let component = path.file_stem().unwrap().to_str().unwrap().to_string();
+                    println!( "Sqlite3 file: {}", component );
+                    if component.as_str().cmp( "all_in_one" ) == Ordering::Equal {
+                        match Connection::open_with_flags(
+                            path.clone(),
+                            OpenFlags::SQLITE_OPEN_READ_ONLY
+                                | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                                | OpenFlags::SQLITE_OPEN_URI
+                        ) {
+                            Err( _error ) => {
+                                #[cfg( feature = "log" )]
+                                error!( "Unable to connect to {}: {}.", path.display(), _error );
+                            },
+                            Ok( connection ) => {
+                                let mut _verified = false;
+                                _verified = true; // For now assume all_in_one.sqlite3 is verified
+                                if _verified {
+                                    {
+                                        let mut statement = connection.prepare_cached(
+                                            "SELECT identifier FROM component"
+                                        )?;
+                                        let mut rows = statement.query( [] )?;
+                                        while let Some( row ) = rows.next()? {
+                                            let component: String = row.get( 0 )?;
+                                            println!( "all_in_one.sqlite3 has component: {}", component );
+                                            if components.contains_key( &component ) {
+                                                let value = components.get_mut( &component )
+                                                .unwrap();
+                                                value.0 = true;
+                                            } else {
+                                                components.insert( component, ( true, false ) );
+                                            }
+                                        }
+                                    }
+
+                                    #[cfg( not( feature = "sync" ) )]
+                                    connections.insert(
+                                        "all_in_one".to_string(), RefCount::new( connection )
+                                    );
+            
+                                    #[cfg( feature = "sync" )]
+                                    connections.insert(
+                                        "all_in_one".to_string(), path
+                                    );
+                                }
+                            }
+                        }
+                    } else {
+                        match Connection::open_with_flags(
+                            path.clone(),
+                            OpenFlags::SQLITE_OPEN_READ_ONLY
+                                | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                                | OpenFlags::SQLITE_OPEN_URI
+                        ) {
+                            Err( _error ) => {
+                                #[cfg( feature = "log" )]
+                                error!( "Unable to connect to {}: {}.", path.display(), _error );
+                            },
+                            Ok( connection ) => {
+                                let mut _verified = false;
+                                _verified = true; // For now assume <component>.sqlite3 is verified
+                                if _verified {
+                                    println!( "Added component: {}", component );
+                                    if components.contains_key( &component ) {
+                                        let value = components.get_mut( &component )
+                                        .unwrap();
+                                        value.1 = true;
+                                    } else {
+                                        components.insert( component.clone(), ( false, true ) );
+                                    }
+
+                                    #[cfg( not( feature = "sync" ) )]
+                                    connections.insert( component, RefCount::new( connection ) );
+            
+                                    #[cfg( feature = "sync" )]
+                                    connections.insert( component, path );
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-        if !found {
+        if components.is_empty() {
             #[cfg( feature = "log" )]
-            error!( "No sqlite3 files is found in {}.", directory.display() );
+            error!( "No sqlite3 files are found in {}.", directory.display() );
 
             return Err( ProviderSqlite3Error::NoSqlite3Files( directory ) );
         }
 
-        #[cfg( not( feature = "sync" ) )]
-        let connections =
-        MutCell::new( HashMap::<String, Option<RefCount<Connection>>>::new() );
-
-        #[cfg( feature = "sync" )]
-        let connections = MutCell::new( HashMap::<String, bool>::new() );
-
-        let mut all_in_one = false;
-        let all_in_one_path = directory.join( "all_in_one.sqlite3" );
-        if all_in_one_path.try_exists()? { // If IO error is returned, usually it is a permission issue.
-            let mut _verified = false;
-            match Connection::open_with_flags(
-                all_in_one_path.clone(),
-                OpenFlags::SQLITE_OPEN_READ_ONLY
-                    | OpenFlags::SQLITE_OPEN_NO_MUTEX
-                    | OpenFlags::SQLITE_OPEN_URI
-            ) {
-                Err( _error ) => {
-                    #[cfg( feature = "log" )]
-                    error!( "Unable to connect to {}: {}.", all_in_one_path.display(), _error );
-                },
-                Ok( _connection ) => {
-    
-                    // TODO: do the schema verification here. Success sets "verified = true;" and include debug message
-                    #[cfg( feature = "log" )]
-                    debug!( "A valid 'all_in_one.sqlite3' is present in '{}'.", directory.display() );
-                    _verified = true; // For now assume all_in_one.sqlite3 is verified
-            
-
-                    if _verified {
-                        #[cfg( not( feature = "sync" ) )] // remove the comments
-                        connections.borrow_mut().insert(
-                            "all_in_one".to_string(), Some( RefCount::new( _connection ) )
-                        );
-
-                        all_in_one = true;
-                    }
-                },
-            }
-        }
         Ok( LocalisationProviderSqlite3 {
-            directory,
             language_tag_registry: RefCount::clone( language_tag_registry ),
-            all_in_one,
             queries: MutCell::new( HashMap::<String, String>::new() ),
+            components,
             connections,
             repository_details: OnceMut::new(),
             component_details: OnceMut::new(),
@@ -199,9 +244,6 @@ impl LocalisationProviderSqlite3 {
 
     // Internal functions.
 
-
-    // Get database connection.
-    // TODO: do schema verification.
     #[cfg( not( feature = "sync" ) )]
     fn connection<T: AsRef<str>>(
         &self,
@@ -209,63 +251,21 @@ impl LocalisationProviderSqlite3 {
         all_in_one: bool,
     ) -> Result<RefCount<Connection>, ProviderSqlite3Error> {
         #[cfg( feature = "log" )]
-        debug!( "Getting database connection for component {}.", component.as_ref() );
+        debug!( "Getting database connection for component '{}'.", component.as_ref() );
 
-        if all_in_one { // Already present.
-            let borrow = self.connections.borrow();
-            return Ok( RefCount::clone( &borrow.get( "all_in_one" ).unwrap().as_ref().unwrap() ) );
+        #[allow( unused_variables )]
+        let Some( value ) = self.components.get( component.as_ref() ) else {
+            return Err( ProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() ) );
+        };
+        if all_in_one && value.0 {
+            return Ok( RefCount::clone( self.connections.get( "all_in_one" ).unwrap() ) )
         }
-        {
-            let borrow = self.connections.borrow();
-            if let Some( option ) = borrow.get( component.as_ref() ) {
-                if option.is_none() {
-                    return Err( ProviderSqlite3Error::AlreadyTried( component.as_ref().to_string() ) );
-                }
-                return Ok( RefCount::clone( &option.as_ref().unwrap() ) );
-            }
+        if value.1 {
+            return Ok( RefCount::clone( self.connections.get( component.as_ref() ).unwrap() ) )
         }
-
-        // No entry in components.
-        {
-            let mut borrow_mut = self.connections.borrow_mut();
-            let mut file = component.as_ref().to_string();
-            file.push_str( ".sqlite3" );
-            let path = self.directory.join( file );
-            if !path.try_exists()? {
-                #[cfg( feature = "log" )]
-                error!( "{} does not exist.", path.display() );
-    
-                borrow_mut.insert( component.as_ref().to_string(), None );
-                return Err( ProviderSqlite3Error::NotExists( path ) );
-            }
-            let connection = match Connection::open_with_flags(
-                path,
-                OpenFlags::SQLITE_OPEN_READ_ONLY
-                    | OpenFlags::SQLITE_OPEN_NO_MUTEX
-                    | OpenFlags::SQLITE_OPEN_URI
-            ) {
-                Err( error ) => {
-                    borrow_mut.insert( component.as_ref().to_string(), None );
-                    return Err( ProviderSqlite3Error::Sqlite3( error ) );
-                },
-                Ok( connection ) => {
-                    let verified = true; // for now set to true, should be false; remember to make mut
-                    if !verified {
-                        borrow_mut.insert( component.as_ref().to_string(), None );
-                        return Err(
-                            ProviderSqlite3Error::SchemaInvalid( component.as_ref().to_string() )
-                        );
-                    }
-                    connection
-                }
-            };
-            borrow_mut.insert( component.as_ref().to_string(), Some( RefCount::new( connection ) ) );
-        }
-        let borrow = self.connections.borrow();
-        Ok( RefCount::clone( &borrow.get( component.as_ref() ).unwrap().as_ref().unwrap() ) )
+        Err( ProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() ) )
     }
 
-    // try to get connection. No fall back to other component Sqlite files takes place. Fallback is handled higher up.
     #[cfg( feature = "sync" )]
     fn connection_sync<T: AsRef<str>>(
         &self,
@@ -273,74 +273,36 @@ impl LocalisationProviderSqlite3 {
         all_in_one: bool,
     ) -> Result<Connection, ProviderSqlite3Error> {
         #[cfg( feature = "log" )]
-        debug!( "Getting database connection for component {}.", component.as_ref() );
+        debug!( "Getting database connection for component '{}'.", component.as_ref() );
 
-        if all_in_one { // Already verified in try_new().
-            let all_in_one_path = self.directory.join( "all_in_one.sqlite3" );
+        #[allow( unused_variables )]
+        let Some( value ) = self.components.get( component.as_ref() ) else {
+            return Err( ProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() ) );
+        };
+        if all_in_one && value.0 {
+            //let path = self.connections.get( "all_in_one" ).unwrap();
             return Ok( Connection::open_with_flags(
-                all_in_one_path.clone(),
+                //path,
+                self.connections.get( "all_in_one" ).unwrap(),
                 OpenFlags::SQLITE_OPEN_READ_ONLY
-                    | OpenFlags::SQLITE_OPEN_NO_MUTEX
-                    | OpenFlags::SQLITE_OPEN_URI
-            )? ) // Possible Sqlite concurrency lock on file.
+                | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                | OpenFlags::SQLITE_OPEN_URI
+            )? ) // Possible Sqlite is concurrency lock on file.
         }
-        let mut _error: Option<ProviderSqlite3Error> = None;
-        let mut _verified = false;
-        let mut _connection: Option<Connection> = None;
-        {
-            let borrow = self.connections.lock().unwrap();
-            match borrow.get( component.as_ref() ) {
-                Some( verified ) => {
-                    if !verified {
-                        return Err( ProviderSqlite3Error::AlreadyTried( component.as_ref().to_string() ) );
-                    }
-                    let all_in_one_path = self.directory.join( component.as_ref() );
-                    return Ok( Connection::open_with_flags(
-                        all_in_one_path.clone(),
-                        OpenFlags::SQLITE_OPEN_READ_ONLY
-                            | OpenFlags::SQLITE_OPEN_NO_MUTEX
-                            | OpenFlags::SQLITE_OPEN_URI
-                    )? ) // Possible Sqlite is concurrency lock on file.
-                }
-                None => {
-                    let component_path = self.directory.join( component.as_ref() );
-                    match component_path.try_exists() {
-                        Err( error ) => _error = Some( ProviderSqlite3Error::Io( error ) ),
-                        Ok( exists ) => {
-                            if !exists {
-                                _error = Some( ProviderSqlite3Error::NotExists( component_path ) );
-                            } else {
-                                match Connection::open_with_flags(
-                                    component_path.clone(),
-                                    OpenFlags::SQLITE_OPEN_READ_ONLY
-                                        | OpenFlags::SQLITE_OPEN_NO_MUTEX
-                                        | OpenFlags::SQLITE_OPEN_URI
-                                ) {
-                                    Err( error ) => _error = Some(
-                                        ProviderSqlite3Error::Sqlite3( error )
-                                    ),
-                                    Ok( result ) => {
-                                        _connection = Some( result );
-                                        // TODO: verification
-                                        _verified = true; // for now assume schema is valid.
-                                    }
-                                }
-                            }
-                        },
-                    }
-                }
-            }
+        if value.1 {
+            //let path = self.connections.get( component.as_ref() ).unwrap();
+            return Ok( Connection::open_with_flags(
+                //path,
+                self.connections.get( component.as_ref() ).unwrap(),
+                OpenFlags::SQLITE_OPEN_READ_ONLY
+                | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                | OpenFlags::SQLITE_OPEN_URI
+            )? ) // Possible Sqlite is concurrency lock on file.
         }
-        self.connections.lock().unwrap().insert(
-            component.as_ref().to_string(),
-            _verified
-        );
-        if _verified {
-            return Ok( _connection.unwrap() );
-        }
-        Err( _error.unwrap() )
+        Err( ProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() ) )
     }
 
+    // Fallback to <component>.sqlite3 is handled by caller.
     fn find_strings<T: AsRef<str>>(
         &self,
         component: T,
@@ -406,6 +368,11 @@ impl LocalisationProviderSqlite3 {
         #[cfg( feature = "sync" )]
         let connection = self.connection_sync( component.as_ref(), all_in_one )?;
 
+        #[cfg( feature = "log" )]
+        debug!(
+            "SQL query string: [{}].", _query.as_ref().unwrap()
+        );
+
         let mut statement = connection.prepare_cached( _query.unwrap().as_str() )?;
         let mut strings = Vec::<TaggedString>::new();
         let mut tag = language_tag.to_string();
@@ -414,7 +381,7 @@ impl LocalisationProviderSqlite3 {
                 tag.push( '%' );
             }
             let mut rows = if all_in_one {
-                statement.query( [ component.as_ref(), identifier.as_ref(), tag.as_str() ] )?
+                statement.query( [ identifier.as_ref(), tag.as_str(), component.as_ref() ] )?
             } else {
                 statement.query( [ identifier.as_ref(), tag.as_str() ] )?
             };
@@ -440,8 +407,7 @@ impl LocalisationProviderSqlite3 {
         Ok( strings )
     }
 
-
-
+    // Fallback to <component>.sqlite3 is handled by caller.
     fn languages<T: AsRef<str>>(
         &self,
         component: T,
@@ -508,9 +474,7 @@ impl LocalisationProviderSqlite3 {
         Ok( languages )
     }
 
-
-
-
+    // Fallback to <component>.sqlite3 is handled by caller.
     fn identifier_languages<T: AsRef<str>>(
         &self,
         component: T,
@@ -579,13 +543,7 @@ impl LocalisationProviderSqlite3 {
         Ok( languages )
     }
 
-
-
-
-
-
-
-
+    // Fallback to <component>.sqlite3 is handled by caller.
     fn contributors<T: AsRef<str>>(
         &self,
         component: T,
@@ -652,9 +610,7 @@ impl LocalisationProviderSqlite3 {
         Ok( contributors )
     }
 
-
-
-
+    // Fallback to <component>.sqlite3 is handled by caller.
     fn count<T: AsRef<str>>(
         &self,
         component: T,
@@ -720,8 +676,7 @@ impl LocalisationProviderSqlite3 {
         Ok( count )
     }
 
-
-
+    // Fallback to <component>.sqlite3 is handled by caller.
     fn default_language<T: AsRef<str>>(
         &self,
         component: T,
@@ -787,182 +742,177 @@ impl LocalisationProviderSqlite3 {
         Ok( tag )
     }
 
-
-
-
+    // If all_in_one.sqlite3 fails, fallback to <component>.sqlite3
     fn build_cache( &self ) -> Result<(), ProviderSqlite3Error> {
         #[cfg( feature = "log" )]
         debug!( "Building details cache." );
 
-        let mut details = HashMap::<String, RefCount<ComponentDetails>>::new();
-        let mut components = Vec::<String>::new();
+        let mut components_details =
+        HashMap::<String, RefCount<ComponentDetails>>::new();
+        let mut repository_details = RepositoryDetails {
+            languages: HashMap::<RefCount<String>, LanguageData>::new(),
+            default: None,
+            total_strings: 0usize,
+            components: Vec::<String>::new(),
+            contributors: Vec::<String>::new(),
+        };
 
-        // Check if all_in_one has component.
-        if self.all_in_one {
-
-            #[cfg( not( feature = "sync" ) )]
-            let connection = self.connection( "all_in_one", true )?;
+        // Get details info per component
+        let mut components_iterator = self.components.iter();
+        while let Some( component ) = components_iterator.next() {
+            repository_details.components.push( component.0.to_string() );
+            let mut component_details = ComponentDetails {
+                languages: HashMap::<RefCount<String>, LanguageData>::new(),
+                default: self.language_tag_registry.tag( "und" )?,
+                total_strings: 0usize,
+            };
     
-            #[cfg( feature = "sync" )]
-            let connection = self.connection_sync( "all_in_one", true )?;
-
-            let mut statement = connection.prepare_cached(
-                "SELECT DISTINCT identifier FROM component"
-            )?;
-            let mut rows = statement.query( [] )?;
-            while let Some( row ) = rows.next()? {
-                let component: String = row.get( 0 )?;
-                components.push( component );
-            }
-        }
-        
-        // Try individual component sqlite3 files.
-        let iterator = self.directory.read_dir()?;
-        for entry in iterator {
-            let entry_data = entry?;
-            if let Some( extension ) = entry_data.path().extension() {
-                if extension == "sqlite3" {
-                    let path = entry_data.path();
-                    let component = path.file_stem().unwrap().to_str().unwrap().to_string();
-                    if component.as_str() != "all_in_one" && !components.contains( &component ) {
-                        #[cfg( not( feature = "sync" ) )]
-                        let connection = self.connection(
-                            component.clone(), false
+            // Get languages
+            let mut languages = Vec::<RefCount<String>>::new();
+            if component.1.0 {
+                languages = self.languages( component.0, true )?;
+                let mut languages_iterator = languages.iter();
+                while let Some( language ) = languages_iterator.next() {
+                    component_details.languages.insert(
+                        RefCount::clone( language ),
+                        LanguageData { count: 0usize, ratio: 0f32, contributors: Vec::<String>::new() }
+                    );
+                    if !repository_details.languages.contains_key( language ) {
+                        repository_details.languages.insert(
+                            RefCount::clone( language ),
+                            LanguageData { count: 0usize, ratio: 0f32, contributors: Vec::<String>::new() }
                         );
-                
-                        #[cfg( feature = "sync" )]
-                        let connection = self.connection_sync( component.clone(), false );
+                    }
+                }
+            }
+            if component.1.1 {
+                let languages_separate = self.languages( component.0, false )?;
+                let mut languages_iterator = languages_separate.iter();
+                while let Some( language ) = languages_iterator.next() {
+                    if !languages.contains( &language ) {
+                        languages.push( RefCount::clone( &language ) );
+                        component_details.languages.insert(
+                            RefCount::clone( language ),
+                            LanguageData { count: 0usize, ratio: 0f32, contributors: Vec::<String>::new() }
+                        );
+                    }
+                    if !repository_details.languages.contains_key( language ) {
+                        repository_details.languages.insert(
+                            RefCount::clone( &language ),
+                            LanguageData { count: 0usize, ratio: 0f32, contributors: Vec::<String>::new() }
+                        );
+                    }
+                }
+            }
 
-                        match connection {
-                            Err( error ) => {
-                                match error {
-                                    ProviderSqlite3Error::AlreadyTried( _not_used ) => {
-                                        #[cfg( feature = "log" )]
-                                        debug!( "No database connection for `{}`.", component );
-                                        // Just skipping component.
-                                    },
-                                    _ => return Err( error )
-                                }
-                            },
-                            Ok( _result ) => components.push( component )
+            #[cfg( feature = "log" )]
+            debug!( "Got languages." );
+
+            // Get default language
+            let mut language = None;
+            if component.1.0 {
+                language = self.default_language( component.0, true )?;
+            }
+            if language.is_none() && component.1.1 {
+                language = self.default_language( component.0, false )?;
+            }
+            if language.is_none() {
+                return Err( ProviderSqlite3Error::DefaultLanguage( component.0.to_string() ) );
+            }
+            if !component_details.languages.contains_key( language.as_ref().unwrap() ) {
+                return Err( ProviderSqlite3Error::InvalidDefaultLanguage( component.0.to_string() ) );
+            }
+            component_details.default = RefCount::clone( language.as_ref().unwrap() );
+            if component.0.as_str().cmp( "application" ) == Ordering::Equal {
+                repository_details.default = language;
+            }
+
+            #[cfg( feature = "log" )]
+            debug!( "Got default language." );
+
+            // Build language data
+            let mut languages_iterator = languages.iter();
+            while let Some( language ) = languages_iterator.next() {
+                let language_data = component_details.languages.get_mut( language ).unwrap();
+                if component.1.0 {
+                    language_data.contributors = self.contributors(
+                        component.0, language, true
+                    )?;
+                    let mut contributors_iterator = language_data.contributors.iter();
+                    while let Some( contributor ) = contributors_iterator.next() {
+                        if !repository_details.contributors.contains( contributor ) {
+                            repository_details.contributors.push( contributor.to_string() );
                         }
                     }
                 }
-            }
-        }
-
-        // Repository details
-        let mut repository_total_strings = 0usize;
-        let mut repository_contributors = Vec::<String>::new();
-        let mut repository_languages = Vec::<RefCount<String>>::new();
-
-        // Get details info per component
-        let mut components_iterator = components.iter();
-        while let Some( component ) = components_iterator.next() {
-            let mut total_strings = 0usize;
-    
-            // Get languages
-            let mut languages = self.languages( component, true )?;
-            let mut language_iterator = languages.iter();
-            while let Some( language ) = language_iterator.next() {
-                if !repository_languages.contains( &language ) {
-                    repository_languages.push( RefCount::clone( &language ) );
-                }
-            }
-            let languages_separate = self.languages( component, false )?;
-            let mut language_iterator = languages_separate.iter();
-            while let Some( language ) = language_iterator.next() {
-                if !languages.contains( &language ) {
-                    languages.push( RefCount::clone( &language ) );
-                }
-                if !repository_languages.contains( &language ) {
-                    repository_languages.push( RefCount::clone( &language ) );
-                }
-            }
-
-            // Build language data
-            let mut language_data_all = Vec::<LanguageData>::new();
-            let mut languages_iterator = languages.iter();
-            while let Some( language ) = languages_iterator.next() {
-                let mut contributors = self.contributors(
-                    component, language, true
-                )?;
-                let mut contributors_iterator = contributors.iter();
-                while let Some( contributor ) = contributors_iterator.next() {
-                    if !repository_contributors.contains( contributor ) {
-                        repository_contributors.push( contributor.to_string() );
+                if component.1.1 {
+                    let contributors_separate = self.contributors(
+                        component.0, language, false
+                    )?;
+                    let mut contributors_iterator = contributors_separate.iter();
+                    while let Some( contributor ) = contributors_iterator.next() {
+                        if !language_data.contributors.contains( contributor ) {
+                            language_data.contributors.push( contributor.to_string() );
+                        }
+                        if !repository_details.contributors.contains( contributor ) {
+                            repository_details.contributors.push( contributor.to_string() );
+                        }
                     }
                 }
-                let contributors_separate = self.contributors(
-                    component, language, false
-                )?;
-                let mut contributors_iterator = contributors_separate.iter();
-                while let Some( contributor ) = contributors_iterator.next() {
-                    if !contributors.contains( contributor ) {
-                        contributors.push( contributor.to_string() );
-                    }
-                    if !repository_contributors.contains( contributor ) {
-                        repository_contributors.push( contributor.to_string() );
-                    }
+
+                if component.1.0 {
+                    language_data.count = self.count(
+                        component.0, language, true
+                    )?;
                 }
-                let mut count = self.count( component, language, true )?;
-                count += self.count( component, language, false )?;
-                total_strings += count;
-                repository_total_strings += count;
-                let data = LanguageData {
-                    language: RefCount::clone( language ),
-                    count,
-                    ratio: 0f32,
-                    contributors,
-                };
-                language_data_all.push( data );
+                if component.1.1 {
+                    language_data.count += self.count(
+                        component.0, language, false
+                    )?;
+                }
+                let repository_language = repository_details.languages.get_mut( language ).unwrap();
+                repository_language.count += language_data.count;
+                component_details.total_strings += language_data.count;
+                repository_details.total_strings += language_data.count;
+            }
+            let mut _count = 0usize;
+            {
+                let default_language_data =
+                component_details.languages.get( &component_details.default ).unwrap();
+                _count = default_language_data.count;
+            }
+            let mut languages_iterator = component_details.languages.iter_mut();
+            while let Some( language_data ) = languages_iterator.next() {
+                language_data.1.ratio = language_data.1.count as f32 / _count as f32;
             }
 
-            // Get default language
-            let mut default = self.default_language( component, true )?;
-            if default.is_none() {
-                default = self.default_language( component, false )?;
-            }
-            if default.is_none() {
-                return Err( ProviderSqlite3Error::DefaultLanguage( component.to_string() ) );
-            }
-
-            // Create ComponentDetails and add to cache
-            let component_details = ComponentDetails {
-                languages: language_data_all,
-                default: default.unwrap(),
-                total_strings,
-            };
-            details.insert(component.to_string(), RefCount::new( component_details ) );
-        }
-        let _ = self.component_details.set( details );
-
-        // Complete repository details
-        let mut default = self.default_language( "application", true )?;
-        if default.is_none() {
-            default = self.default_language( "application", false )?;
+            #[cfg( feature = "log" )]
+            debug!( "Got language data." );
+            
+            components_details.insert( component.0.to_string(), RefCount::new( component_details ) );
         }
 
-        let repository = RefCount::new(
-            RepositoryDetails {
-                languages: repository_languages,
-                default,
-                total_strings: repository_total_strings,
-                contributors: repository_contributors,
-                components,
+        #[cfg( feature = "log" )]
+        debug!( "Components done." );
+
+        if repository_details.default.is_some() {
+            let mut _count = 0usize;
+            {
+                let default_language_data =
+                repository_details.languages.get( repository_details.default.as_ref().unwrap() ).unwrap();
+                _count = default_language_data.count;
             }
-        );
-        let _ = self.repository_details.set( repository );
+            let mut languages_iterator =
+            repository_details.languages.iter_mut();
+            while let Some( language_data ) = languages_iterator.next() {
+                language_data.1.ratio = language_data.1.count as f32 / _count as f32;
+            }
+        }
+        let _ = self.component_details.set( components_details );
+        let _ = self.repository_details.set( RefCount::new( repository_details ) );
         Ok( () )
     }
-
-
-
 }
-
-
-
-
 
 impl LocalisationProvider for LocalisationProviderSqlite3 {
 
@@ -1020,8 +970,17 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
             identifier.as_ref(), component.as_ref(), language_tag
         );
 
+        let Some( component_files ) = self.components.get( component.as_ref() ) else {
+            return Err(
+                ProviderError {
+                    error_type: "ProviderSqlite3Error",
+                    source: Box::new( ProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() ) ),
+                }
+            )
+        };
+
         // Try all_in_one.sqlite3 first.
-        if self.all_in_one {
+        if component_files.0 {
             #[cfg( feature = "log" )]
             debug!( "Trying the 'all_in_one.sqlite3' for string." );
 
@@ -1034,6 +993,9 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
                 false,
             ) {
                 Err( error ) => {
+                    #[cfg( feature = "log" )]
+                    debug!( "Error occurred in finding strings: {}", error.to_string() );
+        
                     return Err(
                         ProviderError {
                             error_type: "ProviderSqlite3Error",
@@ -1052,26 +1014,28 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
         #[cfg( feature = "log" )]
         debug!( "Trying the component sqlite3 file for string." );
 
-        let strings = match self.find_strings(
-            component.as_ref(),
-            identifier.as_ref(),
-            language_tag,
-            false,
-            true,
-            false,
-        ) {
-            Err( error ) => {
-                return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( error ),
-                    }
-                )
-            },
-            Ok( result ) => result,
-        };
-        if !strings.is_empty() {
-            return Ok( Some( strings[ 0 ].clone() ) );
+        if component_files.1 {
+            let strings = match self.find_strings(
+                component.as_ref(),
+                identifier.as_ref(),
+                language_tag,
+                false,
+                true,
+                false,
+            ) {
+                Err( error ) => {
+                    return Err(
+                        ProviderError {
+                            error_type: "ProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    )
+                },
+                Ok( result ) => result,
+            };
+            if !strings.is_empty() {
+                return Ok( Some( strings[ 0 ].clone() ) );
+            }
         }
         Ok( None )
     }
@@ -1122,8 +1086,17 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
             identifier.as_ref(), component.as_ref(), language_tag
         );
 
+        let Some( component_files ) = self.components.get( component.as_ref() ) else {
+            return Err(
+                ProviderError {
+                    error_type: "ProviderSqlite3Error",
+                    source: Box::new( ProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() ) ),
+                }
+            )
+        };
+
         // Try all_in_one.sqlite3 first.
-        if self.all_in_one {
+        if component_files.0 {
             #[cfg( feature = "log" )]
             debug!( "Trying the 'all_in_one.sqlite3' for exact match string." );
 
@@ -1154,26 +1127,28 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
         #[cfg( feature = "log" )]
         debug!( "Trying the component sqlite3 file for exact match string." );
 
-        let strings = match self.find_strings(
-            component.as_ref(),
-            identifier.as_ref(),
-            language_tag,
-            false,
-            true,
-            true,
-        ) {
-            Err( error ) => {
-                return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( error ),
-                    }
-                )
-            },
-            Ok( result ) => result,
-        };
-        if !strings.is_empty() {
-            return Ok( Some( strings[ 0 ].clone() ) );
+        if component_files.1 {
+            let strings = match self.find_strings(
+                component.as_ref(),
+                identifier.as_ref(),
+                language_tag,
+                false,
+                true,
+                true,
+            ) {
+                Err( error ) => {
+                    return Err(
+                        ProviderError {
+                            error_type: "ProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    )
+                },
+                Ok( result ) => result,
+            };
+            if !strings.is_empty() {
+                return Ok( Some( strings[ 0 ].clone() ) );
+            }
         }
         Ok( None )
     }
@@ -1226,12 +1201,22 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
             identifier.as_ref(), component.as_ref(), language_tag
         );
 
+        let Some( component_files ) = self.components.get( component.as_ref() ) else {
+            return Err(
+                ProviderError {
+                    error_type: "ProviderSqlite3Error",
+                    source: Box::new( ProviderSqlite3Error::ComponentNotFound( component.as_ref().to_string() ) ),
+                }
+            )
+        };
+        let mut strings = Vec::<TaggedString>::new();
+
         // Try all_in_one.sqlite3 first.
-        if self.all_in_one {
+        if component_files.0 {
             #[cfg( feature = "log" )]
             debug!( "Trying the 'all_in_one.sqlite3' for strings." );
 
-            let strings = match self.find_strings(
+            strings = match self.find_strings(
                 component.as_ref(),
                 identifier.as_ref(),
                 language_tag,
@@ -1258,24 +1243,26 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
         #[cfg( feature = "log" )]
         debug!( "Trying the component sqlite3 file for strings." );
 
-        let strings = match self.find_strings(
-            component.as_ref(),
-            identifier.as_ref(),
-            language_tag,
-            false,
-            false,
-            false,
-        ) {
-            Err( error ) => {
-                return Err(
-                    ProviderError {
-                        error_type: "ProviderSqlite3Error",
-                        source: Box::new( error ),
-                    }
-                )
-            },
-            Ok( result ) => result,
-        };
+        if component_files.1 {
+            strings = match self.find_strings(
+                component.as_ref(),
+                identifier.as_ref(),
+                language_tag,
+                false,
+                false,
+                false,
+            ) {
+                Err( error ) => {
+                    return Err(
+                        ProviderError {
+                            error_type: "ProviderSqlite3Error",
+                            source: Box::new( error ),
+                        }
+                    )
+                },
+                Ok( result ) => result,
+            };
+        }
         Ok( strings )
     }
 
@@ -1404,7 +1391,7 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
     ///     )?;
     ///     assert_eq!( details.default, registry.tag( "en-ZA" )?, "Should be en-ZA." );
     ///     assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
-    ///     assert_eq!( details.total_strings, 18, "Should be 18 strings for component" );
+    ///     assert_eq!( details.total_strings, 20, "Should be 18 strings for component" );
     ///     Ok( () )
     /// }
     /// ```
@@ -1469,7 +1456,7 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
     ///     let details = provider.repository_details()?;
     ///     assert_eq!( details.default.as_ref().unwrap(), &registry.tag( "en-US" )?, "Should be en-US." );
     ///     assert_eq!( details.languages.iter().count(), 3, "Should be 3 languages" );
-    ///     assert_eq!( details.total_strings, 22, "Should be 22 strings for repository" );
+    ///     assert_eq!( details.total_strings, 24, "Should be 22 strings for repository" );
     ///     assert_eq!( details.components.iter().count(), 2, "Should be 2 components" );
     ///     assert_eq!( details.contributors.iter().count(), 2, "Should be contributors" );
     ///     Ok( () )
@@ -1496,9 +1483,6 @@ impl LocalisationProvider for LocalisationProviderSqlite3 {
         }
     }
 }
-
-
-
 
 // Internal structs, enum, and functions
 
