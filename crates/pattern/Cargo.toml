@@ -6,6 +6,7 @@
 name = "i18n_pattern-rizzen-yazston"
 description = "The `i18n_pattern` crate of the Internationalisation project."
 license = "BSD-3-Clause"
+readme = "README.asciidoc"
 
 authors.workspace = true
 categories.workspace = true
@@ -13,7 +14,6 @@ edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 keywords.workspace = true
-readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true

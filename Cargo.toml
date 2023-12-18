@@ -30,7 +30,7 @@ include = [
 ]
 keywords = [ "internationalization", "localization", "icu4x" ]
 license = "BSD-3-Clause"
-readme = "README.asciidoc"
+#readme = "README.asciidoc"
 repository = "https://github.com/rizzen-yazston/i18n"
 rust-version = "1.70.0"
 version = "0.7.0"
