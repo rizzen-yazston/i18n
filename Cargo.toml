@@ -19,7 +19,7 @@ exclude = [
 
 [workspace.package]
 authors = [ "Rizzen Yazston" ]
-categories = [ "internationalization", "localization", "rust-pattern" ]
+categories = [ "internationalization", "localization", "rust-patterns" ]
 edition = "2021"
 homepage = "https://github.com/rizzen-yazston/i18n"
 include = [
