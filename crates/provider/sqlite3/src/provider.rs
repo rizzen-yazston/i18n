@@ -1521,7 +1521,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     ///     )?;
     ///     assert_eq!( details.default, registry.tag( "en-ZA" )?, "Should be en-ZA." );
     ///     assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
-    ///     assert_eq!( details.total_strings, 24, "Should be 24 strings for component" );
+    ///     assert_eq!( details.total_strings, 16, "Should be 16 strings for component" );
     ///     Ok( () )
     /// }
     /// ```
@@ -1572,7 +1572,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     ///     let details = provider.repository_details()?;
     ///     assert_eq!( details.default.as_ref().unwrap(), &registry.tag( "en-US" )?, "Should be en-US." );
     ///     assert_eq!( details.languages.iter().count(), 3, "Should be 3 languages" );
-    ///     assert_eq!( details.total_strings, 28, "Should be 28 strings for repository" );
+    ///     assert_eq!( details.total_strings, 20, "Should be 20 strings for repository" );
     ///     assert_eq!( details.components.iter().count(), 2, "Should be 2 components" );
     ///     assert_eq!( details.contributors.iter().count(), 2, "Should be contributors" );
     ///     Ok( () )

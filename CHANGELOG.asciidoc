@@ -1,7 +1,7 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.7.1 (2024-??-??)
+== i18n 0.8.0 (2024-02-03)
 
 WARNING: This update has moved some enums, structs, and traits to other crates. Check the `use` paths in rust files of projects depending on individual crates of the `i18n` project.
 
