@@ -3,8 +3,8 @@
 
 use crate::ProviderError;
 use i18n_utility::TaggedString;
-
 use std::collections::HashMap;
+
 #[cfg( not( feature = "sync" ) )]
 use std::rc::Rc as RefCount;
 
@@ -31,7 +31,7 @@ use std::sync::Arc as RefCount;
 /// data store.
 /// 
 /// [UAX #31]: https://www.unicode.org/reports/tr31/
-pub trait LocalisationProvider {
+pub trait LocalisationProviderTrait {
 
     /// Obtain a localisation string ([`TaggedString`]) from the data repository for the provided parameters, though
     /// if an exact match is not found then search using similar language tags, else [`None`] returned indicating no
@@ -45,10 +45,10 @@ pub trait LocalisationProvider {
     /// `strings()` method to obtain all the strings, that matches the requested tag.
     ///  
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
-    fn string<T: AsRef<str>>(
+    fn string(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         language_tag: &RefCount<String>,
     ) -> Result<Option<TaggedString>, ProviderError>;
 
@@ -56,10 +56,10 @@ pub trait LocalisationProvider {
     /// provided parameters, else [`None`] returned indicating no match was found.
     /// 
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
-    fn string_exact_match<T: AsRef<str>>(
+    fn string_exact_match(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         language_tag: &RefCount<String>,
     ) -> Result<Option<TaggedString>, ProviderError>;
 
@@ -68,28 +68,28 @@ pub trait LocalisationProvider {
     /// Empty [`Vec`] returned indicates no match was found.
     ///  
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
-    fn strings<T: AsRef<str>>(
+    fn strings(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         language_tag: &RefCount<String>,
     ) -> Result<Vec<TaggedString>, ProviderError>;
 
     /// Obtain the information details [`IdentifierDetails`] of an identifier within a component. 
     /// 
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
-    fn identifier_details<T: AsRef<str>>(
+    fn identifier_details(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
     ) -> Result<IdentifierDetails, ProviderError>;
     
     /// Obtain the information details [`ComponentDetails`] of a component. 
     /// 
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
-    fn component_details<T: AsRef<str>>(
+    fn component_details(
         &self,
-        component: T,
+        component: &str,
     ) -> Result<RefCount<ComponentDetails>, ProviderError>;
     
     /// Obtain the information details [`RepositoryDetails`] of the provider's repository.
@@ -100,7 +100,7 @@ pub trait LocalisationProvider {
 
 /// Contains a list of available languages for an identifier of a component in the provider's repository, where there
 /// exists a string for the language. The default language of the identifier is also provided.
-//#[derive( Clone )]
+#[derive( Debug )]
 pub struct IdentifierDetails {
     pub languages: Vec<RefCount<String>>, // The list of available languages for the identifier.
     pub default: RefCount<String>, // The default language for the identifier.
@@ -109,7 +109,7 @@ pub struct IdentifierDetails {
 /// Contains a list of available languages of a component in the provider's repository. For each language: a string
 /// count, ratio against the default language, and contributors list is provided. The default language is indicated,
 /// and also total number of strings found for the component.
-//#[derive( Clone )]
+#[derive( Debug )]
 pub struct ComponentDetails {
     pub languages: HashMap<RefCount<String>, LanguageData>, // The list of available languages for the component. 
     pub default: RefCount<String>, // The default language of the component. 
@@ -117,7 +117,7 @@ pub struct ComponentDetails {
 }
 
 /// Data about an available language of a component in the provider's repository.
-//#[derive( Clone )]
+#[derive( Debug )]
 pub struct LanguageData {
     pub count: usize, // The number of strings for this language.
     pub ratio: f32, // The ratio between this language and the default language of the component.
@@ -128,7 +128,7 @@ pub struct LanguageData {
 /// number of strings, and all the contributors for localisation.
 /// 
 /// Note: If there is no default language (default contains `None`), then the ratios of the languages will all be 0.0.
-//#[derive( Clone )]
+#[derive( Debug )]
 pub struct RepositoryDetails {
     pub languages: HashMap<RefCount<String>,LanguageData>, // The unique list of all the components' languages.
     pub default: Option<RefCount<String>>, // The default language of repository, usually the application component.

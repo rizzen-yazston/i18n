@@ -1,13 +1,14 @@
-// This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
+// This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-// Feature option: language tag wrapping
+// Future feature option: language tag wrapping
 
-use crate::{ NodeType, FormatterError, PlaceholderValue, CommandRegistry };
+use crate::{ FormatterError, Localiser, };
 #[allow( unused_imports )]
-use i18n_icu::{ IcuDataProvider, DataProvider };
+use i18n_icu::{ DataProvider, IcuDataProvider };
+use i18n_pattern::{ NodeType, CommandRegistry };
 use i18n_lexer::Token;
-use i18n_utility::TaggedString;
+use i18n_utility::{ TaggedString, PlaceholderValue };
 use tree::Tree;
 use icu_provider::prelude::DataLocale;
 use icu_locid::Locale;
@@ -38,19 +39,18 @@ use std::sync::Arc as RefCount;
 use std::str::FromStr;
 
 pub struct Formatter {
-    data_provider: RefCount<IcuDataProvider>,
     language_tag: RefCount<String>,
     locale: RefCount<Locale>,
     patterns: HashMap<String, Vec<PatternPart>>,
     numbers: Vec<String>,
     selectors: Vec<HashMap<String, String>>,
-    command_registry: RefCount<CommandRegistry>,
 }
 
 impl Formatter {
     /// Creates a Formatter for a language string using parsing results.
     /// During the creation of the formatter for the supplied [`Tree`], the semantic analyse is done.
     ///
+    /* For now need to see how to modify to test these
     /// # Examples
     ///
     /// ```
@@ -66,7 +66,8 @@ impl Formatter {
     ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     ///     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
     ///     let ( tokens, _lengths, _grammar ) =
-    ///         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );
+    ///         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}\
+    /// {one_dog is 1 dog}" );
     ///     let tree = parse( tokens )?;
     ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
     ///     let language_tag = Rc::new( locale.to_string() );
@@ -88,31 +89,33 @@ impl Formatter {
     ///     Ok( () )
     /// }
     /// ```
-    /// 
+    */
+    ///  
     /// [`Tree`]: tree::Tree
     pub fn try_new(
-        data_provider: &RefCount<IcuDataProvider>,
+        localiser: &Localiser,
         language_tag: &RefCount<String>,
-        locale: &RefCount<Locale>,
         tree: &Tree,
-        command_registry: &RefCount<CommandRegistry>,
     ) -> Result<Formatter, FormatterError> {
+
         #[cfg( feature = "log" )]
         debug!( "Creating formatter for language tag '{}'", language_tag );
     
+        let locale = localiser
+        .language_tag_registry()
+        .locale( language_tag.as_str() )
+        .unwrap();
         let mut patterns = HashMap::<String, Vec<PatternPart>>::new();
         patterns.insert( "_".to_string(), Vec::<PatternPart>::new() ); // Insert empty main pattern.
         let mut numbers = Vec::<String>::new();
         let mut selectors = Vec::<HashMap<String, String>>::new();
         if tree.len() == 0 {
             return Ok( Formatter {
-                data_provider: RefCount::clone( data_provider ),
                 language_tag: RefCount::clone( &language_tag ),
-                locale: RefCount::clone( &locale ),
+                locale,
                 patterns,
                 numbers,
                 selectors,
-                command_registry: RefCount::clone( command_registry ),
             } );
         }
         let option_selectors = OptionSelectors {
@@ -184,10 +187,10 @@ impl Formatter {
                                 *child,
                                 &mut selectors,
                                 &option_selectors,
-                                locale,
+                                &locale,
                             )?;
                         } else if check_node_type( tree, *child, NodeType::Command ) {
-                            part_command( &mut pattern, tree, *child, command_registry )?;
+                            part_command( &mut pattern, tree, *child, localiser.command_registry() )?;
                         } else {
                             return Err( FormatterError::InvalidNode( NodeType::String ) );
                         }
@@ -222,34 +225,35 @@ impl Formatter {
                     *child,
                     &mut selectors,
                     &option_selectors,
-                    locale,
+                    &locale,
                 )?;
             } else if check_node_type( tree, *child, NodeType::Command ) {
-                part_command( &mut pattern, tree, *child, command_registry )?;
+                part_command( &mut pattern, tree, *child, localiser.command_registry() )?;
             } else {
                 return Err( FormatterError::InvalidNode( NodeType::String ) );
             }
         }
         patterns.insert( "_".to_string(), pattern );
         Ok( Formatter {
-            data_provider: RefCount::clone( data_provider ),
             language_tag: RefCount::clone( &language_tag ),
-            locale: RefCount::clone( &locale ),
+            locale,
             patterns,
             numbers,
             selectors,
-            command_registry: RefCount::clone( command_registry ),
         } )
     }
 
     /// Format the language string with supplied values as [`HashMap`]`<`[`String`]`, `[`PlaceholderValue`]`>`.
     ///
+    /* For now need to see how to modify to test these
     /// # Examples
     ///
     /// ```
     /// use i18n_icu::{ IcuDataProvider, DataProvider };
     /// use i18n_lexer::{ Token, TokenType, Lexer };
-    /// use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry };
+    /// use i18n_utility::PlaceholderValue;
+    /// use i18n_pattern::{ parse, NodeType, CommandRegistry };
+    /// use i18n_localiser::{ Formatter, FormatterError }
     /// use icu_locid::Locale;
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
@@ -281,25 +285,21 @@ impl Formatter {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn format( &mut self, values: &HashMap<String, PlaceholderValue> ) -> Result<TaggedString, FormatterError> {
+    */
+    pub fn format(
+        &mut self,
+        localiser: &Localiser,
+        values: &HashMap<String, PlaceholderValue>
+    ) -> Result<TaggedString, FormatterError> {
         if self.patterns.get( "_" ).unwrap().len() == 0 {
             return Ok( TaggedString::new( String::new(), &self.language_tag ) );
         }
         let pattern_string = self.format_pattern(
+            localiser,
             values,
             &"_".to_string(),
         )?;
         Ok( TaggedString::new( pattern_string, &self.language_tag ) )
-    }
-
-    /// Returns the locale used in creating the formatter.
-    pub fn locale( &self ) -> &RefCount<Locale> {
-        &self.locale
-    }
-
-    /// Returns the language tag used in creating the formatter.
-    pub fn tag( &self ) -> &RefCount<String> {
-        &self.language_tag
     }
 
     // Internal methods
@@ -315,6 +315,7 @@ impl Formatter {
 
     fn format_pattern(
         &mut self,
+        localiser: &Localiser,
         values: &HashMap<String, PlaceholderValue>,
         named: &String
     ) -> Result<String, FormatterError> {
@@ -374,12 +375,19 @@ impl Formatter {
                             )
                         );
                     };
-                    let data_locale = DataLocale::from( RefCount::as_ref( &self.locale ) );
+                    let data_locale = DataLocale::from(
+
+                         RefCount::as_ref( &self.locale )
+                    );
                     let mut options: options::FixedDecimalFormatterOptions = Default::default();
                     if group.is_some() {
                         options.grouping_strategy = group.unwrap();
                     }
-                    let fdf = self.fixed_decimal_formatter( &data_locale, options )?;
+                    let fdf = self.fixed_decimal_formatter(
+                        localiser,
+                        &data_locale,
+                        options
+                    )?;
                     match value {
                         PlaceholderValue::FixedDecimal( number ) => {
                             let fixed_decimal = &mut number.clone();
@@ -456,17 +464,29 @@ impl Formatter {
                     };
                     match value {
                         PlaceholderValue::DateTime( date_time) => {
-                            let dtf = self.date_time_formatter( &data_locale, options )?;
+                            let dtf = self.date_time_formatter(
+                                localiser,
+                                &data_locale,
+                                options
+                            )?;
                             let date_string = dtf.format_to_string( &date_time.to_any() )?;
                             string.push_str( date_string.as_str() );
                         },
                         PlaceholderValue::Date( date ) => {
-                            let df = self.date_formatter( &data_locale, length_date )?;
+                            let df = self.date_formatter(
+                                localiser,
+                                &data_locale,
+                                length_date
+                            )?;
                             let date_string = df.format_to_string( &date.to_any() )?;
                             string.push_str( date_string.as_str() );
                         },
                         PlaceholderValue::Time( time ) => {
-                            let tf = self.time_formatter(&data_locale, length_time )?;
+                            let tf = self.time_formatter(
+                                localiser,
+                                &data_locale,
+                                length_time
+                            )?;
                             let date_string = tf.format_to_string( time );
                             string.push_str( date_string.as_str() );
                         },
@@ -477,7 +497,11 @@ impl Formatter {
 
                                     // time only
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
-                                    let tf = self.time_formatter( &data_locale, length_time, )?;
+                                    let tf = self.time_formatter(
+                                        localiser,
+                                        &data_locale,
+                                        length_time,
+                                    )?;
                                     let date_string = tf.format_to_string( &time );
                                     string.push_str( date_string.as_str() );
                                 } else {
@@ -486,7 +510,11 @@ impl Formatter {
                                     let date: Date<Iso> = decompose_iso_date( date_time_strings[ 0 ] )?;
                                     let time: Time = decompose_iso_time( date_time_strings[ 1 ] )?;
                                     let date_time = DateTime::<Iso>::new( date, time );
-                                    let dtf = self.date_time_formatter( &data_locale, options )?;
+                                    let dtf = self.date_time_formatter(
+                                        localiser,
+                                        &data_locale,
+                                        options
+                                    )?;
                                     let date_string = dtf.format_to_string( &date_time.to_any() )?;
                                     string.push_str( date_string.as_str() );
                                 }
@@ -494,7 +522,11 @@ impl Formatter {
 
                                 // date only
                                 let date: Date<Iso> = decompose_iso_date( date_time_strings[ 0 ] )?;
-                                let df = self.date_formatter( &data_locale, length_date )?;
+                                let df = self.date_formatter(
+                                    localiser,
+                                    &data_locale,
+                                    length_date
+                                )?;
                                 let date_string = df.format_to_string( &date.to_any() )?;
                                 string.push_str( date_string.as_str() );
                             }
@@ -522,9 +554,13 @@ impl Formatter {
                     let data_locale = DataLocale::from( RefCount::as_ref( &self.locale ) );
                     match complex {
                         ComplexType::Plural => {
-                            let plurals = self.plural_rules_cardinal( &data_locale )?;
+                            let plurals = self.plural_rules_cardinal(
+                                localiser,
+                                &data_locale
+                            )?;
                             match value {
                                 PlaceholderValue::FixedDecimal( number ) => self.find_number_sign(
+                                    localiser,
                                     values,
                                     &mut string,
                                     number,
@@ -535,6 +571,7 @@ impl Formatter {
                                 PlaceholderValue::Unsigned( number ) => {
                                     let fixed_decimal = FixedDecimal::from( *number );
                                     self.find_number_sign(
+                                        localiser,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -546,6 +583,7 @@ impl Formatter {
                                 PlaceholderValue::Integer( number ) => {
                                     let fixed_decimal = FixedDecimal::from( *number );
                                     self.find_number_sign(
+                                        localiser,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -559,6 +597,7 @@ impl Formatter {
                                         *number, DoublePrecision::Floating
                                     )?;
                                     self.find_number_sign(
+                                        localiser,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -573,11 +612,15 @@ impl Formatter {
                         ComplexType::Ordinal => {
 
                             // Only positive integers and zero are allowed.
-                            let plurals = self.plural_rules_ordinal( &data_locale )?;
+                            let plurals = self.plural_rules_ordinal(
+                                localiser,
+                                &data_locale,
+                            )?;
                             match value {
                                 PlaceholderValue::Unsigned( number ) => {
                                     let fixed_decimal = FixedDecimal::from( *number );
                                     self.find_number_sign(
+                                        localiser,
                                         values,
                                         &mut string,
                                         &fixed_decimal,
@@ -593,6 +636,7 @@ impl Formatter {
                             match value {
                                 PlaceholderValue::String( value ) => {
                                     self.select(
+                                        localiser,
                                         values,
                                         &mut string,
                                         value,
@@ -603,6 +647,7 @@ impl Formatter {
 
                                     // Locale is not used, and LSring is just treated as String for the selector
                                     self.select(
+                                        localiser,
                                         values,
                                         &mut string,
                                         &value.as_str().to_string(),
@@ -654,7 +699,7 @@ impl Formatter {
                             parameters.push( parameter.clone() );
                         }
                     }
-                    let function = self.command_registry.command( command )?;
+                    let function = localiser.command_registry().command( command )?;
                     string.push_str( &function( parameters )? );
                 }
             }
@@ -665,6 +710,7 @@ impl Formatter {
 
     fn find_number_sign(
         &mut self,
+        localiser: &Localiser,
         values: &HashMap<String, PlaceholderValue>,
         string: &mut String,
         fixed_decimal: &FixedDecimal,
@@ -675,7 +721,11 @@ impl Formatter {
         let mut _named = String::new();
 
         // Format number using graphemes of the locale.
-        let fdf = self.fixed_decimal_formatter( data_locale, Default::default(), )?;
+        let fdf = self.fixed_decimal_formatter(
+            localiser,
+            data_locale,
+            Default::default(),
+        )?;
         let number_string = fdf.format( fixed_decimal ).to_string();
         let category = plural_category( plurals.category_for( fixed_decimal ) ).to_string();
 
@@ -714,6 +764,7 @@ impl Formatter {
             }
         }
         let part_string = self.format_pattern(
+            localiser,
             values,
             &_named
         )?;
@@ -723,6 +774,7 @@ impl Formatter {
 
     fn select(
         &mut self,
+        localiser: &Localiser,
         values: &HashMap<String, PlaceholderValue>,
         string: &mut String,
         string_value: &String,
@@ -737,6 +789,7 @@ impl Formatter {
             return Err( FormatterError::SelectorsIndexNamed( string_value.to_string(), selectors_index ) );
         };
         let part_string = self.format_pattern(
+            localiser,
             values,
             &named.to_string(),
         )?;
@@ -754,10 +807,11 @@ impl Formatter {
 
     fn fixed_decimal_formatter(
         &self,
+        localiser: &Localiser,
         _data_locale: &DataLocale,
         _options: options::FixedDecimalFormatterOptions
     ) -> Result<FixedDecimalFormatter, FormatterError> {
-        match self.data_provider.data_provider() {
+        match localiser.icu_data_provider().data_provider() {
 
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( FixedDecimalFormatter::try_new( _data_locale, _options )? ),
@@ -787,10 +841,11 @@ impl Formatter {
 
     fn date_time_formatter(
         &self,
+        localiser: &Localiser,
         _data_locale: &DataLocale, 
         _options: Bag
     ) -> Result<DateTimeFormatter, FormatterError> {
-        match self.data_provider.data_provider() {
+        match localiser.icu_data_provider().data_provider() {
 
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( DateTimeFormatter::try_new( _data_locale, _options.into() )? ),
@@ -820,10 +875,11 @@ impl Formatter {
 
     fn date_formatter(
         &self,
+        localiser: &Localiser,
         _data_locale: &DataLocale, 
         _length_date: icu_datetime::options::length::Date
     ) -> Result<DateFormatter, FormatterError> {
-        match self.data_provider.data_provider() {
+        match localiser.icu_data_provider().data_provider() {
 
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( DateFormatter::try_new_with_length( _data_locale, _length_date )? ),
@@ -853,10 +909,11 @@ impl Formatter {
     
     fn time_formatter(
         &self,
+        localiser: &Localiser,
         _data_locale: &DataLocale, 
         _length_time: icu_datetime::options::length::Time
     ) -> Result<TimeFormatter, FormatterError> {
-        match self.data_provider.data_provider() {
+        match localiser.icu_data_provider().data_provider() {
 
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( TimeFormatter::try_new_with_length( _data_locale, _length_time )? ),
@@ -884,8 +941,12 @@ impl Formatter {
         }
     }
     
-    fn plural_rules_cardinal( &self, _data_locale: &DataLocale ) -> Result<PluralRules, FormatterError> {
-        match self.data_provider.data_provider() {
+    fn plural_rules_cardinal(
+        &self,
+        localiser: &Localiser,
+        _data_locale: &DataLocale
+    ) -> Result<PluralRules, FormatterError> {
+        match localiser.icu_data_provider().data_provider() {
 
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( PluralRules::try_new_cardinal( _data_locale )? ),
@@ -911,8 +972,12 @@ impl Formatter {
         }
     }
     
-    fn plural_rules_ordinal( &self, _data_locale: &DataLocale ) -> Result<PluralRules, FormatterError> {
-        match self.data_provider.data_provider() {
+    fn plural_rules_ordinal(
+        &self,
+        localiser: &Localiser,
+        _data_locale: &DataLocale
+    ) -> Result<PluralRules, FormatterError> {
+        match localiser.icu_data_provider().data_provider() {
 
             #[cfg( feature = "compiled_data" )]
             DataProvider::Internal => Ok( PluralRules::try_new_ordinal( _data_locale )? ),

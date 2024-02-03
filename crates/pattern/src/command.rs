@@ -1,7 +1,8 @@
 // This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
 
-use crate::{ CommandError, PlaceholderValue };
+use crate::CommandError;
+use i18n_utility::PlaceholderValue;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::iter::FromIterator;
@@ -13,7 +14,8 @@ use std::str::FromStr;
 /// # Examples
 /// 
 /// ```
-/// use i18n_pattern::{CommandRegistry, file_path, PlaceholderValue};
+/// use i18n_utility::PlaceholderValue;
+/// use i18n_pattern::{ CommandRegistry, file_path, };
 /// use std::error::Error;
 /// 
 /// fn command_registry() -> Result<(), Box<dyn Error>> {
@@ -38,7 +40,8 @@ impl CommandRegistry {
     /// # Examples
     /// 
     /// ```
-    /// use i18n_pattern::{CommandRegistry, file_path, PlaceholderValue};
+    /// use i18n_utility::PlaceholderValue;
+    /// use i18n_pattern::{ CommandRegistry, file_path, };
     /// use std::error::Error;
     /// 
     /// fn command_registry() -> Result<(), Box<dyn Error>> {
@@ -70,7 +73,8 @@ impl CommandRegistry {
     /// # Examples
     /// 
     /// ```
-    /// use i18n_pattern::{CommandRegistry, file_path, PlaceholderValue};
+    /// use i18n_utility::PlaceholderValue;
+    /// use i18n_pattern::{ CommandRegistry, file_path, };
     /// use std::error::Error;
     /// 
     /// fn command_registry() -> Result<(), Box<dyn Error>> {
@@ -104,7 +108,8 @@ impl CommandRegistry {
     /// # Examples
     /// 
     /// ```
-    /// use i18n_pattern::{CommandRegistry, file_path, PlaceholderValue};
+    /// use i18n_utility::PlaceholderValue;
+    /// use i18n_pattern::{ CommandRegistry, file_path, };
     /// use std::error::Error;
     /// 
     /// fn command_registry() -> Result<(), Box<dyn Error>> {

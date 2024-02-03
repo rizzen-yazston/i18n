@@ -1,6 +1,106 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.7.1 (2024-??-??)
+
+WARNING: This update has moved some enums, structs, and traits to other crates. Check the `use` paths in rust files of projects depending on individual crates of the `i18n` project.
+
+* Add support for recursive localisation strings. To achieve this goal, needed to move various files, data structures, and traits between the various crates. 
+
+* Updated various `error.rs` files to reflect the changes to the `traits.rs` file in `i18n_utility` crate.
+
+* Updated localisation Sqlite3 databases of various crates.
+
+* Updated `Cargo.toml`, documentation, examples and tests where necessary to reflect the changes done within the project.
+
+=== `i18n` crate
+
+* In `Cargo.toml` added feature dependencies due to `Formatter` being moved from the `i18n_pattern` crate to the `i18n_localiser` crate in order to avoid cyclic crate dependencies.
+
+=== `i18n_icu` crate
+
+* Corrected identifier strings for `IcuError`.
+
+* Added `Clone` attribute to `DataProvider` and `IcuError` enums.
+
+* Implemented the new traits of `i18n_utility` crate for `IcuError` enum.
+
+=== `i18n_localiser` crate
+
+* Moved `formatter.rs` from `i18n_pattern` crate to `i18n_localiser` crate.
+
+* Moved `FormatterError` from `i18n_pattern` crate to `i18n_localiser` crate.
+
+* Moved localisation strings for `Formatter` from `i18n_pattern` crate to `i18n_localiser` crate.
+
+* Added `Clone` attribute to `LocaliserError` and `FormatterError` enums.
+
+* Implemented the new traits of `i18n_utility` crate for `LocaliserError` and `FormatterError` enums.
+
+* Add two new methods using `LocalisationData` instead of `&str` type for `component` and `identifier` parameters: `format_localisation_data()` and `format_localisation_data_with_defaults()`.
+
+* Added two new convenient methods: `format_error()` and `format_error_with_defaults()`.
+
+=== `i18n_pattern` crate
+
+* Moved `formatter.rs` to `i18n_localiser` crate.
+
+* Moved `FormatterError` to `i18n_localiser` crate.
+
+* Moved localisation strings for `Formatter` to `i18n_localiser` crate.
+
+* Moved `PlaceholderValue` to `i18n_utility` crate's `types.rs`.
+
+* Added `Clone` attribute to `ParserError` and `CommandError` enums.
+
+* Implemented the new traits of `i18n_utility` crate for `ParserError` and `CommandError` enums.
+
+=== `i18n_provider` crate
+
+* Added `Debug` to `ComponentDetails`, `LanguageData`, and `RepositoryDetails`.
+
+* Changed trait `LocalisationProvider` to `LocalisationProviderTrait` to be more clear.
+
+* Added new `ProviderError` enum to separate common errors, that are not Sqlite based.
+
+* Change method signatures to allow trait to be object safe, removing the generic `<T: AsRef<str>>`, and replacing `T` with `&str`.
+
+* Implemented the new traits of `i18n_utility` crate for `ProviderError` enum.
+
+* Add localisation directory `l10n` to contain the common localisation strings separated from the Sqlite based localisation string.
+
+* TODO (just noted here): Improve error message for variant `InvalidDefaultLanguage`.
+
+=== `i18n_provider_sqlite3` crate
+
+* Added `Clone` attribute to `ProviderSqlite3Error` enum.
+
+* Added new `SchemaError` to improve error reporting of schema issues.
+
+* Implemented the new traits of `i18n_utility` crate for `ProviderSqlite3Error` and `SchemaError` enums.
+
+* Altered various implementations of the `LocalisationProviderTrait` to be object safe.
+
+* Improved `default_language()` method along with database improvements.
+
+=== `i18n_utility` crate
+
+* Modified `traits.rs`:
+
+** Changed `LocalisationErrorTrait` to a simple super trait combining `LocalisationTrait` and `Error` traits. Removed the methods `error_type()` and `error_variant()`.
+
+** Changed `LocalisationTrait` removing `identifier` and `component` methods, and adding `localisation_data()` method.
+
+* Created file `types.rs`:
+
+** Created new `LocalisationData` struct, which supports recursive localisation strings and also supports literal localisation strings by using `None` for the `values` field,
+
+** Moved `PlaceholderValue` enum from `i18n_pattern` crate's `types.rs`.
+
+* Implemented the new traits of `i18n_utility` crate for `RegistryError` enum.
+
+* Moved the localisation strings to `i18n_localiser` crate, and removed the directory `l10n`.
+
 == i18n 0.7.0 (2023-12-17)
 
 WARNING: This update has API breaking changes for almost all `i18n` crates.
@@ -13,7 +113,7 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 * Changed `LString` to `TaggedString` considering it is a string being tagged to some identifier, and is generic in design to be used outside of the project, where tagged strings are required.
 
-* Redesigned of `LStringProvider` for clearer usage including name changed to `LocalisationProvider`, and added information methods for the data repository. `LStringProviderSqlite3` updated to implement the changes, including name changed to `LocalisationProviderSqlite3`, and implement new required methods. There may be additional methods in the future.
+* Redesigned of `LStringProvider` for clearer usage including name changed to `LocalisationProviderTrait`, and added information methods for the data repository. `LStringProviderSqlite3` updated to implement the changes, including name changed to `LocalisationProviderSqlite3`, and implement new required methods. There may be additional methods in the future.
 
 * Added log support to various crates.
 
@@ -79,7 +179,7 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 === `i18n_provider` crate
 
-* Renamed `LStringProvider` to `LocalisationProvider`.
+* Renamed `LStringProvider` to `LocalisationProviderTrait`.
 
 * Updated existing methods signatures, split the `identifier` parameter into the `component` and `identifier` parameters.
 
@@ -119,7 +219,7 @@ WARNING: This update has API breaking changes for almost all `i18n` crates.
 
 === `i18n_utility` crate
 
-* Added `traits.rs` containing two localisation traits: `LocalisationTrait` and `LocalisationErrorTrait` (additional methods for localising of errors).
+* Added `traits.rs` containing two localisation traits: `LocalisationTrait` and `ErrorReflectionTrait` (additional methods for localising of errors).
 
 * `tagged_string.rs`:
 

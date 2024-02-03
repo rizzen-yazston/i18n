@@ -28,11 +28,13 @@
 //! 
 //! * `log`: To provide some logging information.
 //! 
+/* Need to figure out new examples
 //! # Examples
 //! 
 //! ```
 //! use i18n_icu::{ IcuDataProvider, DataProvider };
 //! use i18n_lexer::{Token, TokenType, Lexer};
+//! use i18n_utility::PlaceholderValue
 //! use i18n_pattern::{
 //!     parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry, english_a_or_an
 //! };
@@ -93,6 +95,7 @@
 //!     Ok( () )
 //! }
 //! ```
+*/
 //! 
 //! [`BufferProvider`]: https://docs.rs/icu_provider/1.2.0/icu_provider/buf/trait.BufferProvider.html
 
@@ -111,7 +114,5 @@ pub mod parser;
 pub use parser::*;
 pub mod command;
 pub use command::*;
-pub mod formatter;
-pub use formatter::*;
 pub mod error;
 pub use error::*;

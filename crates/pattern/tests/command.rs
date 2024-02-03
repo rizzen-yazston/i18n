@@ -3,7 +3,8 @@
 
 //! Testing command functions.
 
-use i18n_pattern::{ CommandRegistry, file_path, PlaceholderValue };
+use i18n_pattern::{ CommandRegistry, file_path/*, PlaceholderValue*/ };
+use i18n_utility::PlaceholderValue;
 use os_info;
 use std::error::Error;
 

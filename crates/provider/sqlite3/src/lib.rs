@@ -3,7 +3,7 @@
 
 //! Sqlite3 provider for localisation strings.
 //! 
-//! This crate implements [`LocalisationProvider`] using Sqlite3 as the data store for localisation strings. As a
+//! This crate implements [`LocalisationProviderTrait`] using Sqlite3 as the data store for localisation strings. As a
 //! directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an
 //! application can have multiple data stores for both application localisation strings, and also for data packages'
 //! localisation strings.
@@ -26,7 +26,7 @@
 //! 
 //! ```
 //! use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-//! use i18n_provider::LocalisationProvider;
+//! use i18n_provider::LocalisationProviderTrait;
 //! use i18n_utility::LanguageTagRegistry;
 //! use std::rc::Rc;
 //! use std::error::Error;
@@ -65,7 +65,7 @@ use std::cell::RefCell;
 use i18n_utility::TaggedString;
 
 #[cfg( doc )]
-use i18n_provider::LocalisationProvider;
+use i18n_provider::LocalisationProviderTrait;
 
 pub mod provider;
 pub use provider::*;

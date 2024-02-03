@@ -26,6 +26,8 @@ sync = []
 
 [dependencies]
 icu_locid = { workspace = true }
+icu_calendar = { workspace = true }
+fixed_decimal = { workspace = true }
 
 [lib]
 name = "i18n_utility"

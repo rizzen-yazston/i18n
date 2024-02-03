@@ -47,10 +47,18 @@ i18n_provider-rizzen-yazston = { workspace = true }
 i18n_provider_sqlite3-rizzen-yazston = { workspace = true }
 i18n_utility-rizzen-yazston = { workspace = true }
 tree-rizzen-yazston = { workspace = true }
+icu_provider = { workspace = true }
+icu_locid = { workspace = true }
+icu_plurals = { workspace = true }
+icu_decimal = { workspace = true }
+icu_calendar = { workspace = true }
+icu_datetime = { workspace = true }
+fixed_decimal = { workspace = true }
 log = { workspace = true }
 
 [dev-dependencies]
 i18n_icu-rizzen-yazston = { workspace = true, features = [ "compiled_data" ] }
+os_info = { workspace = true }
 
 [lib]
 name = "i18n_localiser"

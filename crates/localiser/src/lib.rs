@@ -32,9 +32,9 @@
 //! 
 //! ```
 //! use i18n_icu::{ IcuDataProvider, DataProvider };
-//! use i18n_utility::LanguageTagRegistry;
+//! use i18n_utility::{ PlaceholderValue, LanguageTagRegistry };
 //! use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-//! use i18n_pattern::{ PlaceholderValue, CommandRegistry };
+//! use i18n_pattern::CommandRegistry;
 //! use i18n_localiser::Localiser;
 //! use std::collections::HashMap;
 //! use std::rc::Rc;
@@ -48,7 +48,7 @@
 //!     )?;
 //!     let command_registry = Rc::new( CommandRegistry::new() );
 //!     let mut message_system = Localiser::try_new(
-//!         &icu_data_provider, &language_tag_registry, lstring_provider, &command_registry, true, true, "en-ZA",
+//!         &icu_data_provider, &language_tag_registry, Box::new( lstring_provider ), &command_registry, true, true, "en-ZA",
 //!     )?;
 //!     let mut values = HashMap::<String, PlaceholderValue>::new();
 //!     values.insert(
@@ -98,5 +98,7 @@ use std::cell::RefCell;
 
 pub mod error;
 pub use error::*;
+pub(crate) mod formatter;
+pub(crate) use formatter::*;
 pub mod localiser;
 pub use localiser::*;

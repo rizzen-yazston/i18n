@@ -32,7 +32,8 @@ fn plural() -> Result<(), Box<dyn Error>> {
     let icu_data_provider = RefCount::new( IcuDataProvider::try_new( DataProvider::Internal )? );
     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
     let ( tokens, _lengths, _grammar ) =
-        lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );
+        lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}\
+        {one_dog is 1 dog}" );
     let tree = parse( tokens )?;
     assert_eq!( tree.len(), 24, "Should contain 24 nodes." );
     Ok( () )

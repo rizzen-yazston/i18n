@@ -7,7 +7,7 @@ Rizzen Yazston
 
 Sqlite3 provider for localisation strings.
 
-This crate implements [`LocalisationProvider`] using Sqlite3 as the data store for localisation strings. As a directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an application can have multiple data stores for both application localisation strings, and also for data packages' localisation strings.
+This crate implements [`LocalisationProviderTrait`] using Sqlite3 as the data store for localisation strings. As a directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an application can have multiple data stores for both application localisation strings, and also for data packages' localisation strings.
 
 == Features
 

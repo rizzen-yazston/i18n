@@ -25,14 +25,17 @@ all-features = true
 compiled_data = [
     "i18n_icu-rizzen-yazston/compiled_data",
     "i18n_pattern-rizzen-yazston/compiled_data",
+    "i18n_localiser-rizzen-yazston/compiled_data",
 ] 
 blob = [
     "i18n_icu-rizzen-yazston/blob",
     "i18n_pattern-rizzen-yazston/blob",
+    "i18n_localiser-rizzen-yazston/blob",
 ]
 fs = [
     "i18n_icu-rizzen-yazston/fs",
     "i18n_pattern-rizzen-yazston/fs",
+    "i18n_localiser-rizzen-yazston/fs",
 ]
 sync = [
     "i18n_icu-rizzen-yazston/sync",

@@ -1,12 +1,23 @@
 // This file is part of `i18n_provider_sqlite3-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
-use std::path::PathBuf;
-use i18n_utility::{ RegistryError, LocalisationTrait, LocalisationErrorTrait };
+use i18n_provider::{ ProviderError, ProviderErrorTrait };
+use i18n_utility::{ LocalisationData, LocalisationTrait, PlaceholderValue, };
 use rusqlite::Error as Sqlite3Error;
-use std::io::Error as IoError;
-use std::error::Error; // Experimental in `core` crate.
+use std::{
+    path::PathBuf,
+    io::Error as IoError,
+    error::Error, // Experimental in `core` crate.
+    collections::HashMap,
+};
 use core::fmt::{ Display, Formatter, Result };
+
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
 
 /// The `ProviderSqlite3Error` type consists of the follow:
 /// 
@@ -14,79 +25,152 @@ use core::fmt::{ Display, Formatter, Result };
 /// 
 /// * `Sqlite3`: Wraps the Sqlite3 error [`Sqlite3Error`],
 /// 
-/// * `LanguageTagRegistry`: Wraps the language tag registry [`RegistryError`],
-/// 
 /// * `NotDirectory`: Indicates provided path is not a directory,
 /// 
 /// * `NoSqlite3Files`: Indicates no Sqlite3 was found in the directory,
 /// 
 /// * `PathConversion`: Supposed to be infallible, yet may return an error,
 /// 
-/// * `DefaultLanguage`: Expected default language was not found,
-/// 
-/// * `InvalidDefaultLanguage`: Default language is nit in component's language.
-/// 
 /// * `NotExists`: Indicates path does not exists,
 /// 
-/// * `ComponentNotFound`: Indicates requested component is not found,
-/// 
 /// * `SchemaInvalid`: Indicates the schema of the Sqlite3 file is invalid.
-#[derive( Debug )]
+#[derive( Debug, Clone )]
 #[non_exhaustive]
 pub enum ProviderSqlite3Error {
-    Io( IoError ),
-    Sqlite3( Sqlite3Error ),
-    LanguageTagRegistry( RegistryError ),
+    Io( RefCount<IoError> ),
+    Sqlite3( RefCount<Sqlite3Error> ),
     NotDirectory( PathBuf ),
     NoSqlite3Files( PathBuf ),
     PathConversion,
-    DefaultLanguage( String ),
-    InvalidDefaultLanguage( String ),
     NotExists( PathBuf ),
-    ComponentNotFound( String ),
-    SchemaInvalid( String ),
+    SchemaInvalid( SchemaError ),
 }
+
+impl ProviderErrorTrait for ProviderSqlite3Error {}
 
 impl LocalisationTrait for ProviderSqlite3Error {
-    fn identifier( &self ) -> &str {
-        match *self {
-            ProviderSqlite3Error::NotDirectory( _ ) => "path_not_directory",
-            ProviderSqlite3Error::NoSqlite3Files( _ ) => "no_sqlite3",
-            ProviderSqlite3Error::PathConversion => "path_conversion",
-            ProviderSqlite3Error::DefaultLanguage( _ ) => "default_language",
-            ProviderSqlite3Error::InvalidDefaultLanguage( _ ) => "invalid_default_language",
-            ProviderSqlite3Error::NotExists( _ ) => "path_not_exist",
-            ProviderSqlite3Error::ComponentNotFound( _ ) => "component_not_found",
-            ProviderSqlite3Error::SchemaInvalid( _ ) => "schema_invalid",
-            _ => "",
+    fn localisation_data( &self ) -> LocalisationData {
+        let type_string = PlaceholderValue::String( "ProviderSqlite3Error".to_string() );
+        match self {
+            ProviderSqlite3Error::Io( ref error ) => {
+                // Currently no localisation is available for this error type: IoError.
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "Io".to_string() ) ); 
+                values.insert( "error".to_string(), PlaceholderValue::String( error.to_string() ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum_embedded".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderSqlite3Error::Sqlite3( ref error ) => {
+                // Currently no localisation is available for this error type: Sqlite3Error.
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "Sqlite3".to_string() ) ); 
+                values.insert( "error".to_string(), PlaceholderValue::String( error.to_string() ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum_embedded".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderSqlite3Error::NotDirectory( ref path ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert(
+                    "path".to_string(),
+                    PlaceholderValue::String( path.display().to_string() )
+                );
+                let message = LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "path_not_directory".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "NotDirectory".to_string() ) ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderSqlite3Error::NoSqlite3Files( ref path ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert(
+                    "path".to_string(),
+                    PlaceholderValue::String( path.display().to_string() )
+                );
+                let message = LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "no_sqlite3".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "NoSqlite3Files".to_string() ) ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderSqlite3Error::PathConversion => {
+                let message = LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "path_conversion".to_string(),
+                    values: None,
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "PathConversion".to_string() ) ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderSqlite3Error::NotExists( ref path ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert(
+                    "path".to_string(),
+                    PlaceholderValue::String( path.display().to_string() )
+                );
+                let message = LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "path_not_exist".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "NotExists".to_string() ) ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderSqlite3Error::SchemaInvalid( ref error ) => {
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "SchemaInvalid".to_string() ) ); 
+                values.insert(
+                    "message".to_string(),
+                    PlaceholderValue::LocalisationData( error.localisation_data() )
+                );
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
         }
     }
-
-    fn component( &self ) -> &str {
-        "i18n_provider_sqlite3"
-    }
-}
-
-impl LocalisationErrorTrait for ProviderSqlite3Error {
-    fn error_type( &self ) -> &str {
-        "ProviderSqlite3Error"
-    }
-
-    fn error_variant( &self ) -> &str {
-        match *self {
-            ProviderSqlite3Error::Io( _ ) => "Io",
-            ProviderSqlite3Error::Sqlite3( _ ) => "Sqlite3",
-            ProviderSqlite3Error::LanguageTagRegistry( _ ) => "LanguageTagRegistry",
-            ProviderSqlite3Error::NotDirectory( _ ) => "NotDirectory",
-            ProviderSqlite3Error::NoSqlite3Files( _ ) => "NoSqlite3Files",
-            ProviderSqlite3Error::PathConversion => "PathConversion",
-            ProviderSqlite3Error::DefaultLanguage( _ ) => "DefaultLanguage",
-            ProviderSqlite3Error::InvalidDefaultLanguage( _ ) => "InvalidDefaultLanguage",
-            ProviderSqlite3Error::NotExists( _ ) => "NotExists",
-            ProviderSqlite3Error::ComponentNotFound( _ ) => "ComponentNotFound",
-            ProviderSqlite3Error::SchemaInvalid( _ ) => "SchemaInvalid",
-        }
-    }    
 }
 
 impl Display for ProviderSqlite3Error {
@@ -97,9 +181,6 @@ impl Display for ProviderSqlite3Error {
             ),
             ProviderSqlite3Error::Sqlite3( ref error ) => write!(
                 formatter, "ProviderSqlite3Error::Sqlite3: [{}].", error.to_string()
-            ),
-            ProviderSqlite3Error::LanguageTagRegistry( ref error ) => write!(
-                formatter, "ProviderSqlite3Error::LanguageTagRegistry: [{}].", error.to_string()
             ),
             ProviderSqlite3Error::NotDirectory( ref path ) => write!(
                 formatter,
@@ -114,48 +195,135 @@ impl Display for ProviderSqlite3Error {
             ProviderSqlite3Error::PathConversion => write!(
                 formatter, "ProviderSqlite3Error::PathConversion: Conversion to PathBuf error."
             ),
-            ProviderSqlite3Error::DefaultLanguage( ref component ) => write!(
-                formatter,
-                "ProviderSqlite3Error::DefaultLanguage: The default language tag is missing for the component ‘{}’.",
-                component
-            ),
-            ProviderSqlite3Error::InvalidDefaultLanguage( ref component ) => write!(
-                formatter,
-                "ProviderSqlite3Error::InvalidDefaultLanguage: The default language tag is invalid for the component \
-                ‘{}’.",
-                component
-            ),
             ProviderSqlite3Error::NotExists( ref path ) => write!(
                 formatter, "ProviderSqlite3Error::NotExists: Provided path ‘{}’ does not exist.", path.display()
             ),
-            ProviderSqlite3Error::ComponentNotFound( ref component ) => write!(
-                formatter, "ProviderSqlite3Error::ComponentNotFound: The component ‘{}’ could not found.", component ),
-            ProviderSqlite3Error::SchemaInvalid( ref component ) => write!(
-                formatter,
-                "ProviderSqlite3Error::SchemaInvalid: The Sqlite3 file schema is invalid for the component ‘{}’.",
-                component
+            ProviderSqlite3Error::SchemaInvalid( ref error ) => write!(
+                formatter, "ProviderSqlite3Error::SchemaInvalid: [{}].", error.to_string()
             ),
         }
     }
 }
 
-// Source is embedded in the enum value.
 impl Error for ProviderSqlite3Error {}
 
 impl From<IoError> for ProviderSqlite3Error {
     fn from( error: IoError ) -> ProviderSqlite3Error {
-        ProviderSqlite3Error::Io( error )
+        ProviderSqlite3Error::Io( RefCount::new( error ) )
     }
 }
 
 impl From<Sqlite3Error> for ProviderSqlite3Error {
     fn from( error: Sqlite3Error ) -> ProviderSqlite3Error {
-        ProviderSqlite3Error::Sqlite3( error )
+        ProviderSqlite3Error::Sqlite3( RefCount::new( error ) )
     }
 }
 
-impl From<RegistryError> for ProviderSqlite3Error {
-    fn from( error: RegistryError ) -> ProviderSqlite3Error {
-        ProviderSqlite3Error::LanguageTagRegistry( error )
+impl From<ProviderSqlite3Error> for ProviderError {
+    fn from( error: ProviderSqlite3Error ) -> ProviderError {
+        ProviderError::Custom( RefCount::new( Box::new( error ) ) )
+    }
+}
+
+/// The `SchemaError` type consists of the follow:
+/// 
+/// * `Version`: The database is using incorrect schema version,
+/// 
+/// * `MissingVersion`: The database is missing the schema version in the `metadata` table.
+/// 
+/// * `Sqlite3`: Wraps the Sqlite3 error [`Sqlite3Error`],
+#[derive( Debug, Clone )]
+#[non_exhaustive]
+pub enum SchemaError {
+    Version( String, String ), // path, expected version
+    MissingVersion( String ), // path
+    Sqlite3( RefCount<Sqlite3Error> ),
+}
+
+impl LocalisationTrait for SchemaError {
+    fn localisation_data( &self ) -> LocalisationData {
+        let type_string = PlaceholderValue::String( "SchemaError".to_string() );
+        match self {
+            SchemaError::Version( ref path, ref version ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert( "path".to_string(), PlaceholderValue::String( path.clone() ) );
+                message_values.insert( "version".to_string(), PlaceholderValue::String( version.to_string() ) );
+                let message = LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "schema_version".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "Version".to_string() ) ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            SchemaError::MissingVersion( ref path ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert( "path".to_string(), PlaceholderValue::String( path.clone() ) );
+                let message = LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "schema_version_missing".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "MissingVersion".to_string() ) ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            SchemaError::Sqlite3( ref error ) => {
+                // Currently no localisation is available for this error type: Sqlite3Error.
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "Sqlite3".to_string() ) ); 
+                values.insert( "error".to_string(), PlaceholderValue::String( error.to_string() ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum_embedded".to_string(),
+                    values: Some( values ),
+                }
+            },
+        }
+    }
+}
+
+impl Display for SchemaError {
+    fn fmt( &self, formatter: &mut Formatter ) -> Result {
+        match *self {
+            SchemaError::Version( ref path, ref version ) => write!(
+                formatter,
+                "SchemaError::Version: The Sqlite3 file ‘{}’ is using unsupported schema version. The schema version \
+                must be ‘{}’.",
+                path,
+                version,
+            ),
+            SchemaError::MissingVersion( ref path ) => write!(
+                formatter,
+                "SchemaError::MissingVersion: The Sqlite3 file ‘{}’ is missing the schema version entry in the \
+                ‘metadata’ table.",
+                path,
+            ),
+            SchemaError::Sqlite3( ref error ) => write!(
+                formatter, "SchemaError::Sqlite3: [{}].", error.to_string()
+            ),
+        }
+    }
+}
+
+impl Error for SchemaError {}
+
+impl From<Sqlite3Error> for SchemaError {
+    fn from( error: Sqlite3Error ) -> SchemaError {
+        SchemaError::Sqlite3( RefCount::new( error ) )
     }
 }

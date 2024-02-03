@@ -54,7 +54,7 @@ use icu_provider_fs::FsDataProvider;
 ///
 /// * Fs: The [`FsDataProvider`] will be used for the various ICU4X components. Requires the `fs` feature. An
 /// alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
-#[derive( Clone) ]
+#[derive( Debug, Clone ) ]
 pub enum DataProvider {
     #[cfg( feature = "compiled_data" )]
     Internal,

@@ -1,49 +1,208 @@
 // This file is part of `i18n_provider-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider-rizzen-yazston` crate.
 
-use i18n_utility::{ LocalisationTrait, LocalisationErrorTrait };
-use std::error::Error;
+use i18n_utility::{ LocalisationData, LocalisationTrait, LocalisationErrorTrait, PlaceholderValue, RegistryError };
+use std::{
+    error::Error, // Experimental in `core` crate.
+    collections::HashMap,
+};
 use core::fmt::{ Display, Formatter, Result };
 
-/// Contains the error that occurred within the provider.
+#[cfg( not( feature = "sync" ) )]
+use std::rc::Rc as RefCount;
+
+#[cfg( feature = "sync" )]
+#[cfg( target_has_atomic = "ptr" )]
+use std::sync::Arc as RefCount;
+
+pub trait ProviderErrorTrait: LocalisationTrait + Error + Display {}
+
+/// Contains the possible errors that may occur within the provider.
+///
+/// The `ProviderError` type consists of the follow:
 /// 
-/// Due to the nature of [`Box`]`<dyn `[`Error`]`>` opaquing the error type, the error type is stored as a
-/// `&'static `[`str`] in `error_type` to facilitate in downcasting the error to original error type for further
-/// processing.
+/// * `ComponentNotFound`: Indicates requested component is not found,
 /// 
-/// [`Box`]: std::boxed::Box
-/// [`Error`]: std::error::Error
-/// [`str`]: core::str
-#[derive( Debug )]
-pub struct ProviderError {
-    pub error_type: &'static str,
-    pub source: Box<dyn Error>,
+/// * `LanguageTagRegistry`: Wraps the language tag registry [`RegistryError`],
+/// 
+/// * `DefaultLanguage`: Expected default language was not found,
+/// 
+/// * `InvalidDefaultLanguage`: Default language is not in component's language list,
+/// 
+/// * `DefaultLanguageCount`: No strings for component's default language,
+///
+/// * `Custom`: Holds provider specific errors such as IO, Sqlite, etc.
+#[derive( Debug, Clone )]
+#[non_exhaustive]
+pub enum ProviderError {
+    ComponentNotFound( String ),
+    LanguageTagRegistry( RegistryError ),
+    DefaultLanguage( String ),
+    InvalidDefaultLanguage( String ),
+    DefaultLanguageCount( String, String ), // component, language
+    Custom( RefCount<Box<dyn ProviderErrorTrait>> ),
 }
+
+impl LocalisationErrorTrait for ProviderError {}
 
 impl LocalisationTrait for ProviderError {
-    fn component( &self ) -> &str {
-        "i18n_provider"
+    fn localisation_data( &self ) -> LocalisationData {
+        let type_string = PlaceholderValue::String( "ProviderError".to_string() );
+        match self {
+            ProviderError::ComponentNotFound( ref component ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert( "component".to_string(), PlaceholderValue::String( component.clone() ) );
+                let message = LocalisationData {
+                    component: "i18n_provider".to_string(),
+                    identifier: "component_not_found".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String( "ComponentNotFound".to_string() )
+                );
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderError::LanguageTagRegistry( ref error ) => {
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String( "LanguageTagRegistry".to_string() )
+                );
+                values.insert(
+                    "error".to_string(),
+                    PlaceholderValue::LocalisationData( error.localisation_data() )
+                );
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum_embedded".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderError::DefaultLanguage( ref component ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert( "component".to_string(), PlaceholderValue::String( component.clone() ) );
+                let message = LocalisationData {
+                    component: "i18n_provider".to_string(),
+                    identifier: "default_language".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "DefaultLanguage".to_string() ) ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderError::InvalidDefaultLanguage( ref component ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert( "component".to_string(), PlaceholderValue::String( component.clone() ) );
+                let message = LocalisationData {
+                    component: "i18n_provider".to_string(),
+                    identifier: "invalid_default_language".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String( "InvalidDefaultLanguage".to_string() )
+                ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderError::DefaultLanguageCount( ref component, ref language ) => {
+                let mut message_values = HashMap::<String, PlaceholderValue>::new();
+                message_values.insert( "component".to_string(), PlaceholderValue::String( component.clone() ) );
+                message_values.insert( "language".to_string(), PlaceholderValue::String( language.clone() ) );
+                let message = LocalisationData {
+                    component: "i18n_provider".to_string(),
+                    identifier: "default_language_count".to_string(),
+                    values: Some( message_values ),
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String( "DefaultLanguageCount".to_string() )
+                ); 
+                values.insert( "message".to_string(), PlaceholderValue::LocalisationData( message ) ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some( values ),
+                }
+            },
+            ProviderError::Custom( ref error ) => {
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert( "type".to_string(), type_string ); 
+                values.insert( "variant".to_string(), PlaceholderValue::String( "Custom".to_string() ) ); 
+                values.insert(
+                    "error".to_string(), PlaceholderValue::LocalisationData( error.localisation_data() )
+                ); 
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum_embedded".to_string(),
+                    values: Some( values ),
+                }
+            },
+        }
     }
-}
 
-impl LocalisationErrorTrait for ProviderError {
-    fn error_type( &self ) -> &str {
-        "ProviderError"
-    }
 }
 
 impl Display for ProviderError {
     fn fmt( &self, formatter: &mut Formatter ) -> Result {
-        write!(
-            formatter, "ProviderError: [{}].", self.source.to_string()
-        )
+        match self {
+            ProviderError::ComponentNotFound( ref component ) => write!(
+                formatter, "ProviderError::ComponentNotFound: The component ‘{}’ could not found.", component
+            ),
+            ProviderError::LanguageTagRegistry( ref error ) => write!(
+                formatter, "ProviderError::LanguageTagRegistry: [{}].", error.to_string()
+            ),
+            ProviderError::DefaultLanguage( ref component ) => write!(
+                formatter,
+                "ProviderError::DefaultLanguage: The default language tag is missing for the component ‘{}’.",
+                component
+            ),
+            ProviderError::InvalidDefaultLanguage( ref component ) => write!(
+                formatter,
+                "ProviderError::InvalidDefaultLanguage: The default language tag is invalid for the component ‘{}’.",
+                component
+            ),
+            ProviderError::DefaultLanguageCount( ref component, ref language ) => write!(
+                formatter,
+                "ProviderError::DefaultLanguageCount: There are no localisation strings in the component ‘{}’ for the \
+                default language tag ‘{}’.",
+                component,
+                language
+            ),
+            ProviderError::Custom( ref error ) => write!(
+                formatter, "ProviderError::Custom: [{}].", error.to_string()
+            ),
+        }
     }
 }
 
-impl Error for ProviderError {
-    
-    /// Source is the actual error that can be downcasted.
-    fn source(&self) -> Option<&( dyn Error + 'static )> {
-        Some( self.source.as_ref() )
+impl Error for ProviderError {}
+
+impl From<RegistryError> for ProviderError {
+    fn from( error: RegistryError ) -> ProviderError {
+        ProviderError::LanguageTagRegistry( error )
     }
 }
