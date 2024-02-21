@@ -1198,7 +1198,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         #[cfg( feature = "log" )]
         debug!(
             "Finding one string for identifier '{}' of component '{}' for language tag '{}'.",
-            identifier.as_ref(), component.as_ref(), language_tag
+            identifier, component, language_tag
         );
 
         let Some( component_files ) = self.components.get( component ) else {
@@ -1288,7 +1288,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         #[cfg( feature = "log" )]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
-            identifier.as_ref(), component.as_ref(), language_tag
+            identifier, component, language_tag
         );
 
         let Some( component_files ) = self.components.get( component ) else {
@@ -1380,7 +1380,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         #[cfg( feature = "log" )]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
-            identifier.as_ref(), component.as_ref(), language_tag
+            identifier, component, language_tag
         );
 
         let Some( component_files ) = self.components.get( component ) else {
@@ -1464,7 +1464,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         identifier: &str,
     ) -> Result<IdentifierDetails, ProviderError> {
         #[cfg( feature = "log" )]
-        debug!( "Getting identifier details for '{}' of component '{}'.", identifier.as_ref(), component.as_ref() );
+        debug!( "Getting identifier details for '{}' of component '{}'.", identifier, component );
 
         let components = match self.component_details.get() {
             None => {
@@ -1530,7 +1530,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         component: &str,
     ) -> Result<RefCount<ComponentDetails>, ProviderError> {
         #[cfg( feature = "log" )]
-        debug!( "Getting component details for '{}'.", component.as_ref() );
+        debug!( "Getting component details for '{}'.", component );
 
         let components = match self.component_details.get() {
             None => {

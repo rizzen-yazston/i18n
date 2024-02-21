@@ -1,6 +1,12 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.?.? (2024-??-??)
+
+=== i18n_provider_sqlite3
+
+* Fixed log messages.
+
 == i18n 0.8.0 (2024-02-03)
 
 WARNING: This update has moved some enums, structs, and traits to other crates. Check the `use` paths in rust files of projects depending on individual crates of the `i18n` project.
