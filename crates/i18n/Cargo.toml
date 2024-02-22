@@ -52,6 +52,10 @@ log = [
     "i18n_provider_sqlite3-rizzen-yazston/log",
     "i18n_localiser-rizzen-yazston/log",
 ]
+extend = [
+    "i18n_utility-rizzen-yazston/extend",
+    "i18n_localiser-rizzen-yazston/extend",
+]
 
 [dependencies]
 i18n_icu-rizzen-yazston = { workspace = true }

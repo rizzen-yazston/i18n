@@ -3,9 +3,53 @@ Rizzen Yazston
 
 == i18n 0.?.? (2024-??-??)
 
+WARNING: This update has API breaking changes.
+
+* Added cargo feature `extend` to select more detailed structs, such as `Locale` instead of `LanguageIdentifier`.
+
+* Added experimental directory for prototype and development sub projects.
+
+** Added new subproject *i18n_renderer* for rendering text for various script types.
+
+=== i18n
+
+* Added to `Cargo.toml` the feature `extend` to specify `Locale` to be used instead of `LanguageIdentifier`.
+
+=== i18n_localiser
+
+* Various files, changed language tag parameters to use `LanguaheTag` struct instead.
+
+* Added to `Cargo.toml` the feature `extend` to specify `Locale` to be used instead of `LanguageIdentifier`.
+
+* Fixed test, examples and documentation to reflect the changes.
+
 === i18n_provider_sqlite3
 
 * Fixed log messages.
+
+* Various files, changed language tag parameters to use `LanguaheTag` struct instead.
+
+* Fixed test, examples and documentation to reflect the changes.
+
+=== i18n_utility
+
+* Modified `registry.rs`:
+
+** Renamed `registry.rs` to `language.rs`.
+
+** Added `LanguageTag` struct to hold the result language tag.
+
+** Altered `LanguageTagRegistry` struct and methods to use `LanguageTag`.
+
+* Added to `Cargo.toml` the feature `extend` to specify `Locale` to be used instead of `LanguageIdentifier`.
+
+* Modified `tagged_string.rs` to use new `LanguageTag` instead of `String`.
+
+* Fixed test, examples and documentation to reflect the changes.
+
+=== i18n_renderer [experimental]
+
+* For the rendering of text for various script types. This will also be a separate crate to the `i18n` meta crate, as not all projects using the meta crate will not require the rendering of text.
 
 == i18n 0.8.0 (2024-02-03)
 

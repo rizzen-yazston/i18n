@@ -1,140 +1,129 @@
 // This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
+use crate::language::LanguageTag;
 use std::fmt;
 
-#[cfg( not( feature = "sync" ) )]
+#[cfg(not(feature = "sync"))]
 use std::rc::Rc as RefCount;
 
-#[cfg( feature = "sync" )]
-#[cfg( target_has_atomic = "ptr" )]
+#[cfg(feature = "sync")]
+#[cfg(target_has_atomic = "ptr")]
 use std::sync::Arc as RefCount;
 
 /// Tagged string.
-/// 
-/// The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`)
-/// to a text string (String).
-/// 
+///
+/// The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<`[`LanguageTag`]`>` or
+/// [`Arc`]`<LanguageTag>`) to a text string (String).
+///
 /// In the context of the `i18n` project, the identifier tag is expected to be a [BCP 47 Language Tag] string, even
 /// though any identifier could be used.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
-/// use icu_locid::Locale;
-/// use std::rc::Rc;
-/// use i18n_utility::TaggedString;
-/// 
+/// use i18n_utility::{TaggedString, LanguageTagRegistry};
+///
+/// let registry = LanguageTagRegistry::new();
 /// let string = "This is a test string.";
-/// let tag = Rc::new(
-///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
-/// );
-/// let lang_string = TaggedString::new( string, &tag );
-/// assert_eq!( lang_string.as_str(), string, "String failed." );
-/// assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
+/// let tag = registry.tag("en-ZA").expect("Failed to canonicalise language tag.");
+/// let tagged_string = TaggedString::new(string, &tag);
+/// assert_eq!(tagged_string.as_str(), string, "String failed.");
+/// assert_eq!(tagged_string.tag(), &tag, "Language tag failed.");
 /// ```
-/// 
+///
 /// [`Rc`]: std::rc::Rc
 /// [`Arc`]: std::sync::Arc
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
-#[derive( PartialEq, Debug, Clone )]
+#[derive(PartialEq, Debug, Clone)]
 pub struct TaggedString {
     string: String,
-    tag: RefCount<String>,
+    tag: RefCount<LanguageTag>,
 }
 
 impl TaggedString {
-    /// Creates a `TaggedString` from string slice [`str`] and an identifier tag as `&`[`Rc`]`<`[`String`]`>` or
-    /// `&`[`Arc`]`<String>`.
-    /// 
+    /// Creates a `TaggedString` from string slice [`str`] and an identifier tag as `&`[`Rc`]`<`[`LanguageTag`]`>` or
+    /// `&`[`Arc`]`<LanguageTag>`.
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
-    /// use icu_locid::Locale;
-    /// use std::rc::Rc;
-    /// use i18n_utility::TaggedString;
-    /// 
+    /// use i18n_utility::{TaggedString, LanguageTagRegistry};
+    ///
+    /// let registry = LanguageTagRegistry::new();
     /// let string = "This is a test string.";
-    /// let tag = Rc::new(
-    ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
-    /// );
-    /// let lang_string = TaggedString::new( string, &tag );
-    /// assert_eq!( lang_string.as_str(), string, "String failed." );
-    /// assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
+    /// let tag = registry.tag("en-ZA").expect("Failed to canonicalise language tag.");
+    /// let tagged_string = TaggedString::new( string, &tag );
+    /// assert_eq!(tagged_string.as_str(), string, "String failed.");
+    /// assert_eq!(tagged_string.tag(), &tag, "Language tag failed.");
     /// ```
-    /// 
+    ///
     /// [`str`]: core::str
     /// [`Rc`]: std::rc::Rc
     /// [`Arc`]: std::sync::Arc
-    pub fn new<T: Into<String>>(
-        string: T,
-        tag: &RefCount<String>,
-    ) -> Self {
+    pub fn new<T: Into<String>>(string: T, tag: &RefCount<LanguageTag>) -> Self {
         TaggedString {
             string: string.into(),
-            tag: RefCount::clone( tag ),
+            tag: RefCount::clone(tag),
         }
     }
 
     /// Returns a reference (`&`[`str`]) to the internal [`String`].
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
-    /// use icu_locid::Locale;
-    /// use std::rc::Rc;
-    /// use i18n_utility::TaggedString;
-    /// 
+    /// use i18n_utility::{TaggedString, LanguageTagRegistry};
+    ///
+    /// let registry = LanguageTagRegistry::new();
     /// let string = "This is a test string.";
-    /// let tag = Rc::new(
-    ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
-    /// );
-    /// let lang_string = TaggedString::new( string, &tag );
-    /// assert_eq!( lang_string.as_str(), string, "String failed." );
+    /// let tag = registry.tag("en-ZA").expect("Failed to canonicalise language tag.");
+    /// let tagged_string = TaggedString::new( string, &tag );
+    /// assert_eq!( tagged_string.as_str(), string, "String failed." );
     /// ```
     /// [`str`]: core::str
-    pub fn as_str( &self ) -> &str {
+    pub fn as_str(&self) -> &str {
         &self.string
     }
 
-    /// Returns a reference to the tag [`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`.
-    /// 
+    /// Returns a reference to the tag [`Rc`]`<`[`LanguageTag`]`>` or [`Arc`]`<LanguageTag>`.
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
-    /// use icu_locid::Locale;
-    /// use std::rc::Rc;
-    /// use i18n_utility::TaggedString;
-    /// 
-    /// let tag = Rc::new(
-    ///     Locale::canonicalize( "en-ZA" ).expect( "Failed to canonicalise language tag." )
-    /// );
-    /// let lang_string = TaggedString::new( "This is a test string.", &tag );
-    /// assert_eq!( lang_string.tag(), &tag, "Locale failed." );
+    /// use i18n_utility::{TaggedString, LanguageTagRegistry};
+    ///
+    /// let registry = LanguageTagRegistry::new();
+    /// let tag = registry.tag("en-ZA").expect("Failed to canonicalise language tag.");
+    /// let tagged_string = TaggedString::new( "This is a test string.", &tag );
+    /// assert_eq!( tagged_string.tag(), &tag, "Locale failed." );
     /// ```
     /// [`Rc`]: std::rc::Rc
     /// [`Arc`]: std::sync::Arc
-    pub fn tag( &self ) -> &RefCount<String> {
+    pub fn tag(&self) -> &RefCount<LanguageTag> {
         &self.tag
     }
 }
 
 impl fmt::Display for TaggedString {
-    fn fmt( &self, f: &mut fmt::Formatter<'_> ) -> fmt::Result {
-        write!( f, "{}", self.string )
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.string)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::LanguageTagRegistry;
+
     use super::*;
 
     #[test]
     fn string_with_tag() {
+        let registry = LanguageTagRegistry::new();
         let string = "This is a test string.";
-        let tag = RefCount::new( "en-ZA".to_string() );
-        let lang_string = TaggedString::new( string, &tag );
-        assert_eq!( lang_string.tag(), &tag, "Language tag failed." );
-        assert_eq!( lang_string.as_str(), string, "String failed." );
+        let tag = registry.tag("en-ZA").unwrap();
+        let tagged_string = TaggedString::new(string, &tag);
+        assert_eq!(tagged_string.tag(), &tag, "Language tag failed.");
+        assert_eq!(tagged_string.as_str(), string, "String failed.");
     }
 }

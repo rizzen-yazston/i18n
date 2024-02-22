@@ -3,18 +3,18 @@
 
 use crate::TaggedString;
 use fixed_decimal::FixedDecimal;
-use icu_calendar::{Iso, Date, DateTime, types::Time };
+use icu_calendar::{types::Time, Date, DateTime, Iso};
 use std::collections::HashMap;
 
 /// A simple data structure containing the data for localisation of an enum or struct.
-/// 
+///
 /// `component`: Is the component identifier to use when retrieving a localisation string from a repository,
-/// 
+///
 /// `identifier`: Is the pattern string identifier to use when retrieving a localisation string from a repository,
-/// 
+///
 /// `values`: Is the values to be used when localisation is carried out. A value of `None` indicates a literal string
 /// is being used.
-#[derive( Debug, Clone )]
+#[derive(Debug, Clone)]
 pub struct LocalisationData {
     pub component: String,
     pub identifier: String,
@@ -23,36 +23,36 @@ pub struct LocalisationData {
 
 /// An enum consists of a selection of Rust primitives, ICU4X types, and [`TaggedString`] for messages.
 /// The following are types are available:
-/// 
+///
 /// * String( [`String`] ): Can also be used for date (ISO format), time (ISO format), fixed decimal,
-/// 
+///
 /// * Integer( [`i128`] ),
-/// 
+///
 /// * Unsigned( [`u128`] ),
-/// 
+///
 /// * Float( [`f64`] ),
-/// 
+///
 /// * TaggedString( [`TaggedString`] ),
-/// 
+///
 /// * FixedDecimal( [`FixedDecimal`] ),
-/// 
+///
 /// * DateTime( [`DateTime`]`<`[`Iso`]`>` ),
-/// 
+///
 /// * Date( [`Date`]`<`[`Iso`]`>` ),
-/// 
+///
 /// * Time( [`Time`] ),
-/// 
+///
 /// * LocalisationData( [`LocalisationData`] ): Indicates there is an inner localisation string.
-#[derive( Debug, Clone )]
+#[derive(Debug, Clone)]
 pub enum PlaceholderValue {
-    String( String ), // Can also be used for date (ISO format), time (ISO format), fixed decimal.
-    Integer( i128 ),
-    Unsigned( u128 ),
-    Float( f64 ),
-    TaggedString( TaggedString ),
-    FixedDecimal( FixedDecimal ),
-    DateTime( DateTime<Iso> ),
-    Date( Date<Iso> ),
-    Time( Time ),
-    LocalisationData( LocalisationData ),
+    String(String), // Can also be used for date (ISO format), time (ISO format), fixed decimal.
+    Integer(i128),
+    Unsigned(u128),
+    Float(f64),
+    TaggedString(TaggedString),
+    FixedDecimal(FixedDecimal),
+    DateTime(DateTime<Iso>),
+    Date(Date<Iso>),
+    Time(Time),
+    LocalisationData(LocalisationData),
 }
