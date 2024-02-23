@@ -22,17 +22,17 @@ version.workspace = true
 all-features = true
 
 [features]
-compiled_data = [ "i18n_icu-rizzen-yazston/compiled_data", ] 
-blob = [ "i18n_icu-rizzen-yazston/blob", ]
-fs = [ "i18n_icu-rizzen-yazston/fs", ]
+icu_blob = [ "i18n_icu-rizzen-yazston/icu_blob", ]
+icu_compiled_data = [ "i18n_icu-rizzen-yazston/icu_compiled_data", ] 
+icu_fs = [ "i18n_icu-rizzen-yazston/icu_fs", ]
+log = [ "i18n_icu-rizzen-yazston/logging", ]
 sync = [ "i18n_icu-rizzen-yazston/sync" ]
-log = [ "i18n_icu-rizzen-yazston/log", ]
 
 [dependencies]
 i18n_icu-rizzen-yazston = { workspace = true }
 
 [dev-dependencies]
-i18n_icu-rizzen-yazston = { workspace = true, features = [ "compiled_data" ] }
+i18n_icu-rizzen-yazston = { workspace = true, features = [ "icu_compiled_data" ] }
 
 [lib]
 name = "i18n_lexer"

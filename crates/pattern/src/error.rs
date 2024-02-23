@@ -384,7 +384,7 @@ impl Display for CommandError {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         match self {
             CommandError::Custom( ref error ) => write!(
-                formatter, "CommandError::Custom: [{}].", error.to_string()
+                formatter, "CommandError::Custom: [{}].", error
             ),
             CommandError::AlreadyExists( command ) => write!(
                 formatter,

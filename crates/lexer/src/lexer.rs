@@ -162,7 +162,7 @@ impl Lexer {
         self.position_byte = 0;
         self.position_character = 0;
 
-        if string.as_ref().len() == 0 {
+        if string.as_ref().is_empty() {
             return (
                 tokens,
                 Length {
@@ -175,8 +175,8 @@ impl Lexer {
             );
         }
         let mut state = LexerStates::Identifier; // Most strings would begin with an alphabet letter.
-        let mut iterator = string.as_ref().char_indices();
-        while let Some((position, character)) = iterator.next() {
+        let iterator = string.as_ref().char_indices();
+        for (position, character) in iterator {
             self.position_byte = position;
             if self
                 .data_provider
@@ -221,22 +221,10 @@ impl Lexer {
                         TokenType::WhiteSpace,
                         string.as_ref(),
                     );
-                } else {
-                    if state_previous == LexerStates::Grammar {
-                        self.add_previous_characters(
-                            &mut tokens,
-                            TokenType::Grammar,
-                            string.as_ref(),
-                        );
-                    } else {
-                        if state == LexerStates::Grammar {
-                            self.add_previous_characters(
-                                &mut tokens,
-                                TokenType::Syntax,
-                                string.as_ref(),
-                            );
-                        }
-                    }
+                } else if state_previous == LexerStates::Grammar {
+                    self.add_previous_characters(&mut tokens, TokenType::Grammar, string.as_ref());
+                } else if state == LexerStates::Grammar {
+                    self.add_previous_characters(&mut tokens, TokenType::Syntax, string.as_ref());
                 }
             } else {
                 if state == LexerStates::WhiteSpace {

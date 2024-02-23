@@ -12,10 +12,10 @@
 //!
 //! Available features for `i18n_provider_sqlite3` crate:
 //!
-//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
-//! [`RefCell`].
+//! * `logging`: To provide some logging information.
 //!
-//! * `log`: To provide some logging information, primarily debug and error.
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and
+//! `RefCell`.
 //!
 //! # Localisation Sqlite3 templates
 //!

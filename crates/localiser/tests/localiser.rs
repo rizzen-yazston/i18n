@@ -125,7 +125,7 @@ fn literal() -> Result<(), Box<dyn Error>> {
         "cache_entry",
         &language_tag_registry.tag("en-ZA").unwrap(),
         None,
-        None
+        None,
     )?;
     assert_eq!(
         lstring.as_str(),
@@ -201,12 +201,7 @@ fn format_localisation_data() -> Result<(), Box<dyn Error>> {
         identifier: "string_not_found".to_string(),
         values: Some(values),
     };
-    let lstring = localiser.format_localisation_data(
-        &data,
-        &language,
-        None,
-        None
-    )?;
+    let lstring = localiser.format_localisation_data(&data, &language, None, None)?;
     assert_eq!(
         lstring.as_str(),
         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the language \

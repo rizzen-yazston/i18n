@@ -7,11 +7,7 @@ use i18n_lexer::Lexer;
 use i18n_pattern::{parse, CommandRegistry};
 use i18n_provider::LocalisationProviderTrait;
 use i18n_utility::{
-    LanguageTag,
-    LanguageTagRegistry,
-    LocalisationData,
-    LocalisationErrorTrait,
-    PlaceholderValue,
+    LanguageTag, LanguageTagRegistry, LocalisationData, LocalisationErrorTrait, PlaceholderValue,
     TaggedString,
 };
 use std::collections::HashMap;
@@ -137,7 +133,9 @@ impl Localiser {
             command_registry: RefCount::clone(command_registry),
             fallback: MutCell::new(fallback),
             caching: MutCell::new(caching),
-            cache: MutCell::new(HashMap::<RefCount<LanguageTag>, HashMap<String, CacheData>>::new()),
+            cache: MutCell::new(
+                HashMap::<RefCount<LanguageTag>, HashMap<String, CacheData>>::new(),
+            ),
             language_tag: MutCell::new(tag),
         })
     }
@@ -218,16 +216,16 @@ impl Localiser {
         debug!("Localiser is using format().");
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = fallback.unwrap_or(self.fallback.borrow().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = caching.unwrap_or(self.caching.borrow().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.borrow());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = fallback.unwrap_or(self.fallback.read().unwrap().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_caching = caching.unwrap_or(self.caching.read().unwrap().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.read().unwrap());
 
         self.actual_format(
             component,
@@ -301,19 +299,19 @@ impl Localiser {
         let tag = &RefCount::clone(&self.language_tag.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = self.fallback.borrow().clone();
+        let bool_fallback = *self.fallback.borrow();
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = self.caching.borrow().clone();
+        let bool_caching = *self.caching.borrow();
 
         #[cfg(feature = "sync")]
         let tag = &RefCount::clone(&self.language_tag.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = self.fallback.read().unwrap().clone();
+        let bool_fallback = *self.fallback.read().unwrap();
 
         #[cfg(feature = "sync")]
-        let bool_caching = self.caching.read().unwrap().clone();
+        let bool_caching = *self.caching.read().unwrap();
 
         self.actual_format(
             component,
@@ -381,18 +379,24 @@ impl Localiser {
         debug!("Localiser is using literal().");
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = fallback.unwrap_or(self.fallback.borrow().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = caching.unwrap_or(self.caching.borrow().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.borrow());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = fallback.unwrap_or(self.fallback.read().unwrap().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_caching = caching.unwrap_or(self.caching.read().unwrap().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.read().unwrap());
 
-        self.actual_literal(component, identifier, language_tag, bool_fallback, bool_caching)
+        self.actual_literal(
+            component,
+            identifier,
+            language_tag,
+            bool_fallback,
+            bool_caching,
+        )
     }
 
     /// Simply get a language string without any formatting being done, typically strings with no placeholder patterns
@@ -446,19 +450,19 @@ impl Localiser {
         let tag = &RefCount::clone(&self.language_tag.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = self.fallback.borrow().clone();
+        let bool_fallback = *self.fallback.borrow();
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = self.caching.borrow().clone();
+        let bool_caching = *self.caching.borrow();
 
         #[cfg(feature = "sync")]
         let tag = &RefCount::clone(&self.language_tag.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = self.fallback.read().unwrap().clone();
+        let bool_fallback = *self.fallback.read().unwrap();
 
         #[cfg(feature = "sync")]
-        let bool_caching = self.caching.read().unwrap().clone();
+        let bool_caching = *self.caching.read().unwrap();
 
         self.actual_literal(component, identifier, tag, bool_fallback, bool_caching)
     }
@@ -474,37 +478,37 @@ impl Localiser {
     /// * `caching`: `Option<bool>`
     ///
     /// A value of `None` indicates no change.
-    pub fn defaults (
+    pub fn defaults(
         &self,
         language_tag: Option<RefCount<LanguageTag>>,
         fallback: Option<bool>,
         caching: Option<bool>,
     ) -> Result<(), LocaliserError> {
-        if language_tag.is_some() {
+        if let Some(language_tag) = language_tag {
             #[cfg(not(feature = "sync"))]
-            self.language_tag.replace(language_tag.unwrap());
+            self.language_tag.replace(language_tag);
 
             #[cfg(feature = "sync")]
             {
-                *self.language_tag.write().unwrap() = language_tag.unwrap();
+                *self.language_tag.write().unwrap() = language_tag;
             }
         }
-        if fallback.is_some() {
+        if let Some(fallback) = fallback {
             #[cfg(not(feature = "sync"))]
-            self.fallback.replace(fallback.unwrap());
+            self.fallback.replace(fallback);
 
             #[cfg(feature = "sync")]
             {
-                *self.fallback.write().unwrap() = fallback.unwrap();
+                *self.fallback.write().unwrap() = fallback;
             }
         }
-        if caching.is_some() {
+        if let Some(caching) = caching {
             #[cfg(not(feature = "sync"))]
-            self.caching.replace(caching.unwrap());
+            self.caching.replace(caching);
 
             #[cfg(feature = "sync")]
             {
-                *self.caching.write().unwrap() = caching.unwrap();
+                *self.caching.write().unwrap() = caching;
             }
         }
         Ok(())
@@ -522,6 +526,7 @@ impl Localiser {
     }
 
     /// Obtain the localisation provider for the `Localiser` instance.
+    #[allow(clippy::borrowed_box)]
     pub fn localisation_provider(&self) -> &Box<dyn LocalisationProviderTrait> {
         &self.localisation_provider
     }
@@ -623,18 +628,18 @@ impl Localiser {
         debug!("Localiser is using format_error().");
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = fallback.unwrap_or(self.fallback.borrow().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = caching.unwrap_or(self.caching.borrow().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.borrow());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = fallback.unwrap_or(self.fallback.read().unwrap().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_caching = caching.unwrap_or(self.caching.read().unwrap().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.read().unwrap());
 
-        Ok(self.actual_format_localisation_data(data, language_tag, bool_fallback, bool_caching)?)
+        self.actual_format_localisation_data(data, language_tag, bool_fallback, bool_caching)
     }
 
     /// For the provided [`LocalisationData`] instance, format using the `Localiser` instance defaults.
@@ -710,21 +715,21 @@ impl Localiser {
         let tag = &RefCount::clone(&self.language_tag.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = self.fallback.borrow().clone();
+        let bool_fallback = *self.fallback.borrow();
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = self.caching.borrow().clone();
+        let bool_caching = *self.caching.borrow();
 
         #[cfg(feature = "sync")]
         let tag = &RefCount::clone(&self.language_tag.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = self.fallback.read().unwrap().clone();
+        let bool_fallback = *self.fallback.read().unwrap();
 
         #[cfg(feature = "sync")]
-        let bool_caching = self.caching.read().unwrap().clone();
+        let bool_caching = *self.caching.read().unwrap();
 
-        Ok(self.actual_format_localisation_data(data, tag, bool_fallback, bool_caching)?)
+        self.actual_format_localisation_data(data, tag, bool_fallback, bool_caching)
     }
 
     /// Format the provided error implementing the [`LocalisationErrorTrait`] trait. Optionally specify whether to
@@ -789,19 +794,19 @@ impl Localiser {
         debug!("Localiser is using format_error().");
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = fallback.unwrap_or(self.fallback.borrow().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = caching.unwrap_or(self.caching.borrow().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.borrow());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = fallback.unwrap_or(self.fallback.read().unwrap().clone());
+        let bool_fallback = fallback.unwrap_or(*self.fallback.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_caching = caching.unwrap_or(self.caching.read().unwrap().clone());
+        let bool_caching = caching.unwrap_or(*self.caching.read().unwrap());
 
         let data = error.localisation_data();
-        Ok(self.actual_format_localisation_data(&data, language_tag, bool_fallback, bool_caching)?)
+        self.actual_format_localisation_data(&data, language_tag, bool_fallback, bool_caching)
     }
 
     /// For the provided error implementing the [`LocalisationErrorTrait`] trait, format using the [`Localiser`]
@@ -863,22 +868,22 @@ impl Localiser {
         let tag = &RefCount::clone(&self.language_tag.borrow());
 
         #[cfg(not(feature = "sync"))]
-        let bool_fallback = self.fallback.borrow().clone();
+        let bool_fallback = *self.fallback.borrow();
 
         #[cfg(not(feature = "sync"))]
-        let bool_caching = self.caching.borrow().clone();
+        let bool_caching = *self.caching.borrow();
 
         #[cfg(feature = "sync")]
         let tag = &RefCount::clone(&self.language_tag.read().unwrap());
 
         #[cfg(feature = "sync")]
-        let bool_fallback = self.fallback.read().unwrap().clone();
+        let bool_fallback = *self.fallback.read().unwrap();
 
         #[cfg(feature = "sync")]
-        let bool_caching = self.caching.read().unwrap().clone();
+        let bool_caching = *self.caching.read().unwrap();
 
         let data = error.localisation_data();
-        Ok(self.actual_format_localisation_data(&data, tag, bool_fallback, bool_caching)?)
+        self.actual_format_localisation_data(&data, tag, bool_fallback, bool_caching)
     }
 
     // Internal methods
@@ -915,12 +920,12 @@ impl Localiser {
 
                         #[cfg(not(feature = "sync"))]
                         CacheData::Formatter(formatter) => {
-                            Ok(formatter.borrow_mut().format(&self, values)?)
+                            Ok(formatter.borrow_mut().format(self, values)?)
                         }
 
                         #[cfg(feature = "sync")]
                         CacheData::Formatter(formatter) => {
-                            Ok(formatter.write().unwrap().format(&self, values)?)
+                            Ok(formatter.write().unwrap().format(self, values)?)
                         }
                     };
                 }
@@ -951,7 +956,7 @@ impl Localiser {
                 match self.localisation_provider.string(
                     component.as_ref(),
                     identifier.as_ref(),
-                    &default_language,
+                    default_language,
                 )? {
                     Some(result) => result,
                     None => {
@@ -1014,11 +1019,11 @@ impl Localiser {
         // Has grammar syntax characters.
         // Parse tokens and create `Formatter`
         let tree = parse(tokens)?;
-        let mut formatter = Formatter::try_new(&self, language_tag, &tree)?;
+        let mut formatter = Formatter::try_new(self, language_tag, &tree)?;
 
         // If caching is not allowed, simple use `Formatter` to get the TaggedString.
         if !caching {
-            return Ok(formatter.format(&self, values)?);
+            return Ok(formatter.format(self, values)?);
         }
 
         // Cache the `Formatter`.
@@ -1071,10 +1076,12 @@ impl Localiser {
             CacheData::TaggedString(lstring) => Ok(lstring.clone()),
 
             #[cfg(not(feature = "sync"))]
-            CacheData::Formatter(formatter) => Ok(formatter.borrow_mut().format(&self, values)?),
+            CacheData::Formatter(formatter) => Ok(formatter.borrow_mut().format(self, values)?),
 
             #[cfg(feature = "sync")]
-            CacheData::Formatter(formatter) => Ok(formatter.write().unwrap().format(&self, values)?),
+            CacheData::Formatter(formatter) => {
+                Ok(formatter.write().unwrap().format(self, values)?)
+            }
         }
     }
 
@@ -1136,7 +1143,7 @@ impl Localiser {
                 match self.localisation_provider.string(
                     component.as_ref(),
                     identifier.as_ref(),
-                    &default_language,
+                    default_language,
                 )? {
                     Some(result) => result,
                     None => {
@@ -1186,7 +1193,7 @@ impl Localiser {
                     .insert(combined.clone(), CacheData::TaggedString(lstring.clone()));
             }
         }
-        return Ok(lstring);
+        Ok(lstring)
     }
 
     fn actual_format_localisation_data(
@@ -1212,7 +1219,7 @@ impl Localiser {
                         let _ = values_new.insert(
                             placeholder.clone(),
                             PlaceholderValue::TaggedString(self.actual_format_localisation_data(
-                                &inner,
+                                inner,
                                 language_tag,
                                 fallback,
                                 caching,

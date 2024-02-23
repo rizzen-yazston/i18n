@@ -115,7 +115,7 @@ impl Formatter {
         let mut selectors = Vec::<HashMap<String, String>>::new();
         if tree.len() == 0 {
             return Ok(Formatter {
-                language_tag: RefCount::clone(&language_tag),
+                language_tag: RefCount::clone(language_tag),
                 locale,
                 patterns,
                 numbers,
@@ -249,7 +249,7 @@ impl Formatter {
         }
         patterns.insert("_".to_string(), pattern);
         Ok(Formatter {
-            language_tag: RefCount::clone(&language_tag),
+            language_tag: RefCount::clone(language_tag),
             locale,
             patterns,
             numbers,
@@ -305,7 +305,7 @@ impl Formatter {
         localiser: &Localiser,
         values: &HashMap<String, PlaceholderValue>,
     ) -> Result<TaggedString, FormatterError> {
-        if self.patterns.get("_").unwrap().len() == 0 {
+        if self.patterns.get("_").unwrap().is_empty() {
             return Ok(TaggedString::new(String::new(), &self.language_tag));
         }
         let pattern_string = self.format_pattern(localiser, values, &"_".to_string())?;
@@ -391,7 +391,7 @@ impl Formatter {
                             if sign.is_some() {
                                 fixed_decimal.apply_sign_display(sign.unwrap());
                             }
-                            let number_string = fdf.format(&fixed_decimal).to_string();
+                            let number_string = fdf.format(fixed_decimal).to_string();
                             string.push_str(number_string.as_str());
                         }
                         PlaceholderValue::Unsigned(number) => {
@@ -474,7 +474,7 @@ impl Formatter {
                         PlaceholderValue::String(value) => {
                             let date_time_strings: Vec<&str> = value.split('T').collect();
                             if date_time_strings.len() == 2 {
-                                if date_time_strings[0] == "" {
+                                if date_time_strings[0].is_empty() {
                                     // time only
                                     let time: Time = decompose_iso_time(date_time_strings[1])?;
                                     let tf =
@@ -660,7 +660,7 @@ impl Formatter {
                     parameters.push(first.clone());
 
                     // If parameter is same as placeholder, take the placeholder value instead.
-                    while let Some(parameter) = iterator.next() {
+                    for parameter in iterator {
                         let string = match parameter {
                             PlaceholderValue::String(string) => string,
 
@@ -682,6 +682,7 @@ impl Formatter {
         Ok(string)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn find_number_sign(
         &mut self,
         localiser: &Localiser,
@@ -729,11 +730,8 @@ impl Formatter {
                     };
                     _part = Some(part);
                 }
-                match _part.unwrap() {
-                    PatternPart::NumberSign(index) => {
-                        self.update_number_part(*index, &number_string)?
-                    }
-                    _ => {}
+                if let PatternPart::NumberSign(index) = _part.unwrap() {
+                    self.update_number_part(*index, &number_string)?
                 }
                 i += 1;
             }
@@ -785,7 +783,7 @@ impl Formatter {
         _options: options::FixedDecimalFormatterOptions,
     ) -> Result<FixedDecimalFormatter, FormatterError> {
         match localiser.icu_data_provider().data_provider() {
-            #[cfg(feature = "compiled_data")]
+            #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => Ok(FixedDecimalFormatter::try_new(_data_locale, _options)?),
 
             #[cfg(feature = "blob")]
@@ -816,7 +814,7 @@ impl Formatter {
         _options: Bag,
     ) -> Result<DateTimeFormatter, FormatterError> {
         match localiser.icu_data_provider().data_provider() {
-            #[cfg(feature = "compiled_data")]
+            #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => {
                 Ok(DateTimeFormatter::try_new(_data_locale, _options.into())?)
             }
@@ -847,7 +845,7 @@ impl Formatter {
         _length_date: icu_datetime::options::length::Date,
     ) -> Result<DateFormatter, FormatterError> {
         match localiser.icu_data_provider().data_provider() {
-            #[cfg(feature = "compiled_data")]
+            #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => Ok(DateFormatter::try_new_with_length(
                 _data_locale,
                 _length_date,
@@ -883,7 +881,7 @@ impl Formatter {
         _length_time: icu_datetime::options::length::Time,
     ) -> Result<TimeFormatter, FormatterError> {
         match localiser.icu_data_provider().data_provider() {
-            #[cfg(feature = "compiled_data")]
+            #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => Ok(TimeFormatter::try_new_with_length(
                 _data_locale,
                 _length_time,
@@ -918,7 +916,7 @@ impl Formatter {
         _data_locale: &DataLocale,
     ) -> Result<PluralRules, FormatterError> {
         match localiser.icu_data_provider().data_provider() {
-            #[cfg(feature = "compiled_data")]
+            #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => Ok(PluralRules::try_new_cardinal(_data_locale)?),
 
             #[cfg(feature = "blob")]
@@ -944,7 +942,7 @@ impl Formatter {
         _data_locale: &DataLocale,
     ) -> Result<PluralRules, FormatterError> {
         match localiser.icu_data_provider().data_provider() {
-            #[cfg(feature = "compiled_data")]
+            #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => Ok(PluralRules::try_new_ordinal(_data_locale)?),
 
             #[cfg(feature = "blob")]
@@ -1273,7 +1271,7 @@ fn part_pattern(
                         locale_string.push_str(new_calendar.as_str());
                     }
                     Some(tag_position) => {
-                        let mut hyphens = locale_string.match_indices("-");
+                        let mut hyphens = locale_string.match_indices('-');
                         while let Some(pair) = hyphens.next() {
                             if pair.0 == tag_position {
                                 hyphens.next(); // There is an experimental advance_by( 2 ) to replace two next()
@@ -1461,7 +1459,7 @@ fn part_command(
     }
 
     // Rest can be either Identifier or Text nodes.
-    while let Some(parameter) = iterator.next() {
+    for parameter in iterator {
         if check_node_type(tree, *parameter, NodeType::Identifier) {
             let Ok(identifier_data) = tree.data_ref(*parameter) else {
                 return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
@@ -1497,7 +1495,7 @@ fn part_command(
             strings: parameters,
         });
     } else {
-        let function = command_registry.command(command_token.as_ref().string.to_string())?;
+        let function = command_registry.command(&command_token.as_ref().string)?;
         pattern.push(PatternPart::Text(function(parameters)?));
     }
     Ok(())
@@ -1511,10 +1509,9 @@ fn pattern_selectors(tree: &Tree, index: usize) -> Result<HashMap<String, String
     let Ok(children) = tree.children(index) else {
         panic!("Failed to recreate children iterator.");
     };
-    let mut iterator = children.iter().skip(2);
-
+    let iterator = children.iter().skip(2);
     let mut pairs = HashMap::<String, String>::new();
-    while let Some(selector) = iterator.next() {
+    for selector in iterator {
         if !check_node_type(tree, *selector, NodeType::Selector) {
             return Err(FormatterError::NodeNotFound(NodeType::Selector));
         }
@@ -1567,66 +1564,58 @@ fn plural_category(category: PluralCategory) -> &'static str {
 
 fn sign_display(sign: &str) -> Result<SignDisplay, FormatterError> {
     match sign {
-        "auto" => return Ok(SignDisplay::Auto),
-        "never" => return Ok(SignDisplay::Never),
-        "always" => return Ok(SignDisplay::Always),
-        "except_zero" => return Ok(SignDisplay::ExceptZero),
-        "negative" => return Ok(SignDisplay::Negative),
-        _ => {
-            return Err(FormatterError::InvalidOptionValue(
-                sign.to_string(),
-                "sign".to_string(),
-                "decimal".to_string(),
-            ))
-        }
+        "auto" => Ok(SignDisplay::Auto),
+        "never" => Ok(SignDisplay::Never),
+        "always" => Ok(SignDisplay::Always),
+        "except_zero" => Ok(SignDisplay::ExceptZero),
+        "negative" => Ok(SignDisplay::Negative),
+        _ => Err(FormatterError::InvalidOptionValue(
+            sign.to_string(),
+            "sign".to_string(),
+            "decimal".to_string(),
+        )),
     }
 }
 
 fn decimal_grouping_display(group: &str) -> Result<options::GroupingStrategy, FormatterError> {
     match group {
-        "auto" => return Ok(options::GroupingStrategy::Auto),
-        "never" => return Ok(options::GroupingStrategy::Never),
-        "always" => return Ok(options::GroupingStrategy::Always),
-        "min2" => return Ok(options::GroupingStrategy::Min2),
-        _ => {
-            return Err(FormatterError::InvalidOptionValue(
-                group.to_string(),
-                "group".to_string(),
-                "decimal".to_string(),
-            ))
-        }
+        "auto" => Ok(options::GroupingStrategy::Auto),
+        "never" => Ok(options::GroupingStrategy::Never),
+        "always" => Ok(options::GroupingStrategy::Always),
+        "min2" => Ok(options::GroupingStrategy::Min2),
+        _ => Err(FormatterError::InvalidOptionValue(
+            group.to_string(),
+            "group".to_string(),
+            "decimal".to_string(),
+        )),
     }
 }
 
 fn date_length(len: &str) -> Result<DateLength, FormatterError> {
     match len {
-        "full" => return Ok(DateLength::Full),
-        "long" => return Ok(DateLength::Long),
-        "medium" => return Ok(DateLength::Medium),
-        "short" => return Ok(DateLength::Short),
-        _ => {
-            return Err(FormatterError::InvalidOptionValue(
-                len.to_string(),
-                "date".to_string(),
-                "date_time".to_string(),
-            ))
-        }
+        "full" => Ok(DateLength::Full),
+        "long" => Ok(DateLength::Long),
+        "medium" => Ok(DateLength::Medium),
+        "short" => Ok(DateLength::Short),
+        _ => Err(FormatterError::InvalidOptionValue(
+            len.to_string(),
+            "date".to_string(),
+            "date_time".to_string(),
+        )),
     }
 }
 
 fn time_length(len: &str) -> Result<TimeLength, FormatterError> {
     match len {
-        "full" => return Ok(TimeLength::Full),
-        "long" => return Ok(TimeLength::Long),
-        "medium" => return Ok(TimeLength::Medium),
-        "short" => return Ok(TimeLength::Short),
-        _ => {
-            return Err(FormatterError::InvalidOptionValue(
-                len.to_string(),
-                "time".to_string(),
-                "date_time".to_string(),
-            ))
-        }
+        "full" => Ok(TimeLength::Full),
+        "long" => Ok(TimeLength::Long),
+        "medium" => Ok(TimeLength::Medium),
+        "short" => Ok(TimeLength::Short),
+        _ => Err(FormatterError::InvalidOptionValue(
+            len.to_string(),
+            "time".to_string(),
+            "date_time".to_string(),
+        )),
     }
 }
 

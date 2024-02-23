@@ -112,7 +112,7 @@ pub struct IdentifierDetails {
 pub struct ComponentDetails {
     pub languages: HashMap<RefCount<LanguageTag>, LanguageData>, // The list of available languages for the component.
     pub default: RefCount<LanguageTag>, // The default language of the component.
-    pub total_strings: usize,      // The total number of strings for the component.
+    pub total_strings: usize,           // The total number of strings for the component.
 }
 
 /// Data about an available language of a component in the provider's repository.

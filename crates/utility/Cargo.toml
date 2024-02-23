@@ -23,7 +23,7 @@ all-features = true
 
 [features]
 sync = []
-extend = []
+icu_extended = []
 
 [dependencies]
 icu_locid = { workspace = true }

@@ -17,25 +17,24 @@
 //!
 //! Available features for `i18n_icu` crate:
 //!
-//! * `compiled_data` (Preferred): Allow for the internal data of the various ICU4X components. Also recommended by
-//! ICU4X.
-//!
-//! * `blob`: Allow for instances of [`BlobDataProvider`] to be used various ICU4X components that supports
+//! * `icu_blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports
 //! [`BufferProvider`]. An alternative provider when the internal data of ICU4X components are insufficient for a
 //! particular use case.
 //!
-//! * `fs`: Allow for instances of [`FsDataProvider`] to be used various ICU4X components that supports
+//! * `icu_compiled_data` \[default\]: Allow for the internal data of the various ICU4X components.
+//!
+//! * `icu_fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports
 //! `BufferProvider`. An alternative provider when the internal data of ICU4X components are insufficient for a
 //! particular use case.
 //!
-//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
-//! [`RefCell`].
+//! * `logging`: To provide some logging information.
 //!
-//! * `log`: Enable log support.
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and
+//! `RefCell`.
 //!
 //! # Examples
 //!
-//! See various examples of the `i18n_lexer`, `i18n_pattern`, and `i18n_message` crates.
+//! See various examples of the `i18n_lexer`, `i18n_pattern`, and `i18n_localiser` crates.
 //!
 //! [ICU4X]: https://github.com/unicode-org/icu4x
 //! [Unicode Consortium]: https://home.unicode.org/

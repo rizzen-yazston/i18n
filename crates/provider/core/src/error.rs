@@ -39,8 +39,8 @@ pub trait ProviderErrorTrait: LocalisationTrait + Error + Display {}
 pub enum ProviderError {
     ComponentNotFound(String), // component
     LanguageTagRegistry(RegistryError),
-    DefaultLanguage(String), // component
-    InvalidDefaultLanguage(String), // component
+    DefaultLanguage(String),              // component
+    InvalidDefaultLanguage(String),       // component
     DefaultLanguageCount(String, String), // component, language
     Custom(RefCount<Box<dyn ProviderErrorTrait>>),
 }
@@ -208,7 +208,7 @@ impl Display for ProviderError {
                 formatter, "ProviderError::ComponentNotFound: The component ‘{}’ could not found.", component
             ),
             ProviderError::LanguageTagRegistry( ref error ) => write!(
-                formatter, "ProviderError::LanguageTagRegistry: [{}].", error.to_string()
+                formatter, "ProviderError::LanguageTagRegistry: [{}].", error
             ),
             ProviderError::DefaultLanguage( ref component ) => write!(
                 formatter,
@@ -228,7 +228,7 @@ impl Display for ProviderError {
                 language
             ),
             ProviderError::Custom( ref error ) => write!(
-                formatter, "ProviderError::Custom: [{}].", error.to_string()
+                formatter, "ProviderError::Custom: [{}].", error
             ),
         }
     }

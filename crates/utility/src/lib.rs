@@ -63,10 +63,10 @@
 //!
 //! Available features for `i18n_utility` crate:
 //!
-//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and [`Mutex`] instead `Rc` and
-//! [`RefCell`].
+//! * `icu_extended`: Use the more detailed ICU information structs, types, and methods.
 //!
-//! * `extend`: Enables the [`icu_locid::Locale`] to replace the [`icu_locid::LanguageIdentifier`] to include extension subtags.
+//! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and
+//! `RefCell`.
 //!
 //! [`ICU4X`]: https://github.com/unicode-org/icu4x
 //! [Unicode Consortium]: https://home.unicode.org/

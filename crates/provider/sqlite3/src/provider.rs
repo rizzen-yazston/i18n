@@ -88,8 +88,8 @@ pub struct LocalisationProviderSqlite3 {
     // Cached data (long running sql queries)
     repository_details: OnceMut<RefCount<RepositoryDetails>>,
     component_details: OnceMut<HashMap<String, RefCount<ComponentDetails>>>,
+    #[allow(dead_code)]
     use_database_cache: bool, //TODO: This feature still to be implemented, once database schema is stabilised.
-                              //      Leaving as a compiler warning for reminder to do.
 }
 
 impl LocalisationProviderSqlite3 {
@@ -158,11 +158,13 @@ impl LocalisationProviderSqlite3 {
                                     while let Some(row) = rows.next()? {
                                         let component: String = row.get(0)?;
                                         println!("all_in_one.sqlite3 has component: {}", component);
-                                        if components.contains_key(&component) {
+                                        if let std::collections::hash_map::Entry::Vacant(e) =
+                                            components.entry(component.clone())
+                                        {
+                                            e.insert((true, false));
+                                        } else {
                                             let value = components.get_mut(&component).unwrap();
                                             value.0 = true;
-                                        } else {
-                                            components.insert(component, (true, false));
                                         }
                                     }
                                 }
@@ -316,9 +318,11 @@ impl LocalisationProviderSqlite3 {
                 Ok(value) => return Ok(value),
 
                 // Possible Sqlite is concurrency lock on file.
-                Err(error) => return Err(ProviderError::Custom(RefCount::new(Box::new(
-                    ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                )))),
+                Err(error) => {
+                    return Err(ProviderError::Custom(RefCount::new(Box::new(
+                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
+                    ))))
+                }
             }
         }
         if value.1 {
@@ -331,9 +335,11 @@ impl LocalisationProviderSqlite3 {
                 Ok(value) => return Ok(value),
 
                 // Possible Sqlite is concurrency lock on file.
-                Err(error) => return Err(ProviderError::Custom(RefCount::new(Box::new(
-                    ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                )))),
+                Err(error) => {
+                    return Err(ProviderError::Custom(RefCount::new(Box::new(
+                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
+                    ))))
+                }
             }
         }
         Err(ProviderError::ComponentNotFound(
@@ -422,7 +428,7 @@ impl LocalisationProviderSqlite3 {
         };
         let mut strings = Vec::<TaggedString>::new();
         let mut tag = language_tag.as_str().to_string();
-        while tag.len() > 0 {
+        while !tag.is_empty() {
             if !exact {
                 tag.push('%');
             }
@@ -465,7 +471,7 @@ impl LocalisationProviderSqlite3 {
                 let language = self.language_tag_registry.as_ref().tag(tag_raw)?;
                 strings.push(TaggedString::new(string, &language));
             }
-            if strings.len() > 0 {
+            if !strings.is_empty() {
                 #[cfg(feature = "log")]
                 debug!(
                     "Found at least 1 string from '{}.sqlite3'.",
@@ -1027,8 +1033,8 @@ impl LocalisationProviderSqlite3 {
         };
 
         // Get details info per component
-        let mut components_iterator = self.components.iter();
-        while let Some(component) = components_iterator.next() {
+        let components_iterator = self.components.iter();
+        for component in components_iterator {
             repository_details.components.push(component.0.to_string());
             let mut component_details = ComponentDetails {
                 languages: HashMap::<RefCount<LanguageTag>, LanguageData>::new(),
@@ -1041,8 +1047,8 @@ impl LocalisationProviderSqlite3 {
             if component.1 .0 {
                 // In all_in_one.sqlite3
                 languages = self.languages(component.0, true)?;
-                let mut languages_iterator = languages.iter();
-                while let Some(language) = languages_iterator.next() {
+                let languages_iterator = languages.iter();
+                for language in languages_iterator {
                     component_details.languages.insert(
                         RefCount::clone(language),
                         LanguageData {
@@ -1066,10 +1072,10 @@ impl LocalisationProviderSqlite3 {
             if component.1 .1 {
                 // Has own <component>.sqlite3
                 let languages_separate = self.languages(component.0, false)?;
-                let mut languages_iterator = languages_separate.iter();
-                while let Some(language) = languages_iterator.next() {
-                    if !languages.contains(&language) {
-                        languages.push(RefCount::clone(&language));
+                let languages_iterator = languages_separate.iter();
+                for language in languages_iterator {
+                    if !languages.contains(language) {
+                        languages.push(RefCount::clone(language));
                         component_details.languages.insert(
                             RefCount::clone(language),
                             LanguageData {
@@ -1081,7 +1087,7 @@ impl LocalisationProviderSqlite3 {
                     }
                     if !repository_details.languages.contains_key(language) {
                         repository_details.languages.insert(
-                            RefCount::clone(&language),
+                            RefCount::clone(language),
                             LanguageData {
                                 count: 0usize,
                                 ratio: 0f32,
@@ -1123,13 +1129,13 @@ impl LocalisationProviderSqlite3 {
             debug!("Got default language.");
 
             // Build language data
-            let mut languages_iterator = languages.iter();
-            while let Some(language) = languages_iterator.next() {
+            let languages_iterator = languages.iter();
+            for language in languages_iterator {
                 let language_data = component_details.languages.get_mut(language).unwrap();
                 if component.1 .0 {
                     language_data.contributors = self.contributors(component.0, language, true)?;
-                    let mut contributors_iterator = language_data.contributors.iter();
-                    while let Some(contributor) = contributors_iterator.next() {
+                    let contributors_iterator = language_data.contributors.iter();
+                    for contributor in contributors_iterator {
                         if !repository_details.contributors.contains(contributor) {
                             repository_details
                                 .contributors
@@ -1139,8 +1145,8 @@ impl LocalisationProviderSqlite3 {
                 }
                 if component.1 .1 {
                     let contributors_separate = self.contributors(component.0, language, false)?;
-                    let mut contributors_iterator = contributors_separate.iter();
-                    while let Some(contributor) = contributors_iterator.next() {
+                    let contributors_iterator = contributors_separate.iter();
+                    for contributor in contributors_iterator {
                         if !language_data.contributors.contains(contributor) {
                             language_data.contributors.push(contributor.to_string());
                         }
@@ -1171,8 +1177,8 @@ impl LocalisationProviderSqlite3 {
                     .unwrap();
                 _count = default_language_data.count;
             }
-            let mut languages_iterator = component_details.languages.iter_mut();
-            while let Some(language_data) = languages_iterator.next() {
+            let languages_iterator = component_details.languages.iter_mut();
+            for language_data in languages_iterator {
                 language_data.1.ratio = language_data.1.count as f32 / _count as f32;
             }
 
@@ -1194,8 +1200,8 @@ impl LocalisationProviderSqlite3 {
                     .unwrap();
                 _count = default_language_data.count;
             }
-            let mut languages_iterator = repository_details.languages.iter_mut();
-            while let Some(language_data) = languages_iterator.next() {
+            let languages_iterator = repository_details.languages.iter_mut();
+            for language_data in languages_iterator {
                 language_data.1.ratio = language_data.1.count as f32 / _count as f32;
             }
         }
@@ -1493,7 +1499,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             Some(value) => value,
         };
         match components.get(component) {
-            None => return Err(ProviderError::ComponentNotFound(component.to_string())),
+            None => Err(ProviderError::ComponentNotFound(component.to_string())),
             Some(component_details) => {
                 let mut languages = self.identifier_languages(component, identifier, true)?;
                 if languages.is_empty() {
@@ -1553,8 +1559,8 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             Some(value) => value,
         };
         match components.get(component) {
-            None => return Err(ProviderError::ComponentNotFound(component.to_string())),
-            Some(value) => return Ok(RefCount::clone(value)),
+            None => Err(ProviderError::ComponentNotFound(component.to_string())),
+            Some(value) => Ok(RefCount::clone(value)),
         }
     }
 
@@ -1598,7 +1604,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
                 self.build_cache()?;
                 return Ok(RefCount::clone(self.repository_details.get().unwrap()));
             }
-            Some(value) => return Ok(RefCount::clone(value)),
+            Some(value) => Ok(RefCount::clone(value)),
         }
     }
 }

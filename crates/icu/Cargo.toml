@@ -22,27 +22,28 @@ version.workspace = true
 all-features = true
 
 [features]
-compiled_data = [] 
-blob = [
-    "buffer",
-    #"dep:icu_provider_blob",
-    "icu_provider/deserialize_postcard_1",
-]
-fs = [
-    "buffer",
-    #"dep:icu_provider_fs",
-    "icu_provider/deserialize_bincode_1",
-]
+default = [ "icu_compiled_data" ]
 buffer = [
-    #"dep:icu_provider", 
     "icu_segmenter/serde", 
     "icu_properties/serde"
 ]
+icu_blob = [
+    "buffer",
+    "icu_provider/deserialize_postcard_1",
+]
+icu_compiled_data = [
+    "icu_properties/compiled_data",
+    "icu_segmenter/compiled_data",
+] 
+icu_fs = [
+    "buffer",
+    "icu_provider/deserialize_bincode_1",
+]
+logging = []#[ "dep:log" ]
 sync = [
     "icu_provider/sync",
     "i18n_utility-rizzen-yazston/sync",
 ]
-log = []#[ "dep:log" ]
 
 [dependencies]
 i18n_utility-rizzen-yazston = { workspace = true }

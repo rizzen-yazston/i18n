@@ -79,6 +79,7 @@ impl LanguageTag {
 /// [Unicode Consortium]: https://home.unicode.org/
 /// [`LanguageIdentifier`]: icu_locid::LanguageIdentifier
 /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
+#[allow(clippy::type_complexity)]
 pub struct LanguageTagRegistry {
     bcp47: MutCell<HashMap<String, (RefCount<LanguageTag>, RefCount<Locale>)>>,
 
@@ -229,10 +230,10 @@ impl LanguageTagRegistry {
             ),
         );
 
-        return Ok((
+        Ok((
             RefCount::clone(&rc_new_tag),
             RefCount::clone(&rc_new_locale),
-        ));
+        ))
     }
 
     /// Obtain a referenced counted language tag [`Rc`]`<`[`String`]`>` or [`Arc`]`<String>`.
@@ -416,6 +417,12 @@ impl LanguageTagRegistry {
 
         list.append(&mut deprecated);
         list
+    }
+}
+
+impl Default for LanguageTagRegistry {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

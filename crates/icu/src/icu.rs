@@ -6,7 +6,7 @@ use crate::IcuError;
 #[allow(unused_imports)]
 use icu_properties::sets::CodePointSetData;
 
-#[cfg(feature = "compiled_data")]
+#[cfg(feature = "icu_compiled_data")]
 use icu_properties::sets::{pattern_syntax, pattern_white_space};
 
 #[cfg(feature = "buffer")]
@@ -46,7 +46,7 @@ use icu_provider_fs::FsDataProvider;
 /// Indicates which data provider to use for various supported ICU4X components:
 ///
 /// * Internal (Preferred): Will use the internal BakedDateProvider of various ICU4X components. Requires the
-/// `compiled_data` feature. The internal data of ICU4X components are sufficient for most use cases needing
+/// `icu_compiled_data` feature. The internal data of ICU4X components are sufficient for most use cases needing
 /// localisation, and is recommended by ICU4X.
 ///
 /// * Blob: The [`BlobDataProvider`] will be used for the various ICU4X components. Requires the `blob` feature. An
@@ -56,7 +56,7 @@ use icu_provider_fs::FsDataProvider;
 /// alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
 #[derive(Debug, Clone)]
 pub enum DataProvider {
-    #[cfg(feature = "compiled_data")]
+    #[cfg(feature = "icu_compiled_data")]
     Internal,
 
     #[cfg(feature = "blob")]
@@ -127,7 +127,7 @@ impl IcuDataProvider {
                 white_space = Some(load_pattern_white_space(&fs_provider)?);
             }
 
-            #[cfg(feature = "compiled_data")]
+            #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => {
                 #[cfg(feature = "log")]
                 debug!("Internal data was selected.");

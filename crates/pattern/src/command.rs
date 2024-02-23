@@ -30,6 +30,7 @@ use std::str::FromStr;
 ///     Ok( () )
 /// }
 /// ```
+#[allow(clippy::type_complexity)]
 pub struct CommandRegistry {
     registry: RefCell<HashMap<String, fn(Vec<PlaceholderValue>) -> Result<String, CommandError>>>,
 }
@@ -127,6 +128,7 @@ impl CommandRegistry {
     ///     Ok( () )
     /// }
     /// ```
+    #[allow(clippy::type_complexity)]
     pub fn command<T: AsRef<str>>(
         &self,
         command: T,
@@ -159,6 +161,12 @@ impl CommandRegistry {
     }
 }
 
+impl Default for CommandRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// # Available commands
 ///
 /// The following commands are provided by this crate.
@@ -185,7 +193,7 @@ pub fn file_path(parameters: Vec<PlaceholderValue>) -> Result<String, CommandErr
         PlaceholderValue::String(string) => string,
         _ => return Err(CommandError::InvalidType(command.clone(), 1)),
     };
-    let path = PathBuf::from_str(&string).unwrap();
+    let path = PathBuf::from_str(string).unwrap();
     Ok(path.display().to_string())
 }
 
@@ -213,7 +221,7 @@ pub fn english_a_or_an(parameters: Vec<PlaceholderValue>) -> Result<String, Comm
     };
     let mut chars = string.chars();
     match chars.next().unwrap() {
-        'a' | 'e' | 'i' | 'o' | 'u' => return Ok("an".to_string()),
-        _ => return Ok("a".to_string()),
+        'a' | 'e' | 'i' | 'o' | 'u' => Ok("an".to_string()),
+        _ => Ok("a".to_string()),
     }
 }

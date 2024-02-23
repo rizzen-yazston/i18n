@@ -79,16 +79,12 @@ impl Display for RegistryError {
         match self {
             #[cfg(not(feature = "extend"))]
             RegistryError::LanguageIdentifier(ref error) => {
-                write!(
-                    formatter,
-                    "RegistryError::LanguageIdentifier: [{}].",
-                    error.to_string()
-                )
+                write!(formatter, "RegistryError::LanguageIdentifier: [{}].", error)
             }
 
             #[cfg(feature = "extend")]
             RegistryError::Locale(ref error) => {
-                write!(formatter, "RegistryError::Locale: [{}].", error.to_string())
+                write!(formatter, "RegistryError::Locale: [{}].", error)
             }
         }
     }

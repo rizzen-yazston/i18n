@@ -14,16 +14,18 @@ The localiser makes use of all the other component crates that make up the `i18n
 == Features
 
 Available features for `i18n_icu` crate:
+
+* `icu_blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`]. An alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
  
-* `compiled_data`: Allow for the internal data of the various ICU4X components.
+* `icu_compiled_data` [default]: Allow for the internal data of the various ICU4X components.
+
+* `icu_extended`: Use the more detailed ICU information structs, types, and methods.
  
-* `blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`].
- 
-* `fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`.
+* `icu_fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports `BufferProvider`. An alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
+
+* `logging`: To provide some logging information.
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
-
-* `log`: To provide some logging information.
 
 == Acknowledgement
 

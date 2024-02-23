@@ -30,6 +30,8 @@ In the context of the `i18n` project, the identifier tag is expected to be a {BC
 
 Available features for `i18n_utility` crate:
 
+* `icu_extended`: Use the more detailed ICU information structs, types, and methods.
+
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
 
 == Acknowledgements

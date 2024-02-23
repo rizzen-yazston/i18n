@@ -215,16 +215,12 @@ impl LocalisationTrait for ProviderSqlite3Error {
 impl Display for ProviderSqlite3Error {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         match *self {
-            ProviderSqlite3Error::Io(ref error) => write!(
-                formatter,
-                "ProviderSqlite3Error::Io: [{}].",
-                error.to_string()
-            ),
-            ProviderSqlite3Error::Sqlite3(ref error) => write!(
-                formatter,
-                "ProviderSqlite3Error::Sqlite3: [{}].",
-                error.to_string()
-            ),
+            ProviderSqlite3Error::Io(ref error) => {
+                write!(formatter, "ProviderSqlite3Error::Io: [{}].", error)
+            }
+            ProviderSqlite3Error::Sqlite3(ref error) => {
+                write!(formatter, "ProviderSqlite3Error::Sqlite3: [{}].", error)
+            }
             ProviderSqlite3Error::NotDirectory(ref path) => write!(
                 formatter,
                 "ProviderSqlite3Error::NotDirectory: Provided path ‘{}’ is not a directory.",
@@ -247,7 +243,7 @@ impl Display for ProviderSqlite3Error {
             ProviderSqlite3Error::SchemaInvalid(ref error) => write!(
                 formatter,
                 "ProviderSqlite3Error::SchemaInvalid: [{}].",
-                error.to_string()
+                error
             ),
         }
     }
@@ -383,7 +379,7 @@ impl Display for SchemaError {
                 path,
             ),
             SchemaError::Sqlite3( ref error ) => write!(
-                formatter, "SchemaError::Sqlite3: [{}].", error.to_string()
+                formatter, "SchemaError::Sqlite3: [{}].", error
             ),
         }
     }

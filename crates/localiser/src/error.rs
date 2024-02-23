@@ -196,16 +196,16 @@ impl Display for LocaliserError {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         match self {
             LocaliserError::Registry( ref error ) => write!(
-                formatter, "LocaliserError::Registry: [{}].", error.to_string()
+                formatter, "LocaliserError::Registry: [{}].", error
             ),
             LocaliserError::Parser( ref error ) => write!(
-                formatter, "LocaliserError::Parser: [{}].", error.to_string()
+                formatter, "LocaliserError::Parser: [{}].", error
             ),
             LocaliserError::Formatter( ref error ) => write!(
-                formatter, "LocaliserError::Formatter: [{}].", error.to_string()
+                formatter, "LocaliserError::Formatter: [{}].", error
             ),
             LocaliserError::Provider( ref error ) => write!(
-                formatter, "LocaliserError::Provider: [{}].", error.to_string()
+                formatter, "LocaliserError::Provider: [{}].", error
             ),
             LocaliserError::StringNotFound(
                 component, identifier, language_tag, fallback
@@ -1257,31 +1257,31 @@ impl Display for FormatterError {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         match self {
             FormatterError::Localiser( ref error ) => write!(
-                formatter, "FormatterError::Localiser: [{}].", error.to_string()
+                formatter, "FormatterError::Localiser: [{}].", error
             ),
             FormatterError::Locale( ref error ) => write!(
-                formatter, "FormatterError::Locale: [{}].", error.to_string()
+                formatter, "FormatterError::Locale: [{}].", error
             ),
             FormatterError::Calendar( ref error ) => write!(
-                formatter, "FormatterError::Calendar: [{}].", error.to_string()
+                formatter, "FormatterError::Calendar: [{}].", error
             ),
             FormatterError::ParseInt( ref error ) => write!(
-                formatter, "FormatterError::ParseInt: [{}].", error.to_string()
+                formatter, "FormatterError::ParseInt: [{}].", error
             ),
             FormatterError::Decimal( ref error ) => write!(
-                formatter, "FormatterError::Decimal: [{}].", error.to_string()
+                formatter, "FormatterError::Decimal: [{}].", error
             ),
             FormatterError::DateTime( ref error ) => write!(
-                formatter, "FormatterError::DateTime: [{}].", error.to_string()
+                formatter, "FormatterError::DateTime: [{}].", error
             ),
             FormatterError::PluralRules( ref error ) => write!(
-                formatter, "FormatterError::PluralRules: [{}].", error.to_string()
+                formatter, "FormatterError::PluralRules: [{}].", error
             ),
             FormatterError::FixedDecimal( ref error ) => write!(
-                formatter, "FormatterError::FixedDecimal: [{}].", error.to_string()
+                formatter, "FormatterError::FixedDecimal: [{}].", error
             ),
             FormatterError::Command( ref error ) => write!(
-                formatter, "FormatterError::Command: [{}].", error.to_string()
+                formatter, "FormatterError::Command: [{}].", error
             ),
             FormatterError::InvalidRoot => write!( formatter, "The tree root must be a ‘Root’ node." ),
             FormatterError::RetrieveChildren( node_type ) =>
