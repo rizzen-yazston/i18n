@@ -5,10 +5,8 @@
 resolver = "2"
 members = [
     "crates/i18n",
-    "crates/icu",
     "crates/lexer",
     "crates/localiser",
-    "crates/pattern",
     "crates/provider/core",
     "crates/provider/sqlite3",
     "crates/utility",
@@ -40,10 +38,8 @@ version = "0.8.0"
 # Project crates
 # KEEP IN SYNC WITH workspace.members
 i18n-rizzen-yazston = { version = "0.8.0", path = ".crates/i18n", default-features = false }
-i18n_icu-rizzen-yazston = { version = "0.8.0", path = "crates/icu", default-features = false }
 i18n_lexer-rizzen-yazston = { version = "0.8.0", path = "crates/lexer", default-features = false }
 i18n_localiser-rizzen-yazston = { version = "0.8.0", path = "crates/localiser", default-features = false }
-i18n_pattern-rizzen-yazston = { version = "0.8.0", path = "crates/pattern", default-features = false }
 i18n_provider-rizzen-yazston = { version = "0.8.0", path = "crates/provider/core", default-features = false }
 i18n_provider_sqlite3-rizzen-yazston = { version = "0.8.0", path = "crates/provider/sqlite3", default-features = false }
 i18n_utility-rizzen-yazston = { version = "0.8.0", path = "crates/utility", default-features = false }
@@ -75,7 +71,6 @@ fixed_decimal = { version = "0.5.4", default-features = false, features = [ "ryu
 #fixed_decimal = { git = "https://github.com/unicode-org/icu4x", branch = "main", features = [ "ryu" ], default-features = false }
 
 # Other dependendies
-tree-rizzen-yazston = { version = "0.4.0", default-features = false }
 log = { version = "0.4.20", default-features = false }
 os_info = { version = "3", default-features = false }
 rusqlite = { version = "0.29.0", default-features = false }

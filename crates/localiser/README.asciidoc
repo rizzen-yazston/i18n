@@ -1,19 +1,23 @@
-= i18n_message
+= i18n_localiser
 Rizzen Yazston
 
-== Message system
+Welcome to the *`i18n_localiser`* crate of the _Internationalisation_ (i18n) project.
 
-The `i18n_message` crate contains the localiser.
+This crate consists of five modules:
 
-A localiser that connects to a string data store, to obtain strings for the specified language using a string identifier, and formatting the string to replace any placeholders within the string with provided values.
+* `command`: Contains the command registry,
 
-The localiseris capable of caching retrieved strings that are prepared for placeholder replacement, thus can be reused without the need to parse the string for placeholders.
+* `error`: Contains the error enums for other modules,
 
-The localiser makes use of all the other component crates that make up the `i18n` project. Ideally one only needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_message` crate.
+* `formatter` [Private]: The actual string formatter of the localiser,
+
+* `localiser`: Contains the localiser,
+
+* `tree` [Private]: Simple tagged string type.
 
 == Features
 
-Available features for `i18n_icu` crate:
+Available features for `i18n_localiser` crate:
 
 * `icu_blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports {BufferProvider}[`BufferProvider`]. An alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
  
@@ -26,6 +30,32 @@ Available features for `i18n_icu` crate:
 * `logging`: To provide some logging information.
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+
+== Modules
+
+=== `command`: User defined commands registry
+
+This module contains the command registry for user defined functions.
+
+The module also contains two example commands.
+
+=== `formatter`: Formatter (Private)
+
+The `Formatter` is the formatter state created by parsing a pattern string. The `Formatter` is used to create localised strings for the provided placeholder values.
+
+=== `localiser`: The Localiser
+
+A localiser that connects to a localisation string data store, to obtain strings for the specified language using a string identifier, and formatting the string to replace any placeholders within the string with provided values.
+
+The localiser is capable of caching retrieved strings that are prepared for placeholder replacement, thus can be reused without the need to parse the string for placeholders.
+
+The localiser makes use of all the other component crates that make up the `i18n` project. Ideally one only needs to use the meta crate `i18n`, as it includes all the crates including this `i18n_localiser` crate.
+
+=== `tree`: Tree (Private)
+
+A custom tree that is used internally of the formatter. The tree is created by parsing the provided string, then used to create the formatter state, that is used for creating the formatted localised string from provided placeholder values.
+
+See `pattern strings.asciidoc` in `docs` of `i18n_lexer` crate for the pattern formatting specification.
 
 == Acknowledgement
 

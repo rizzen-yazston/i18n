@@ -1,7 +1,7 @@
 // This file is part of `i18n_provider_sqlite3-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
-//! Testing `strings()` and `default_tag()`.
+//! Testing string(s) retrieval and various details`.
 
 use i18n_provider::LocalisationProviderTrait;
 use i18n_provider_sqlite3::LocalisationProviderSqlite3;

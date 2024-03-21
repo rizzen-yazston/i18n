@@ -348,10 +348,10 @@ impl LocalisationProviderSqlite3 {
     }
 
     // Fallback to <component>.sqlite3 is handled by caller.
-    fn find_strings<T: AsRef<str>>(
+    fn find_strings(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         language_tag: &RefCount<LanguageTag>,
         all_in_one: bool,
         only_one: bool,
@@ -410,10 +410,10 @@ impl LocalisationProviderSqlite3 {
         }
 
         #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component.as_ref(), all_in_one)?;
+        let connection = self.connection(component, all_in_one)?;
 
         #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component.as_ref(), all_in_one)?;
+        let connection = self.connection_sync(component, all_in_one)?;
 
         #[cfg(feature = "log")]
         debug!("SQL query string: [{}].", _query.as_ref().unwrap());
@@ -433,9 +433,9 @@ impl LocalisationProviderSqlite3 {
                 tag.push('%');
             }
             let mut rows = match if all_in_one {
-                statement.query([identifier.as_ref(), tag.as_str(), component.as_ref()])
+                statement.query([identifier, tag.as_str(), component])
             } else {
-                statement.query([identifier.as_ref(), tag.as_str()])
+                statement.query([identifier, tag.as_str()])
             } {
                 Ok(value) => value,
                 Err(error) => {
@@ -468,7 +468,7 @@ impl LocalisationProviderSqlite3 {
                         ))))
                     }
                 };
-                let language = self.language_tag_registry.as_ref().tag(tag_raw)?;
+                let language = self.language_tag_registry.as_ref().tag(tag_raw.as_str())?;
                 strings.push(TaggedString::new(string, &language));
             }
             if !strings.is_empty() {
@@ -585,17 +585,17 @@ impl LocalisationProviderSqlite3 {
                     ))))
                 }
             };
-            let language = self.language_tag_registry.as_ref().tag(tag_raw)?;
+            let language = self.language_tag_registry.as_ref().tag(tag_raw.as_str())?;
             languages.push(language);
         }
         Ok(languages)
     }
 
     // Fallback to <component>.sqlite3 is handled by caller.
-    fn identifier_languages<T: AsRef<str>>(
+    fn identifier_languages(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         all_in_one: bool,
     ) -> Result<Vec<RefCount<LanguageTag>>, ProviderError> {
         #[cfg(feature = "log")]
@@ -645,10 +645,10 @@ impl LocalisationProviderSqlite3 {
         }
 
         #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component.as_ref(), all_in_one)?;
+        let connection = self.connection(component, all_in_one)?;
 
         #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component.as_ref(), all_in_one)?;
+        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -660,7 +660,7 @@ impl LocalisationProviderSqlite3 {
         };
         let mut languages = Vec::<RefCount<LanguageTag>>::new();
         let mut rows = if all_in_one {
-            match statement.query([identifier.as_ref(), component.as_ref()]) {
+            match statement.query([identifier, component]) {
                 Ok(value) => value,
                 Err(error) => {
                     return Err(ProviderError::Custom(RefCount::new(Box::new(
@@ -669,7 +669,7 @@ impl LocalisationProviderSqlite3 {
                 }
             }
         } else {
-            match statement.query([identifier.as_ref()]) {
+            match statement.query([identifier]) {
                 Ok(value) => value,
                 Err(error) => {
                     return Err(ProviderError::Custom(RefCount::new(Box::new(
@@ -694,7 +694,7 @@ impl LocalisationProviderSqlite3 {
                     ))))
                 }
             };
-            let language = self.language_tag_registry.as_ref().tag(tag_raw)?;
+            let language = self.language_tag_registry.as_ref().tag(tag_raw.as_str())?;
             languages.push(language);
         }
         Ok(languages)
@@ -1013,7 +1013,7 @@ impl LocalisationProviderSqlite3 {
                     ))))
                 }
             };
-            tag = Some(self.language_tag_registry.as_ref().tag(tag_raw)?);
+            tag = Some(self.language_tag_registry.as_ref().tag(tag_raw.as_str())?);
         }
         Ok(tag)
     }
@@ -1218,13 +1218,6 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     /// if an exact match is not found then search using similar language tags, else [`None`] returned indicating no
     /// possible match was found.
     ///
-    /// If no string is found for the requested tag, the provider must remove the right most subtag sequentially until
-    /// either a match is found or there are no more subtags remaining, at which the result is `None` (not found).
-    ///
-    /// If more than one string matches the requested tag, then only one string is returned. This trait does not
-    /// specify how the string is to be selected to be returned, thus varied results may be experienced. Look at
-    /// `strings()` method to obtain all the strings, that matches the requested tag.
-    ///  
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository. The
     /// `ProviderError` contains the actual error [`ProviderSqlite3Error`], usually indicates
     /// there was a Sqlite3 error.
@@ -1299,7 +1292,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     }
 
     /// Obtain a localisation string ([`TaggedString`]) only if there is an exact match in the data repository for the
-    /// provided parameters, else [`None`] returned indicating no match was found.
+    /// provided parameters, else [`None`] returned indicating no exact match was found.
     ///
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository. The
     /// `ProviderError` contains the actual error [`ProviderSqlite3Error`], usually indicates
@@ -1612,8 +1605,8 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
 // Internal structs, enum, and functions
 
 // Created these functions to avoid code duplicates of getting around a known incorrect rust parsing error where
-// preceding statements with attribute "#[cfg( not( feature = "sync" ) )]" inside if branch. These Github issues
-// related to this incorrect parsing error, and issues are still open.
+// preceding statements with attribute "#[cfg( not( feature = "sync" ) )]" inside `if` branch. These Github issues are
+// still open relating to this incorrect parsing error.
 
 fn query_pattern(all_in_one: bool, only_one: bool, exact: bool) -> String {
     let mut query = "SELECT string, languageTag FROM pattern WHERE identifier = ?1 AND \

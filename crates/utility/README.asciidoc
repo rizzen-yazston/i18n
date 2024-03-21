@@ -4,27 +4,19 @@ Rizzen Yazston
 :url-unicode: https://home.unicode.org/
 :BCP_47_Language_Tag: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
-Welcome to the *utility* crate of the _Internationalisation_ (i18n) project.
+Welcome to the *`i18n_utility`* crate of the _Internationalisation_ (i18n) project.
 
-This crate consists of two modules:
+This crate consists of five modules:
 
-* `registry`: Registry for Language Tags and ICU4X's `Locale` instances,
+* `error`: Contains the error enum for the language registry,
 
-* `tagged_string`: Simple tagged string type.
+* `language`: Registry of language tags with ICU4X's `LanguageIdentifier` or `Locale` instances,
 
-== Registry for holding _ICU4X_ `Locale` objects.
+* `tagged_string`: Simple tagged string type,
 
-This module contains the `LanguageTagRegistry` type, to provide a simple container that caches the {BCP_47_Language_Tag}[BCP 47 Language Tag] strings and the `Locale` type for querying language tags. The purpose of the registry is to reduce the need of parsing language tags repeatedly, by storing the result `Locale` for querying language tag in the registry, and uses the existing `Locale` for the querying language tag when requested.
+* `traits`: Traits for localisation of structs and enums,
 
-The `Locale` type can be provided by either the `icu_locid` crate or the `icu` meta-crate. These two crates are part of the {icu4x}[ICU4X] protect developed by the {url-unicode}[Unicode Consortium].
-
-This crate makes use of the `Locale` type instead of the `LanguageIdentifier` type due to that the `Locale` type supports the entire BCP 47 Language Tag specification, where as the `LanguageIdentifier` type excludes the *extension* subtags of the BCP 47 Language Tag specification.
-
-== Tagged string.
-
-The immutable `TaggedString` type simply associates an identifier tag ([`Rc`]`<String>` or [`Arc`]`<String>`) to a text string ([`String`]).
-
-In the context of the `i18n` project, the identifier tag is expected to be a {BCP_47_Language_Tag}[BCP 47 Language Tag] string, even though any identifier could be used.
+* `types`: Simple struct and enum types.
 
 == Features
 
@@ -33,6 +25,22 @@ Available features for `i18n_utility` crate:
 * `icu_extended`: Use the more detailed ICU information structs, types, and methods.
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+
+== Modules
+
+=== `language`: Registry for holding _ICU4X_ `LanguageIdentifier` or `Locale` instances.
+
+This module contains the `LanguageTagRegistry` type, to provide a simple container that caches the {BCP_47_Language_Tag}[BCP 47 Language Tag] strings and the `LanguageIdentifier` instances, or when the `icu_extended` feature is enabled the `Locale` instances instances is used instead.
+
+The purpose of the registry is to reduce the need of parsing language tags repeatedly, by storing the result `LanguageIdentifier` for querying language tag in the registry, and uses the existing `LanguageIdentifier` for the querying language tag when requested.
+
+The `LanguageIdentifier` or `Locale` type can be provided by either the `icu_locid` crate or the `icu` meta-crate. These two crates are part of the {icu4x}[ICU4X] project developed by the {url-unicode}[Unicode Consortium].
+
+=== `tagged_string`: Tagged string.
+
+The immutable `TaggedString` type simply associates a language tag ([`Rc`]`<LanguageTag>` or [`Arc`]`<LanguageTag>`) to a text string ([`String`]).
+
+In the context of the `i18n` project, the identifier tag is expected to be a {BCP_47_Language_Tag}[BCP 47 Language Tag] string.
 
 == Acknowledgements
 

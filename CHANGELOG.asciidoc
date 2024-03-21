@@ -1,15 +1,23 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.?.? (2024-??-??)
+== i18n 0.9.0 (2024-??-??)
 
 TODO: fixed registry doc, TaggedString. Examples and tests already done.
 
-WARNING: This update has API breaking changes, Cargo feature changes.
+WARNING: This update has API breaking changes, Cargo feature changes, crates merging.
 
 * Updated the description in the project's `README.asciidoc`.
 
 * Source code clean up with the aid of `cargo clippy` and `cargo fmt`.
+
+* Streamlined the process of setting up the i18n environment.
+
+* Merged crate `i18n_icu` into `i18n_lexer`, and crate `i18n_pattern` into `i18n_localiser`.
+
+* Added experimental directory for prototyping and development of sub projects.
+
+** Added new subproject *i18n_renderer* for rendering text for various script types. Still in early stage.
 
 === Project wide changes
 
@@ -19,19 +27,65 @@ WARNING: This update has API breaking changes, Cargo feature changes.
 
 ** Renamed `blob` to `icu_blob`, `compiled_data` to `icu_compiled_data`, `fs` to `icu_fs`, `log` to `logging`.
 
-* Added experimental directory for prototyping and development of sub projects.
-
-** Added new subproject *i18n_renderer* for rendering text for various script types. Still in early stage.
+* Changed various functions and methods to use explicit `&str` instead of trait `AsRef<str>`, to avoid issues with passing `AsRef<str>` in internal called functions and methods.
 
 * Where required updated the `Cargo.toml`, `README.asciidoc`, tests, examples and documentation.
 
+=== i18n
+
+* Removed dependency crates `i18n_icu` and `i18n_pattern`.
+
+=== i18n_icu
+
+* Merged `i18n_icu` crate into `i18n_lexer` crate.
+
+* Removed the directory `crates/icu` after merging.
+
+=== i18n_lexer
+
+* Rewrote `Lexer` into an owned iterator `LexerIterator`.
+
+* Added new `LexerError` type to `error.rs`.
+
+* Renamed localisation repository from `i18n_icu.sqlite3` to `i18n_lexer.sqlite3` and added entries for `LexerError`.
+
 === i18n_localiser
 
+* Streamlined the i18n environment:
+
+** Made the `formatter.rs` to be private as the `Formatter` instances are created by the `Localiser` methods,
+
+** The creation of the `Tree` instance and the lexer are now embedded in the `Formatter::try_new()',
+
+** Made the `parser.rs` to be private due to the `Tree` creation is embedded in `Formatter::try_new()`,
+
+** Made the `LexerIterator` to be called from `Formatter::try_new()`,
+
+** As a result of streamlining the environment, the embedded `Tree` never gets a chance to be modified, thus a new custom stripped down optimised tree was created. As the tree being internal immutable, many sanity checks was removed and other unused methods was removed. The new `tree.rs` made to be private. Embedded the `LexerIterator` and the parser source code within the `Tree:try_new()`.
+
+* Modified various methods to use the new `Tree`.
+
+* Removed the crate dependency `tree-rizzen-yazston`.
+
+* Removed `parser.rs`.
+
+* Changed `AsRef<str>` to `&str` of various methods of various structs of the crate's modules.
+
+* Merged the `i18n_pattern.sqlite3` into `i18n_localiser.sqlite3`, and added entries for the new `TreeError`.
+
 * Various files, changed language tag parameters to use `LanguageTag` struct instead.
+
+=== i18n_pattern
+
+* Merged `i18n_pattern` crate into `i18n_localiser` crate.
+
+* Removed the directory `crates/pattern` after merging.
 
 === i18n_provider_sqlite3
 
 * Fixed log messages.
+
+* Changed `AsRef<str>` to `&str` of internal methods.
 
 * Various files, changed language tag parameters to use `LanguageTag` struct instead.
 

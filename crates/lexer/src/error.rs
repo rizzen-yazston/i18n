@@ -1,5 +1,5 @@
-// This file is part of `i18n_icu-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_icu-rizzen-yazston` crate.
+// This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
 
 use i18n_utility::{LocalisationData, LocalisationErrorTrait, LocalisationTrait, PlaceholderValue};
 
@@ -250,3 +250,86 @@ impl From<DataError> for IcuError {
         IcuError::Data(error)
     }
 }
+
+/// The `LexerError` type consists of the follow:
+///
+/// * `NoGrammar`: Indicates that no grammar syntax was supplied,
+///
+/// * `EmptyString`: An empty string was passed to the `LexerIterator`,
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum LexerError {
+    NoGrammar,
+    EmptyString,
+}
+
+impl LocalisationErrorTrait for LexerError {}
+
+impl LocalisationTrait for LexerError {
+    fn localisation_data(&self) -> LocalisationData {
+        let type_string = PlaceholderValue::String("LexerError".to_string());
+        match self {
+            LexerError::NoGrammar => {
+                let message = LocalisationData {
+                    component: "i18n_lexer".to_string(),
+                    identifier: "no_grammar_syntax".to_string(),
+                    values: None,
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert("type".to_string(), type_string);
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String("NoGrammar".to_string()),
+                );
+                values.insert(
+                    "message".to_string(),
+                    PlaceholderValue::LocalisationData(message),
+                );
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some(values),
+                }
+            }
+            LexerError::EmptyString => {
+                let message = LocalisationData {
+                    component: "i18n_lexer".to_string(),
+                    identifier: "empty_string".to_string(),
+                    values: None,
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert("type".to_string(), type_string);
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String("EmptyString".to_string()),
+                );
+                values.insert(
+                    "message".to_string(),
+                    PlaceholderValue::LocalisationData(message),
+                );
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some(values),
+                }
+            }
+        }
+    }
+}
+
+impl Display for LexerError {
+    fn fmt(&self, formatter: &mut Formatter) -> Result {
+        match self {
+            LexerError::NoGrammar => write!(
+                formatter,
+                "LexerError::NoGrammar: No grammar syntax characters was supplied.",
+            ),
+            LexerError::EmptyString => write!(
+                formatter,
+                "LexerError::EmptyString: Empty string was supplied.",
+            ),
+        }
+    }
+}
+
+impl Error for LexerError {}

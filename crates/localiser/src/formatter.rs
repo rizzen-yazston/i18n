@@ -3,12 +3,10 @@
 
 // Future feature option: language tag wrapping
 
-use crate::{FormatterError, Localiser};
+use crate::{CommandRegistry, FormatterError, Localiser, NodeType, Tree};
 use fixed_decimal::{DoublePrecision, FixedDecimal, SignDisplay};
 #[allow(unused_imports)]
-use i18n_icu::{DataProvider, IcuDataProvider};
-use i18n_lexer::Token;
-use i18n_pattern::{CommandRegistry, NodeType};
+use i18n_lexer::{DataProvider, IcuDataProvider, Token, TokenType};
 use i18n_utility::{LanguageTag, PlaceholderValue, TaggedString};
 use icu_calendar::{
     types::{IsoHour, IsoMinute, IsoSecond, NanoSecond, Time},
@@ -21,7 +19,6 @@ use icu_datetime::{
 use icu_decimal::{options, FixedDecimalFormatter};
 use icu_plurals::{PluralCategory, PluralRules};
 use icu_provider::prelude::DataLocale;
-use tree::Tree;
 
 #[cfg(not(feature = "extend"))]
 use icu_locid::LanguageIdentifier as Locale;
@@ -43,7 +40,7 @@ use std::sync::Arc as RefCount;
 
 use std::str::FromStr;
 
-pub struct Formatter {
+pub(crate) struct Formatter {
     language_tag: RefCount<LanguageTag>,
     locale: RefCount<Locale>,
     patterns: HashMap<String, Vec<PatternPart>>,
@@ -53,75 +50,29 @@ pub struct Formatter {
 
 impl Formatter {
     /// Creates a Formatter for a language string using parsing results.
-    /// During the creation of the formatter for the supplied [`Tree`], the semantic analyse is done.
-    ///
-    /* For now need to see how to modify to test these
-    /// # Examples
-    ///
-    /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_lexer::{ Token, TokenType, Lexer };
-    /// use i18n_pattern::{ parse, NodeType, Formatter, FormatterError, PlaceholderValue, CommandRegistry };
-    /// use icu_locid::Locale;
-    /// use std::collections::HashMap;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    ///
-    /// fn pattern_plural() -> Result<(), Box<dyn Error>> {
-    ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
-    ///     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
-    ///     let ( tokens, _lengths, _grammar ) =
-    ///         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}\
-    /// {one_dog is 1 dog}" );
-    ///     let tree = parse( tokens )?;
-    ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-    ///     let language_tag = Rc::new( locale.to_string() );
-    ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let mut formatter = Formatter::try_new(
-    ///         &icu_data_provider, &language_tag, &locale, &tree, &command_registry
-    ///     )?;
-    ///     let mut values = HashMap::<String, PlaceholderValue>::new();
-    ///     values.insert(
-    ///         "dogs_number".to_string(),
-    ///         PlaceholderValue::Unsigned( 3 )
-    ///     );
-    ///     let result = formatter.format( &values )?;
-    ///     assert_eq!(
-    ///         result.as_str(),
-    ///         "There are 3 dogs in the park.",
-    ///         "Strings must be the same."
-    ///     );
-    ///     Ok( () )
-    /// }
-    /// ```
-     */
-    ///  
-    /// [`Tree`]: tree::Tree
+    /// During the creation of the formatter for the supplied string, the semantic analyse is done.
     pub fn try_new(
         localiser: &Localiser,
         language_tag: &RefCount<LanguageTag>,
-        tree: &Tree,
+        string: &str,
     ) -> Result<Formatter, FormatterError> {
         #[cfg(feature = "log")]
         debug!("Creating formatter for language tag '{}'", language_tag);
 
+        println!("String: {}", string);
+        let tree = Tree::try_new(string, localiser.grammar(), localiser.icu_data_provider())?;
+        println!("Resulting Tree: {:?}", tree);
+        if !tree.has_grammar() {
+            return Err(FormatterError::NoGrammar);
+        }
         let locale = localiser
             .language_tag_registry()
-            .locale(language_tag.as_str())
+            .identifier(language_tag.as_str())
             .unwrap();
         let mut patterns = HashMap::<String, Vec<PatternPart>>::new();
         patterns.insert("_".to_string(), Vec::<PatternPart>::new()); // Insert empty main pattern.
         let mut numbers = Vec::<String>::new();
         let mut selectors = Vec::<HashMap<String, String>>::new();
-        if tree.len() == 0 {
-            return Ok(Formatter {
-                language_tag: RefCount::clone(language_tag),
-                locale,
-                patterns,
-                numbers,
-                selectors,
-            });
-        }
         let option_selectors = OptionSelectors {
             valid_plurals: vec!["zero", "one", "two", "few", "many", "other"],
             calendars: vec![
@@ -134,83 +85,61 @@ impl Formatter {
                 "iso",
             ],
         };
-        if !check_node_type(tree, 0, NodeType::Root) {
+        if tree.node_type(&0) != &NodeType::Root {
             return Err(FormatterError::InvalidRoot);
         }
 
         // Process substrings first if present.
-        if let Ok(last) = tree.last(0) {
-            if check_node_type(tree, last, NodeType::NamedGroup) {
-                #[cfg(feature = "log")]
-                trace!("Processing NamedGroup.");
+        let root_children = tree.children(&0); // Root has String and optional NamedGroup
+        if root_children.len() > 1 {
+            #[cfg(feature = "log")]
+            trace!("Processing NamedGroup.");
 
-                let Ok(named_strings) = tree.children(last) else {
-                    return Err(FormatterError::RetrieveChildren(NodeType::NamedGroup));
-                };
-                for named in named_strings.iter() {
-                    let mut pattern = Vec::<PatternPart>::new();
-                    if !check_node_type(tree, *named, NodeType::NamedString) {
-                        return Err(FormatterError::NodeNotFound(NodeType::NamedString));
-                    }
+            let named_strings = tree.children(&root_children[1]);
+            for named in named_strings.iter() {
+                // every child is a NamedString
+                let mut pattern = Vec::<PatternPart>::new();
 
-                    // Get NamedString identifier and check it is not already present.
-                    let Ok(first) = tree.first(*named) else {
-                        return Err(FormatterError::FirstChild(NodeType::NamedString));
-                    };
-                    if !check_node_type(tree, first, NodeType::Identifier) {
-                        return Err(FormatterError::NodeNotFound(NodeType::Identifier));
-                    }
-                    let Ok(identifier_data) = tree.data_ref(first) else {
-                        return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
-                    };
-                    let Some(identifier_token) = identifier_data
-                        .first()
-                        .unwrap()
-                        .downcast_ref::<RefCount<Token>>()
-                    else {
-                        return Err(FormatterError::RetrieveNodeToken(NodeType::Identifier));
-                    };
-                    if patterns.contains_key(identifier_token.string.as_str()) {
-                        return Err(FormatterError::NamedStringIdentifier(
-                            identifier_token.string.as_str().to_string(),
-                        ));
-                    }
+                // Get NamedString identifier and check it is not already present.
+                let identifier = tree.first(named).unwrap();
 
-                    // Got NamedString identifier
-                    let Ok(last) = tree.last(*named) else {
-                        return Err(FormatterError::LastChild(NodeType::NamedString));
-                    };
-                    if !check_node_type(tree, last, NodeType::String) {
-                        return Err(FormatterError::NodeNotFound(NodeType::Identifier));
-                    }
-                    let Ok(children) = tree.children(last) else {
-                        return Err(FormatterError::RetrieveChildren(NodeType::String));
-                    };
-                    for child in children.iter() {
-                        if check_node_type(tree, *child, NodeType::Text) {
-                            part_text(&mut pattern, tree, *child)?;
-                        } else if check_node_type(tree, *child, NodeType::NumberSign) {
-                            let len = numbers.len();
-                            numbers.push(String::new());
-                            pattern.push(PatternPart::NumberSign(len));
-                        } else if check_node_type(tree, *child, NodeType::Pattern) {
-                            part_pattern(
-                                &mut pattern,
-                                &patterns,
-                                tree,
-                                *child,
-                                &mut selectors,
-                                &option_selectors,
-                                &locale,
-                            )?;
-                        } else if check_node_type(tree, *child, NodeType::Command) {
-                            part_command(&mut pattern, tree, *child, localiser.command_registry())?;
-                        } else {
-                            return Err(FormatterError::InvalidNode(NodeType::String));
-                        }
-                    }
-                    patterns.insert(identifier_token.string.as_str().to_string(), pattern);
+                // Two children: Identifier, String
+                let identifier_token = tree.token(&tree.tokens(identifier).unwrap()[0]);
+                if patterns.contains_key(identifier_token.string.as_str()) {
+                    return Err(FormatterError::NamedStringIdentifier(
+                        identifier_token.string.as_str().to_string(),
+                    ));
                 }
+
+                // Got NamedString identifier
+                let string = tree.last(named).unwrap();
+                let children = tree.children(string);
+                for child in children.iter() {
+                    let node_type = tree.node_type(child);
+                    if node_type == &NodeType::Text {
+                        part_text(&mut pattern, &tree, child)?;
+                    } else if node_type == &NodeType::NumberSign {
+                        let len = numbers.len();
+                        numbers.push(String::new());
+                        pattern.push(PatternPart::NumberSign(len));
+                    } else if node_type == &NodeType::Pattern {
+                        part_pattern(
+                            &mut pattern,
+                            &patterns,
+                            &tree,
+                            child,
+                            &mut selectors,
+                            &option_selectors,
+                            &locale,
+                        )?;
+                    } else if node_type == &NodeType::Command {
+                        part_command(&mut pattern, &tree, child, localiser.command_registry())?;
+                    } else {
+                        // Should never reach
+                        return Err(FormatterError::InvalidNode(NodeType::String));
+                    }
+                }
+                patterns.insert(identifier_token.string.as_str().to_string(), pattern);
             }
         };
 
@@ -219,31 +148,24 @@ impl Formatter {
         trace!("Processing main string");
 
         let mut pattern = Vec::<PatternPart>::new();
-        let Ok(first) = tree.first(0) else {
-            return Err(FormatterError::FirstChild(NodeType::Root));
-        };
-        if !check_node_type(tree, first, NodeType::String) {
-            return Err(FormatterError::NodeNotFound(NodeType::String));
-        }
-        let Ok(children) = tree.children(first) else {
-            return Err(FormatterError::RetrieveChildren(NodeType::String));
-        };
+        let children = tree.children(&root_children[0]);
         for child in children.iter() {
-            if check_node_type(tree, *child, NodeType::Text) {
-                part_text(&mut pattern, tree, *child)?;
-            } else if check_node_type(tree, *child, NodeType::Pattern) {
+            if tree.node_type(child) == &NodeType::Text {
+                part_text(&mut pattern, &tree, child)?;
+            } else if tree.node_type(child) == &NodeType::Pattern {
                 part_pattern(
                     &mut pattern,
                     &patterns,
-                    tree,
-                    *child,
+                    &tree,
+                    child,
                     &mut selectors,
                     &option_selectors,
                     &locale,
                 )?;
-            } else if check_node_type(tree, *child, NodeType::Command) {
-                part_command(&mut pattern, tree, *child, localiser.command_registry())?;
+            } else if tree.node_type(child) == &NodeType::Command {
+                part_command(&mut pattern, &tree, child, localiser.command_registry())?;
             } else {
+                // Should never reach
                 return Err(FormatterError::InvalidNode(NodeType::String));
             }
         }
@@ -258,65 +180,20 @@ impl Formatter {
     }
 
     /// Format the language string with supplied values as [`HashMap`]`<`[`String`]`, `[`PlaceholderValue`]`>`.
-    ///
-    /* For now need to see how to modify to test these
-    /// # Examples
-    ///
-    /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_lexer::{ Token, TokenType, Lexer };
-    /// use i18n_utility::PlaceholderValue;
-    /// use i18n_pattern::{ parse, NodeType, CommandRegistry };
-    /// use i18n_localiser::{ Formatter, FormatterError }
-    /// use icu_locid::Locale;
-    /// use std::collections::HashMap;
-    /// use std::rc::Rc;
-    /// use std::error::Error;
-    ///
-    /// fn pattern_plural() -> Result<(), Box<dyn Error>> {
-    ///     let icu_data_provider = Rc::new( IcuDataProvider::try_new( DataProvider::Internal )? );
-    ///     let mut lexer = Lexer::new( vec![ '{', '}', '`', '#' ], &icu_data_provider );
-    ///     let ( tokens, _lengths, _grammar ) =
-    ///         lexer.tokenise( "There {dogs_number plural one#one_dog other#dogs} in the park.#{dogs are # dogs}{one_dog is 1 dog}" );
-    ///     let tree = parse( tokens )?;
-    ///     let locale: Rc<Locale> = Rc::new( "en-ZA".parse().expect( "Failed to parse language tag." ) );
-    ///     let language_tag = Rc::new( locale.to_string() );
-    ///     let command_registry = Rc::new( CommandRegistry::new() );
-    ///     let mut formatter = Formatter::try_new(
-    ///         &icu_data_provider, &language_tag, &locale, &tree, &command_registry
-    ///     )?;
-    ///     let mut values = HashMap::<String, PlaceholderValue>::new();
-    ///     values.insert(
-    ///         "dogs_number".to_string(),
-    ///         PlaceholderValue::Unsigned( 3 )
-    ///     );
-    ///     let result = formatter.format( &values )?;
-    ///     assert_eq!(
-    ///         result.as_str(),
-    ///         "There are 3 dogs in the park.",
-    ///         "Strings must be the same."
-    ///     );
-    ///     Ok( () )
-    /// }
-    /// ```
-     */
     pub fn format(
         &mut self,
         localiser: &Localiser,
         values: &HashMap<String, PlaceholderValue>,
     ) -> Result<TaggedString, FormatterError> {
-        if self.patterns.get("_").unwrap().is_empty() {
-            return Ok(TaggedString::new(String::new(), &self.language_tag));
-        }
-        let pattern_string = self.format_pattern(localiser, values, &"_".to_string())?;
+        let pattern_string = self.format_pattern(localiser, values, "_")?;
         Ok(TaggedString::new(pattern_string, &self.language_tag))
     }
 
     // Internal methods
 
-    fn part_ref(&self, string: &String, index: usize) -> Option<&PatternPart> {
+    fn part_ref(&self, string: &str, index: &usize) -> Option<&PatternPart> {
         if let Some(pattern) = self.patterns.get(string) {
-            if let Some(part) = pattern.get(index) {
+            if let Some(part) = pattern.get(*index) {
                 return Some(part);
             }
         }
@@ -327,7 +204,7 @@ impl Formatter {
         &mut self,
         localiser: &Localiser,
         values: &HashMap<String, PlaceholderValue>,
-        named: &String,
+        named: &str,
     ) -> Result<String, FormatterError> {
         let mut string = String::new();
         let mut _len = 0usize;
@@ -339,7 +216,7 @@ impl Formatter {
         }
         let mut i = 0usize;
         while i < _len {
-            let Some(part) = self.part_ref(named, i) else {
+            let Some(part) = self.part_ref(named, &i) else {
                 return Err(FormatterError::PatternPart(named.to_string(), i));
             };
             match part {
@@ -725,7 +602,7 @@ impl Formatter {
             while i < _len {
                 let mut _part: Option<&PatternPart> = None;
                 {
-                    let Some(part) = self.part_ref(&_named, i) else {
+                    let Some(part) = self.part_ref(&_named, &i) else {
                         return Err(FormatterError::PatternPart(_named, i));
                     };
                     _part = Some(part);
@@ -1123,37 +1000,17 @@ pub fn decompose_iso_time(string: &str) -> Result<Time, FormatterError> {
 
 // Internal structures, enums, etc.
 
-// Check node type.
-fn check_node_type(tree: &Tree, index: usize, node_type: NodeType) -> bool {
-    let Ok(node_type_data) = tree.node_type(index) else {
-        return false;
-    };
-    let Some(node_type2) = node_type_data.as_ref().unwrap().downcast_ref::<NodeType>() else {
-        return false;
-    };
-    if node_type != *node_type2 {
-        return false;
-    }
-    true
-}
-
 fn part_text(
     pattern: &mut Vec<PatternPart>,
     tree: &Tree,
-    index: usize,
+    index: &usize,
 ) -> Result<(), FormatterError> {
     #[cfg(feature = "log")]
     trace!("Processing text node.");
 
     let mut string = String::new();
-    let Ok(text_data) = tree.data_ref(index) else {
-        return Err(FormatterError::RetrieveNodeData(NodeType::Text));
-    };
-    for token_data in text_data.iter() {
-        let Some(token) = token_data.downcast_ref::<RefCount<Token>>() else {
-            return Err(FormatterError::RetrieveNodeToken(NodeType::Text));
-        };
-        string.push_str(token.string.as_str());
+    for token in tree.tokens(index).unwrap().iter() {
+        string.push_str(tree.token(token).string.as_str());
     }
     pattern.push(PatternPart::Text(string));
     Ok(())
@@ -1163,7 +1020,7 @@ fn part_pattern(
     pattern: &mut Vec<PatternPart>,
     patterns: &HashMap<String, Vec<PatternPart>>,
     tree: &Tree,
-    index: usize,
+    index: &usize,
     selectors: &mut Vec<HashMap<String, String>>,
     option_selectors: &OptionSelectors,
     locale: &RefCount<Locale>,
@@ -1171,28 +1028,17 @@ fn part_pattern(
     #[cfg(feature = "log")]
     trace!("Processing pattern node.");
 
-    let Ok(children) = tree.children(index) else {
-        return Err(FormatterError::RetrieveChildren(NodeType::Pattern));
-    };
+    let children = tree.children(index);
     let mut iterator = children.iter();
 
     // Identifier - first node
     let Some(placeholder) = iterator.next() else {
         return Err(FormatterError::NoChildren(NodeType::Pattern));
     };
-    if !check_node_type(tree, *placeholder, NodeType::Identifier) {
+    if tree.node_type(placeholder) != &NodeType::Identifier {
         return Err(FormatterError::NodeNotFound(NodeType::Identifier));
     }
-    let Ok(placeholder_data) = tree.data_ref(*placeholder) else {
-        return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
-    };
-    let Some(placeholder_token) = placeholder_data
-        .first()
-        .unwrap()
-        .downcast_ref::<RefCount<Token>>()
-    else {
-        return Err(FormatterError::RetrieveNodeToken(NodeType::Identifier));
-    };
+    let placeholder_token = tree.token(&tree.tokens(placeholder).unwrap()[0]);
 
     // Keyword - second node
     let keyword = match iterator.next() {
@@ -1203,21 +1049,12 @@ fn part_pattern(
             ));
             return Ok(());
         }
-        Some(keyword) => *keyword,
+        Some(keyword) => keyword,
     };
-    if !check_node_type(tree, keyword, NodeType::Identifier) {
+    if tree.node_type(keyword) != &NodeType::Identifier {
         return Err(FormatterError::NodeNotFound(NodeType::Identifier));
     }
-    let Ok(keyword_data) = tree.data_ref(keyword) else {
-        return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
-    };
-    let Some(keyword_token) = keyword_data
-        .first()
-        .unwrap()
-        .downcast_ref::<RefCount<Token>>()
-    else {
-        return Err(FormatterError::RetrieveNodeToken(NodeType::Identifier));
-    };
+    let keyword_token = tree.token(&tree.tokens(keyword).unwrap()[0]);
 
     // Options and selectors for keywords.
     // TODO: add more options as they become non-experimental.
@@ -1414,7 +1251,7 @@ fn part_pattern(
 fn part_command(
     pattern: &mut Vec<PatternPart>,
     tree: &Tree,
-    index: usize,
+    index: &usize,
     command_registry: &RefCount<CommandRegistry>,
 ) -> Result<(), FormatterError> {
     #[cfg(feature = "log")]
@@ -1422,68 +1259,39 @@ fn part_command(
 
     let mut delay = false;
     let mut parameters = Vec::<PlaceholderValue>::new();
-    let Ok(children) = tree.children(index) else {
-        return Err(FormatterError::RetrieveChildren(NodeType::Pattern));
-    };
+    let children = tree.children(index);
     let mut iterator = children.iter();
 
     // Identifier - first node
     let Some(command) = iterator.next() else {
         return Err(FormatterError::NoChildren(NodeType::Pattern));
     };
-    if !check_node_type(tree, *command, NodeType::Identifier) {
+    if tree.node_type(command) != &NodeType::Identifier {
         return Err(FormatterError::NodeNotFound(NodeType::Identifier));
     }
-    let Ok(command_data) = tree.data_ref(*command) else {
-        return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
-    };
-    let Some(command_token) = command_data
-        .first()
-        .unwrap()
-        .downcast_ref::<RefCount<Token>>()
-    else {
-        return Err(FormatterError::RetrieveNodeToken(NodeType::Identifier));
-    };
-    parameters.push(PlaceholderValue::String(
-        command_token.as_ref().string.to_string(),
-    ));
+    let command_token = tree.token(&tree.tokens(command).unwrap()[0]);
+    parameters.push(PlaceholderValue::String(command_token.string.to_string()));
 
     // Check if delay command marker `#` is present.
     //peek ahead so not to interfere with while if not present.
     let mut iterator_peeking = iterator.clone();
     let command_next = iterator_peeking.next();
-    if command_next.is_some() && check_node_type(tree, *command_next.unwrap(), NodeType::NumberSign)
-    {
+    if command_next.is_some() && tree.node_type(command_next.unwrap()) == &NodeType::NumberSign {
         delay = true;
         iterator = iterator_peeking;
     }
 
     // Rest can be either Identifier or Text nodes.
     for parameter in iterator {
-        if check_node_type(tree, *parameter, NodeType::Identifier) {
-            let Ok(identifier_data) = tree.data_ref(*parameter) else {
-                return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
-            };
-            let Some(identifier_token) = identifier_data
-                .first()
-                .unwrap()
-                .downcast_ref::<RefCount<Token>>()
-            else {
-                return Err(FormatterError::RetrieveNodeToken(NodeType::Identifier));
-            };
+        if tree.node_type(parameter) == &NodeType::Identifier {
+            let identifier_token = tree.token(&tree.tokens(parameter).unwrap()[0]);
             parameters.push(PlaceholderValue::String(
-                identifier_token.as_ref().string.to_string(),
+                identifier_token.string.to_string(),
             ));
-        } else if check_node_type(tree, *parameter, NodeType::Text) {
+        } else if tree.node_type(parameter) == &NodeType::Text {
             let mut string = String::new();
-            let Ok(text_data) = tree.data_ref(*parameter) else {
-                return Err(FormatterError::RetrieveNodeData(NodeType::Text));
-            };
-            for token_data in text_data.iter() {
-                let Some(token) = token_data.downcast_ref::<RefCount<Token>>() else {
-                    return Err(FormatterError::RetrieveNodeToken(NodeType::Text));
-                };
-                string.push_str(token.string.as_str());
+            for token in tree.tokens(parameter).unwrap().iter() {
+                string.push_str(tree.token(token).string.as_str());
             }
             parameters.push(PlaceholderValue::String(string));
         } else {
@@ -1495,54 +1303,37 @@ fn part_command(
             strings: parameters,
         });
     } else {
-        let function = command_registry.command(&command_token.as_ref().string)?;
+        let function = command_registry.command(&command_token.string)?;
         pattern.push(PatternPart::Text(function(parameters)?));
     }
     Ok(())
 }
 
-fn pattern_selectors(tree: &Tree, index: usize) -> Result<HashMap<String, String>, FormatterError> {
+fn pattern_selectors(
+    tree: &Tree,
+    index: &usize,
+) -> Result<HashMap<String, String>, FormatterError> {
     #[cfg(feature = "log")]
     trace!("Processing pattern selectors.");
 
     // Work around for inability to pass iterators, thus the iterator needs to be recreated.
-    let Ok(children) = tree.children(index) else {
-        panic!("Failed to recreate children iterator.");
-    };
+    let children = tree.children(index);
     let iterator = children.iter().skip(2);
     let mut pairs = HashMap::<String, String>::new();
     for selector in iterator {
-        if !check_node_type(tree, *selector, NodeType::Selector) {
+        if tree.node_type(selector) != &NodeType::Selector {
             return Err(FormatterError::NodeNotFound(NodeType::Selector));
         }
-        let Ok(first) = tree.first(*selector) else {
-            return Err(FormatterError::FirstChild(NodeType::Selector));
-        };
-        if !check_node_type(tree, first, NodeType::Identifier) {
+        let first = tree.first(selector).unwrap();
+        if tree.node_type(first) != &NodeType::Identifier {
             return Err(FormatterError::NodeNotFound(NodeType::Identifier));
         }
-        let Ok(first_data) = tree.data_ref(first) else {
-            return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
-        };
-        let Some(first_token) = first_data
-            .first()
-            .unwrap()
-            .downcast_ref::<RefCount<Token>>()
-        else {
-            return Err(FormatterError::RetrieveNodeToken(NodeType::Identifier));
-        };
-        let Ok(last) = tree.last(*selector) else {
-            return Err(FormatterError::LastChild(NodeType::Selector));
-        };
-        if !check_node_type(tree, last, NodeType::Identifier) {
+        let first_token = tree.token(&tree.tokens(first).unwrap()[0]);
+        let last = tree.first(selector).unwrap();
+        if tree.node_type(last) != &NodeType::Identifier {
             return Err(FormatterError::NodeNotFound(NodeType::Identifier));
         }
-        let Ok(last_data) = tree.data_ref(last) else {
-            return Err(FormatterError::RetrieveNodeData(NodeType::Identifier));
-        };
-        let Some(last_token) = last_data.first().unwrap().downcast_ref::<RefCount<Token>>() else {
-            return Err(FormatterError::RetrieveNodeToken(NodeType::Identifier));
-        };
+        let last_token = tree.token(&tree.tokens(last).unwrap()[0]);
         pairs.insert(
             first_token.string.to_string(),
             last_token.string.to_string(),

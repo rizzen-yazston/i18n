@@ -5,9 +5,13 @@ Rizzen Yazston
 :ICU4X: https://github.com/unicode-org/icu4x
 :Unicode_Consortium: https://home.unicode.org/
 
-Sqlite3 provider for localisation strings.
+Welcome to the *`i18n_provider_sqlite3`* crate of the _Internationalisation_ (i18n) project.
 
-This crate implements [`LocalisationProviderTrait`] using Sqlite3 as the data store for localisation strings. As a directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an application can have multiple data stores for both application localisation strings, and also for data packages' localisation strings.
+This crate consists of two modules:
+
+* `error`: Contains the error enum for the Sqlite3 provider,
+
+* `provider`: The provider implementation using Sqlite3 for the data store.
 
 == Features
 
@@ -16,6 +20,12 @@ Available features for `i18n_provider_sqlite3` crate:
 * `logging`: To provide some logging information.
 
 * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and `RefCell`.
+
+== Modules
+
+=== Sqlite3 provider for localisation strings.
+
+This crate implements [`LocalisationProviderTrait`] using Sqlite3 as the data store for localisation strings. As a directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an application can have multiple data stores for both application localisation strings, and also for data packages' localisation strings.
 
 == Localisation Sqlite3 templates
  

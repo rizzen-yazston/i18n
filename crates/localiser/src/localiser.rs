@@ -1,10 +1,8 @@
 // This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-use crate::{Formatter, LocaliserError};
-use i18n_icu::IcuDataProvider;
-use i18n_lexer::Lexer;
-use i18n_pattern::{parse, CommandRegistry};
+use crate::{CommandRegistry, Formatter, FormatterError, LocaliserError};
+use i18n_lexer::IcuDataProvider;
 use i18n_provider::LocalisationProviderTrait;
 use i18n_utility::{
     LanguageTag, LanguageTagRegistry, LocalisationData, LocalisationErrorTrait, PlaceholderValue,
@@ -33,7 +31,7 @@ use std::rc::Rc;
 
 pub struct Localiser {
     icu_data_provider: RefCount<IcuDataProvider>,
-    lexer: MutCell<Lexer>,
+    grammar: String,
     language_registry: RefCount<LanguageTagRegistry>,
     localisation_provider: Box<dyn LocalisationProviderTrait>,
     command_registry: RefCount<CommandRegistry>,
@@ -60,11 +58,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::Localiser;
+    /// use i18n_localiser::{CommandRegistry, Localiser};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -115,19 +112,19 @@ impl Localiser {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn try_new<T: AsRef<str>>(
+    pub fn try_new(
         icu_data_provider: &RefCount<IcuDataProvider>,
         language_tag_registry: &RefCount<LanguageTagRegistry>,
         localisation_provider: Box<dyn LocalisationProviderTrait>,
         command_registry: &RefCount<CommandRegistry>,
         fallback: bool,
         caching: bool,
-        language_tag: T,
+        language_tag: &str,
     ) -> Result<Localiser, LocaliserError> {
         let tag = language_tag_registry.tag(language_tag)?;
         Ok(Localiser {
             icu_data_provider: RefCount::clone(icu_data_provider),
-            lexer: MutCell::new(Lexer::new(vec!['{', '}', '`', '#'], icu_data_provider)),
+            grammar: "{}`#".to_string(),
             language_registry: RefCount::clone(language_tag_registry),
             localisation_provider,
             command_registry: RefCount::clone(command_registry),
@@ -148,11 +145,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::Localiser;
+    /// use i18n_localiser::{CommandRegistry, Localiser};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -203,10 +199,10 @@ impl Localiser {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn format<T: AsRef<str>>(
+    pub fn format(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         values: &HashMap<String, PlaceholderValue>,
         language_tag: &RefCount<LanguageTag>,
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
@@ -243,11 +239,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::Localiser;
+    /// use i18n_localiser::{CommandRegistry, Localiser};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -286,10 +281,10 @@ impl Localiser {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn format_with_defaults<T: AsRef<str>>(
+    pub fn format_with_defaults(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         values: &HashMap<String, PlaceholderValue>,
     ) -> Result<TaggedString, LocaliserError> {
         #[cfg(feature = "log")]
@@ -330,11 +325,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::Localiser;
+    /// use i18n_localiser::{CommandRegistry, Localiser};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -367,10 +361,10 @@ impl Localiser {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn literal<T: AsRef<str>>(
+    pub fn literal(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         language_tag: &RefCount<LanguageTag>,
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
@@ -405,11 +399,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::Localiser;
+    /// use i18n_localiser::{CommandRegistry, Localiser};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -438,10 +431,10 @@ impl Localiser {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn literal_with_defaults<T: AsRef<str>>(
+    pub fn literal_with_defaults(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
     ) -> Result<TaggedString, LocaliserError> {
         #[cfg(feature = "log")]
         debug!("Localiser is using literal_with_defaults().");
@@ -546,6 +539,11 @@ impl Localiser {
         &self.icu_data_provider
     }
 
+    /// Obtain the grammar syntax characters that is used by the localiser.
+    pub fn grammar(&self) -> &str {
+        self.grammar.as_str()
+    }
+
     /// For the provided [`LocalisationData`], format a string for the specified language tag with the supplied values
     /// for the placeholders. Optionally specify whether to fallback to the default language tag of string identifier
     /// when there is no string pattern for the specified language. Optionally specify whether the parsed string should
@@ -554,11 +552,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue, LocalisationData };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, LocalisationData, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::Localiser;
+    /// use i18n_localiser::{CommandRegistry, Localiser};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -647,11 +644,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue, LocalisationData };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, LocalisationData, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::Localiser;
+    /// use i18n_localiser::{CommandRegistry, Localiser};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -739,11 +735,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::{ Localiser, LocaliserError };
+    /// use i18n_localiser::{CommandRegistry, Localiser, LocaliserError};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -815,11 +810,10 @@ impl Localiser {
     /// # Examples
     ///
     /// ```
-    /// use i18n_icu::{ IcuDataProvider, DataProvider };
-    /// use i18n_utility::{ LanguageTagRegistry, PlaceholderValue };
+    /// use i18n_lexer::{IcuDataProvider, DataProvider};
+    /// use i18n_utility::{LanguageTagRegistry, PlaceholderValue};
     /// use i18n_provider_sqlite3::LocalisationProviderSqlite3;
-    /// use i18n_pattern::CommandRegistry;
-    /// use i18n_localiser::{ Localiser, LocaliserError };
+    /// use i18n_localiser::{CommandRegistry, Localiser, LocaliserError};
     /// use std::collections::HashMap;
     /// use std::rc::Rc;
     /// use std::error::Error;
@@ -892,16 +886,16 @@ impl Localiser {
     // for the placeholders. Optionally specify whether to fallback to the default language tag of string identifier
     // when there is no string pattern for the specified language. Optionally specify whether the parsed string should
     // be cache for reuse.
-    fn actual_format<T: AsRef<str>>(
+    fn actual_format(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         values: &HashMap<String, PlaceholderValue>,
         language_tag: &RefCount<LanguageTag>,
-        fallback: bool, // true = fallback to default language, None = use the Localiser default.
+        fallback: bool, // true = fallback to default language.
         caching: bool, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
-        let mut combined = component.as_ref().to_string();
+        let mut combined = component.to_string();
         combined.push('/');
         combined.push_str(identifier.as_ref());
         let mut _language_entry = false;
@@ -934,92 +928,64 @@ impl Localiser {
 
         // Not in cache.
         // Get pattern string for specified language, though returned `TaggedString` may be for another language.
-        let lstring = match self.localisation_provider.string(
-            component.as_ref(),
-            identifier.as_ref(),
-            language_tag,
-        )? {
-            Some(result) => result,
-            None => {
-                if !fallback {
-                    return Err(LocaliserError::StringNotFound(
-                        component.as_ref().to_string(),
-                        identifier.as_ref().to_string(),
-                        language_tag.as_str().to_string(),
-                        false,
-                    ));
-                }
-                let default_language = &self
-                    .localisation_provider
-                    .component_details(component.as_ref())?
-                    .default;
-                match self.localisation_provider.string(
-                    component.as_ref(),
-                    identifier.as_ref(),
-                    default_language,
-                )? {
-                    Some(result) => result,
-                    None => {
+        let lstring =
+            match self
+                .localisation_provider
+                .string(component, identifier, language_tag)?
+            {
+                Some(result) => result,
+                None => {
+                    if !fallback {
                         return Err(LocaliserError::StringNotFound(
-                            component.as_ref().to_string(),
-                            identifier.as_ref().to_string(),
-                            language_tag.as_str().to_owned(),
-                            true,
-                        ))
+                            component.to_string(),
+                            identifier.to_string(),
+                            language_tag.as_str().to_string(),
+                            false,
+                        ));
+                    }
+                    let default_language = &self
+                        .localisation_provider
+                        .component_details(component.as_ref())?
+                        .default;
+                    match self.localisation_provider.string(
+                        component.as_ref(),
+                        identifier.as_ref(),
+                        default_language,
+                    )? {
+                        Some(result) => result,
+                        None => {
+                            return Err(LocaliserError::StringNotFound(
+                                component.to_string(),
+                                identifier.to_string(),
+                                language_tag.as_str().to_owned(),
+                                true,
+                            ))
+                        }
                     }
                 }
-            }
-        };
+            };
 
         // Tokenise the pattern string.
+        // If string is empty, skip over formatter, simply cache (if allowed) and return the empty string.
         // If pattern string has no grammar syntax characters, simply cache (if allowed) and return the string.
-
-        #[cfg(not(feature = "sync"))]
-        let (tokens, _lengths, grammar_found) = self.lexer.borrow_mut().tokenise(lstring.as_str());
-
-        #[cfg(feature = "sync")]
-        let (tokens, _lengths, grammar_found) =
-            self.lexer.write().unwrap().tokenise(lstring.as_str());
-
-        if !grammar_found {
+        if lstring.as_str().is_empty() {
             if caching {
-                if !_language_entry {
-                    let mut data_entry = HashMap::<String, CacheData>::new();
-                    data_entry.insert(
-                        identifier.as_ref().to_string(),
-                        CacheData::TaggedString(lstring.clone()),
-                    );
-
-                    #[cfg(not(feature = "sync"))]
-                    self.cache
-                        .borrow_mut()
-                        .insert(RefCount::clone(language_tag), data_entry);
-
-                    #[cfg(feature = "sync")]
-                    self.cache
-                        .write()
-                        .unwrap()
-                        .insert(RefCount::clone(language_tag), data_entry);
-                } else {
-                    #[cfg(not(feature = "sync"))]
-                    let mut binding = self.cache.borrow_mut();
-
-                    #[cfg(feature = "sync")]
-                    let mut binding = self.cache.write().unwrap();
-
-                    let data_entry = binding.get_mut(language_tag);
-                    data_entry
-                        .unwrap()
-                        .insert(combined.clone(), CacheData::TaggedString(lstring.clone()));
-                }
+                self.add_string_to_cache(_language_entry, &combined, &lstring);
             }
             return Ok(lstring);
         }
-
-        // Has grammar syntax characters.
-        // Parse tokens and create `Formatter`
-        let tree = parse(tokens)?;
-        let mut formatter = Formatter::try_new(self, language_tag, &tree)?;
+        let mut formatter = match Formatter::try_new(self, language_tag, lstring.as_str()) {
+            Ok(value) => value,
+            Err(error) => match error {
+                FormatterError::NoGrammar => {
+                    if caching {
+                        self.add_string_to_cache(_language_entry, &combined, &lstring);
+                    }
+                    return Ok(lstring);
+                }
+                _ => return Err(LocaliserError::Formatter(error)),
+            },
+        };
 
         // If caching is not allowed, simple use `Formatter` to get the TaggedString.
         if !caching {
@@ -1086,17 +1052,17 @@ impl Localiser {
     }
 
     // Simply get the language string without any formatting being done.
-    fn actual_literal<T: AsRef<str>>(
+    fn actual_literal(
         &self,
-        component: T,
-        identifier: T,
+        component: &str,
+        identifier: &str,
         language_tag: &RefCount<LanguageTag>,
         fallback: bool, // true = fallback to default language, None = use the Localiser default.
         caching: bool, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
-        let mut combined = component.as_ref().to_string();
+        let mut combined = component.to_string();
         combined.push('/');
-        combined.push_str(identifier.as_ref());
+        combined.push_str(identifier);
         let mut _language_entry = false;
         {
             #[cfg(not(feature = "sync"))]
@@ -1111,8 +1077,8 @@ impl Localiser {
                     return match result2 {
                         CacheData::TaggedString(lstring) => Ok(lstring.clone()),
                         CacheData::Formatter(_formatter) => Err(LocaliserError::CacheEntry(
-                            component.as_ref().to_string(),
-                            identifier.as_ref().to_string(),
+                            component.to_string(),
+                            identifier.to_string(),
                         )),
                     };
                 }
@@ -1121,77 +1087,46 @@ impl Localiser {
 
         // Not in cache.
         // Get pattern string for specified language, though returned `TaggedString` may be for another language.
-        let lstring = match self.localisation_provider.string(
-            component.as_ref(),
-            identifier.as_ref(),
-            language_tag,
-        )? {
-            Some(result) => result,
-            None => {
-                if !fallback {
-                    return Err(LocaliserError::StringNotFound(
-                        component.as_ref().to_string(),
-                        identifier.as_ref().to_string(),
-                        language_tag.as_str().to_string(),
-                        false,
-                    ));
-                }
-                let default_language = &self
-                    .localisation_provider
-                    .component_details(component.as_ref())?
-                    .default;
-                match self.localisation_provider.string(
-                    component.as_ref(),
-                    identifier.as_ref(),
-                    default_language,
-                )? {
-                    Some(result) => result,
-                    None => {
+        let lstring =
+            match self
+                .localisation_provider
+                .string(component, identifier, language_tag)?
+            {
+                Some(result) => result,
+                None => {
+                    if !fallback {
                         return Err(LocaliserError::StringNotFound(
-                            component.as_ref().to_string(),
-                            identifier.as_ref().to_string(),
-                            language_tag.as_str().to_owned(),
-                            true,
-                        ))
+                            component.to_string(),
+                            identifier.to_string(),
+                            language_tag.as_str().to_string(),
+                            false,
+                        ));
+                    }
+                    let default_language = &self
+                        .localisation_provider
+                        .component_details(component.as_ref())?
+                        .default;
+                    match self.localisation_provider.string(
+                        component.as_ref(),
+                        identifier.as_ref(),
+                        default_language,
+                    )? {
+                        Some(result) => result,
+                        None => {
+                            return Err(LocaliserError::StringNotFound(
+                                component.to_string(),
+                                identifier.to_string(),
+                                language_tag.as_str().to_owned(),
+                                true,
+                            ))
+                        }
                     }
                 }
-            }
-        };
+            };
 
-        // If pattern string has no grammar syntax characters, simply cache (if allowed) and return the string.
+        // Since pattern string is treated as literal, simply cache (if allowed) and return the string.
         if caching {
-            #[cfg(feature = "log")]
-            debug!("Caching literal string.");
-
-            if !_language_entry {
-                let mut data_entry = HashMap::<String, CacheData>::new();
-                data_entry.insert(
-                    identifier.as_ref().to_string(),
-                    CacheData::TaggedString(lstring.clone()),
-                );
-
-                #[cfg(not(feature = "sync"))]
-                self.cache
-                    .borrow_mut()
-                    .insert(RefCount::clone(language_tag), data_entry);
-
-                #[cfg(feature = "sync")]
-                self.cache
-                    .write()
-                    .unwrap()
-                    .insert(RefCount::clone(language_tag), data_entry);
-            } else {
-                #[cfg(not(feature = "sync"))]
-                let mut binding = self.cache.borrow_mut();
-
-                #[cfg(feature = "sync")]
-                let mut binding = self.cache.write().unwrap();
-
-                let data_entry = binding.get_mut(language_tag);
-                data_entry
-                    .unwrap()
-                    .insert(combined.clone(), CacheData::TaggedString(lstring.clone()));
-            }
+            self.add_string_to_cache(_language_entry, &combined, &lstring);
         }
         Ok(lstring)
     }
@@ -1200,13 +1135,13 @@ impl Localiser {
         &self,
         data: &LocalisationData,
         language_tag: &RefCount<LanguageTag>,
-        fallback: bool, // true = fallback to default language, None = use the Localiser default.
+        fallback: bool, // true = fallback to default language
         caching: bool, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
         Ok(if data.values.is_none() {
             self.actual_literal(
-                data.component.clone(),
-                data.identifier.clone(),
+                data.component.as_str(),
+                data.identifier.as_str(),
                 language_tag,
                 fallback,
                 caching,
@@ -1232,14 +1167,49 @@ impl Localiser {
                 }
             }
             self.actual_format(
-                data.component.clone(),
-                data.identifier.clone(),
+                data.component.as_str(),
+                data.identifier.as_str(),
                 &values_new,
                 language_tag,
                 fallback,
                 caching,
             )?
         })
+    }
+
+    fn add_string_to_cache(&self, language_entry: bool, combined: &String, lstring: &TaggedString) {
+        #[cfg(feature = "log")]
+        debug!("Caching literal string.");
+
+        if !language_entry {
+            let mut data_entry = HashMap::<String, CacheData>::new();
+            data_entry.insert(
+                combined.to_string(),
+                CacheData::TaggedString(lstring.clone()),
+            );
+
+            #[cfg(not(feature = "sync"))]
+            self.cache
+                .borrow_mut()
+                .insert(RefCount::clone(lstring.tag()), data_entry);
+
+            #[cfg(feature = "sync")]
+            self.cache
+                .write()
+                .unwrap()
+                .insert(RefCount::clone(lstring.tag()), data_entry);
+        } else {
+            #[cfg(not(feature = "sync"))]
+            let mut binding = self.cache.borrow_mut();
+
+            #[cfg(feature = "sync")]
+            let mut binding = self.cache.write().unwrap();
+
+            let data_entry = binding.get_mut(lstring.tag());
+            data_entry
+                .unwrap()
+                .insert(combined.clone(), CacheData::TaggedString(lstring.clone()));
+        }
     }
 }
 

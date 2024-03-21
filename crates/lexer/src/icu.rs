@@ -1,5 +1,5 @@
-// This file is part of `i18n_icu-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_icu-rizzen-yazston` crate.
+// This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
 
 use crate::IcuError;
 
@@ -32,16 +32,19 @@ use icu_segmenter::GraphemeClusterSegmenter;
 use log::{debug, error};
 
 #[cfg(doc)]
-use std::sync::Arc;
+use icu_provider_blob::BlobDataProvider;
+
+#[cfg(doc)]
+use icu_provider_fs::FsDataProvider;
+
+#[cfg(doc)]
+use std::sync::{Arc, Mutex};
 
 #[cfg(doc)]
 use std::rc::Rc;
 
 #[cfg(doc)]
-use icu_provider_blob::BlobDataProvider;
-
-#[cfg(doc)]
-use icu_provider_fs::FsDataProvider;
+use std::cell::RefCell;
 
 /// Indicates which data provider to use for various supported ICU4X components:
 ///
@@ -67,8 +70,6 @@ pub enum DataProvider {
 }
 
 /// The `IcuDataProvider` type containing the `DataProvider` enum.
-///
-/// The `IcuDataProvider` type also contains non-locale based data used within the `i18n_lexer` crate.
 ///
 /// `IcuDataProvider` type is normally used within the [`Rc`] type as `Rc<IcuDataProvider>` or [`Arc`] type as
 /// `Arc<IcuDataProvider>` to prevent unnecessary duplication.

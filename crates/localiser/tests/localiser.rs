@@ -3,9 +3,8 @@
 
 //! Testing `Localiser`.
 
-use i18n_icu::{DataProvider, IcuDataProvider};
-use i18n_localiser::{Localiser, LocaliserError};
-use i18n_pattern::CommandRegistry;
+use i18n_lexer::{DataProvider, IcuDataProvider};
+use i18n_localiser::{CommandRegistry, Localiser, LocaliserError};
 use i18n_provider_sqlite3::LocalisationProviderSqlite3;
 use i18n_utility::{LanguageTagRegistry, LocalisationData, PlaceholderValue};
 use std::collections::HashMap;

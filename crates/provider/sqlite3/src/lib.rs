@@ -1,12 +1,13 @@
 // This file is part of `i18n_provider_sqlite3-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
-//! Sqlite3 provider for localisation strings.
+//! Welcome to the **`i18n_provider_sqlite3`** crate of the *Internationalisation* (i18n) project.
 //!
-//! This crate implements [`LocalisationProviderTrait`] using Sqlite3 as the data store for localisation strings. As a
-//! directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an
-//! application can have multiple data stores for both application localisation strings, and also for data packages'
-//! localisation strings.
+//! This crate consists of five modules:
+//!
+//! * [`error`]: Contains the error enum for the Sqlite3 provider,
+//!
+//! * [`provider`]: The provider implementation using Sqlite3 for the data store.
 //!
 //! # Features
 //!
@@ -17,12 +18,16 @@
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and
 //! `RefCell`.
 //!
-//! # Localisation Sqlite3 templates
+//! # Modules
 //!
-//! Can find the templates `all_in_one.sqlite3` and component `application.sqlite3` for the application in the `l10n`
-//! directory.
+//! ## `provider`: Sqlite3 provider for localisation strings.
 //!
-//! # Examples
+//! This crate implements [`LocalisationProviderTrait`] using Sqlite3 as the data store for localisation strings. As a
+//! directory path is used at the time of creating a `LocalisationProviderSqlite3` instance, it means that an
+//! application can have multiple data stores for both application localisation strings, and also for data packages'
+//! localisation strings.
+//!
+//! ### Examples
 //!
 //! ```
 //! use i18n_provider_sqlite3::LocalisationProviderSqlite3;
@@ -51,6 +56,11 @@
 //!     Ok( () )
 //! }
 //! ```
+//!
+//! # Localisation Sqlite3 templates
+//!
+//! Can find the templates `all_in_one.sqlite3` and component `application.sqlite3` for the application in the `l10n`
+//! directory.
 
 #[cfg(doc)]
 use std::sync::{Arc, Mutex};

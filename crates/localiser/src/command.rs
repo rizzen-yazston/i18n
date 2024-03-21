@@ -1,5 +1,5 @@
-// This file is part of `i18n_pattern-rizzen-yazston` crate. For the terms of use, please see the file
-// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_pattern-rizzen-yazston` crate.
+// This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
+// called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
 use crate::CommandError;
 use i18n_utility::PlaceholderValue;
@@ -15,7 +15,7 @@ use std::str::FromStr;
 ///
 /// ```
 /// use i18n_utility::PlaceholderValue;
-/// use i18n_pattern::{ CommandRegistry, file_path, };
+/// use i18n_localiser::{ CommandRegistry, file_path, };
 /// use std::error::Error;
 ///
 /// fn command_registry() -> Result<(), Box<dyn Error>> {
@@ -42,7 +42,7 @@ impl CommandRegistry {
     ///
     /// ```
     /// use i18n_utility::PlaceholderValue;
-    /// use i18n_pattern::{ CommandRegistry, file_path, };
+    /// use i18n_localiser::{CommandRegistry, file_path,};
     /// use std::error::Error;
     ///
     /// fn command_registry() -> Result<(), Box<dyn Error>> {
@@ -76,7 +76,7 @@ impl CommandRegistry {
     ///
     /// ```
     /// use i18n_utility::PlaceholderValue;
-    /// use i18n_pattern::{ CommandRegistry, file_path, };
+    /// use i18n_localiser::{CommandRegistry, file_path,};
     /// use std::error::Error;
     ///
     /// fn command_registry() -> Result<(), Box<dyn Error>> {
@@ -91,19 +91,20 @@ impl CommandRegistry {
     ///     Ok( () )
     /// }
     /// ```
-    pub fn insert<T: AsRef<str>>(
+    pub fn insert(
+        //<T: AsRef<str>>(
         &self,
-        command: T,
+        command: &str, //T,
         function: fn(Vec<PlaceholderValue>) -> Result<String, CommandError>,
     ) -> Result<(), CommandError> {
         {
-            if self.registry.borrow().contains_key(command.as_ref()) {
-                return Err(CommandError::AlreadyExists(command.as_ref().to_string()));
+            if self.registry.borrow().contains_key(command) {
+                return Err(CommandError::AlreadyExists(command.to_string()));
             }
         }
         self.registry
             .borrow_mut()
-            .insert(command.as_ref().to_string(), function);
+            .insert(command.to_string(), function);
         Ok(())
     }
 
@@ -113,7 +114,7 @@ impl CommandRegistry {
     ///
     /// ```
     /// use i18n_utility::PlaceholderValue;
-    /// use i18n_pattern::{ CommandRegistry, file_path, };
+    /// use i18n_localiser::{CommandRegistry, file_path,};
     /// use std::error::Error;
     ///
     /// fn command_registry() -> Result<(), Box<dyn Error>> {
@@ -129,13 +130,14 @@ impl CommandRegistry {
     /// }
     /// ```
     #[allow(clippy::type_complexity)]
-    pub fn command<T: AsRef<str>>(
+    pub fn command(
+        //<T: AsRef<str>>(
         &self,
-        command: T,
+        command: &str, //T,
     ) -> Result<fn(Vec<PlaceholderValue>) -> Result<String, CommandError>, CommandError> {
         let binding = self.registry.borrow();
-        let Some(result) = binding.get(command.as_ref()) else {
-            return Err(CommandError::NotFound(command.as_ref().to_string()));
+        let Some(result) = binding.get(command) else {
+            return Err(CommandError::NotFound(command.to_string()));
         };
         Ok(result.to_owned())
     }
@@ -145,7 +147,7 @@ impl CommandRegistry {
     /// # Examples
     ///
     /// ```
-    /// use i18n_pattern::{CommandRegistry, file_path};
+    /// use i18n_localiser::{CommandRegistry, file_path};
     /// use std::error::Error;
     ///
     /// fn command_registry() -> Result<(), Box<dyn Error>> {

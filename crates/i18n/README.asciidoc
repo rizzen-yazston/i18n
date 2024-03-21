@@ -1,17 +1,13 @@
 = i18n
 Rizzen Yazston
 
-`i18n` is the main meta-crate of the Internationalisation (`i18n`) project.
+Welcome to the *`i18n`* crate of the _Internationalisation_ (i18n) project.
 
 This convenience meta crate contains selected available crates:
-
-- `i18n_icu`: Contains ICU4X data provider helper,
 
 - `i18n_lexer`: A simple lexer to tokenise a string,
 
 - `i18n_localiser`: The multilingual localisation system,
-
-- `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
 
 - `i18n_provider`: Trait for providing language strings, and error struct,
 
@@ -49,7 +45,7 @@ For most use cases, just the use of `i18n-rizzen-yazston` crate will be sufficie
 
 ```
 [dependencies]
-i18n-rizzen-yazston = "0.6.1"
+i18n-rizzen-yazston = "0.9.0"
 ```
 
 === Examples
