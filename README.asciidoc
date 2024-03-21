@@ -11,13 +11,9 @@ The repository contains the following crates:
 
 - `i18n`: The convenience meta crate that contains selected available crates,
 
-- `i18n_icu`: Contains ICU4X data provider helper,
-
 - `i18n_lexer`: A simple lexer to tokenise a string,
 
 - `i18n_localiser`: The multilingual localisation system,
-
-- `i18n_pattern`: Similar to the `icu_pattern` crate of ICU4X, though with the added support of macro functionality,
 
 - `i18n_provider`: Trait for providing language strings, and error struct,
 
