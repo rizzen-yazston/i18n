@@ -1,7 +1,7 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.9.0 (2024-??-??)
+== i18n 0.9.0 (2024-03-21)
 
 WARNING: This update has API breaking changes, Cargo feature changes, crates merging.
 
