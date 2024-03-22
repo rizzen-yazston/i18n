@@ -59,9 +59,14 @@ impl Formatter {
         #[cfg(feature = "log")]
         debug!("Creating formatter for language tag '{}'", language_tag);
 
-        println!("String: {}", string);
+        #[cfg(feature = "log")]
+        trace!("String: {}", string);
+
         let tree = Tree::try_new(string, localiser.grammar(), localiser.icu_data_provider())?;
-        println!("Resulting Tree: {:?}", tree);
+
+        #[cfg(feature = "log")]
+        trace!("Resulting Tree: {:?}", tree);
+
         if !tree.has_grammar() {
             return Err(FormatterError::NoGrammar);
         }

@@ -495,7 +495,9 @@ impl Tree {
                     #[cfg(feature = "log")]
                     trace!("ParserState::NamedString");
 
-                    println!("Nodes: {:?}", nodes);
+                    #[cfg(feature = "log")]
+                    trace!("Nodes: {:?}", nodes);
+
                     if tokens[current].token_type == TokenType::Identifier {
                         let node = *parser.current.as_ref().unwrap();
                         let len = nodes[node].children.as_ref().unwrap().len();
