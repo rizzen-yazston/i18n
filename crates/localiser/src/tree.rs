@@ -15,8 +15,8 @@ use std::rc::Rc as RefCount;
 #[cfg(target_has_atomic = "ptr")]
 use std::sync::Arc as RefCount;
 
-#[cfg(feature = "log")]
-use log::{debug, trace};
+#[cfg(feature = "logging")]
+use log::trace;
 
 #[cfg(doc)]
 use std::sync::Arc;
@@ -170,7 +170,7 @@ impl Tree {
                 has_grammar = true;
             }
 
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             trace!(
                 "ParserState: {}; Number: {}; Position: {}; Token: {:?}",
                 parser.state,
@@ -183,7 +183,7 @@ impl Tree {
             match parser.state {
                 ParserState::String => {
                     // Valid tokens: PWS, `, #, {, Identifier, Syntax
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::String");
 
                     if tokens[current].token_type == TokenType::Grammar {
@@ -227,7 +227,7 @@ impl Tree {
                 }
                 ParserState::SubString => {
                     // Valid tokens: PWS, `, #, {, }, Identifier, Syntax
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::SubString");
 
                     if tokens[current].token_type == TokenType::Grammar {
@@ -296,7 +296,7 @@ impl Tree {
                 }
                 ParserState::Pattern => {
                     // Valid tokens: PWS (separator - ignore), }, Identifier
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::Pattern");
 
                     let token_type = tokens[current].token_type;
@@ -332,7 +332,7 @@ impl Tree {
                 }
                 ParserState::Keyword => {
                     // Valid tokens: PWS (separator - ignore), }, Identifier
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::Keyword");
 
                     if tokens[current].token_type == TokenType::Identifier {
@@ -379,7 +379,7 @@ impl Tree {
                 }
                 ParserState::LiteralText => {
                     //  Valid tokens: PWS, `, #, {, }, Identifier, Syntax
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::LiteralText");
 
                     if tokens[current].token_type == TokenType::Grammar
@@ -402,7 +402,7 @@ impl Tree {
                 }
                 ParserState::Literal => {
                     //  Valid tokens: }
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::Literal");
 
                     if tokens[current].token_type == TokenType::Grammar
@@ -419,7 +419,7 @@ impl Tree {
                 }
                 ParserState::Command => {
                     //  Valid tokens: PWS (separator - ignore), `, }, #, Identifier
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::Command");
 
                     if tokens[current].token_type == TokenType::Identifier {
@@ -492,10 +492,10 @@ impl Tree {
                 }
                 ParserState::NamedString => {
                     // Valid tokens: PWS (ignored - separator), `, #, {, Identifier, Syntax
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::NamedString");
 
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Nodes: {:?}", nodes);
 
                     if tokens[current].token_type == TokenType::Identifier {
@@ -657,7 +657,7 @@ impl Tree {
                 }
                 ParserState::NamedGroup => {
                     // Valid tokens: PWS (ignored - human readability), {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("ParserState::NamedGroup");
 
                     if tokens[current].token_type == TokenType::Grammar {

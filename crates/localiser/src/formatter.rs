@@ -26,7 +26,7 @@ use icu_locid::LanguageIdentifier as Locale;
 #[cfg(feature = "extend")]
 use icu_locid::Locale;
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 use log::{debug, trace};
 
 use std::collections::HashMap;
@@ -56,15 +56,18 @@ impl Formatter {
         language_tag: &RefCount<LanguageTag>,
         string: &str,
     ) -> Result<Formatter, FormatterError> {
-        #[cfg(feature = "log")]
-        debug!("Creating formatter for language tag '{}'", language_tag);
+        #[cfg(feature = "logging")]
+        debug!(
+            "Creating formatter for language tag '{}'",
+            language_tag.as_str()
+        );
 
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         trace!("String: {}", string);
 
         let tree = Tree::try_new(string, localiser.grammar(), localiser.icu_data_provider())?;
 
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         trace!("Resulting Tree: {:?}", tree);
 
         if !tree.has_grammar() {
@@ -97,7 +100,7 @@ impl Formatter {
         // Process substrings first if present.
         let root_children = tree.children(&0); // Root has String and optional NamedGroup
         if root_children.len() > 1 {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             trace!("Processing NamedGroup.");
 
             let named_strings = tree.children(&root_children[1]);
@@ -149,7 +152,7 @@ impl Formatter {
         };
 
         // Now process main string.
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         trace!("Processing main string");
 
         let mut pattern = Vec::<PatternPart>::new();
@@ -226,13 +229,13 @@ impl Formatter {
             };
             match part {
                 PatternPart::Text(text) => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Formatting PatternPart::Text");
 
                     string.push_str(text.as_str());
                 }
                 PatternPart::PatternString(placeholder) => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Formatting PatternPart::PatternString");
 
                     let Some(value) = values.get(placeholder) else {
@@ -252,7 +255,7 @@ impl Formatter {
                     sign,
                     group,
                 } => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Formatting PatternPart::PatternDecimal");
 
                     let Some(value) = values.get(placeholder) else {
@@ -313,7 +316,7 @@ impl Formatter {
                     length_time,
                     calendar,
                 } => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Formatting PatternPart::PatternDateTime");
 
                     // TODO: add more options as they become non-experimental.
@@ -392,7 +395,7 @@ impl Formatter {
                     complex,
                     selectors,
                 } => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Formatting PatternPart::PatternComplex");
 
                     let Some(value) = values.get(placeholder) else {
@@ -516,7 +519,7 @@ impl Formatter {
                     }
                 }
                 PatternPart::NumberSign(index) => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Formatting PatternPart::NumberSign");
 
                     let Some(number_string) = self.numbers.get(*index) else {
@@ -525,7 +528,7 @@ impl Formatter {
                     string.push_str(number_string.as_str());
                 }
                 PatternPart::Command { strings } => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "logging")]
                     trace!("Formatting PatternPart::Command");
 
                     let mut parameters = Vec::<PlaceholderValue>::new();
@@ -877,7 +880,7 @@ impl Formatter {
 /// ISO 8601 _Week_ and _Ordinal date_ formats are not supported as there are currently no methods available for
 /// ICU4X `Date<Iso>` for creating structs using the week number or the ordinal day of the year.
 pub fn decompose_iso_date(string: &str) -> Result<Date<Iso>, FormatterError> {
-    #[cfg(feature = "log")]
+    #[cfg(feature = "logging")]
     trace!("Decompose ISO date string into ICU Date<Iso> instance.");
 
     let no_plus = string.trim_start_matches('+');
@@ -954,7 +957,7 @@ pub fn decompose_iso_date(string: &str) -> Result<Date<Iso>, FormatterError> {
 /// - time zones ( Z (for UCT 00:00), +hh:mm, -hh:mm, +hhmm, -hhmm ).
 ///   -00:00 or -0000 are not supported by ISO 8601.
 pub fn decompose_iso_time(string: &str) -> Result<Time, FormatterError> {
-    #[cfg(feature = "log")]
+    #[cfg(feature = "logging")]
     trace!("Decompose ISO time string into ICU Time instance.");
 
     let no_t = string.trim_start_matches('T');
@@ -1010,7 +1013,7 @@ fn part_text(
     tree: &Tree,
     index: &usize,
 ) -> Result<(), FormatterError> {
-    #[cfg(feature = "log")]
+    #[cfg(feature = "logging")]
     trace!("Processing text node.");
 
     let mut string = String::new();
@@ -1030,7 +1033,7 @@ fn part_pattern(
     option_selectors: &OptionSelectors,
     locale: &RefCount<Locale>,
 ) -> Result<(), FormatterError> {
-    #[cfg(feature = "log")]
+    #[cfg(feature = "logging")]
     trace!("Processing pattern node.");
 
     let children = tree.children(index);
@@ -1259,7 +1262,7 @@ fn part_command(
     index: &usize,
     command_registry: &RefCount<CommandRegistry>,
 ) -> Result<(), FormatterError> {
-    #[cfg(feature = "log")]
+    #[cfg(feature = "logging")]
     trace!("Processing command node.");
 
     let mut delay = false;
@@ -1318,7 +1321,7 @@ fn pattern_selectors(
     tree: &Tree,
     index: &usize,
 ) -> Result<HashMap<String, String>, FormatterError> {
-    #[cfg(feature = "log")]
+    #[cfg(feature = "logging")]
     trace!("Processing pattern selectors.");
 
     // Work around for inability to pass iterators, thus the iterator needs to be recreated.

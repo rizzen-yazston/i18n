@@ -23,7 +23,7 @@ all-features = true
 
 [features]
 sync = [ "i18n_utility-rizzen-yazston/sync", "i18n_provider-rizzen-yazston/sync" ]
-logging = []#[ "dep:log" ]
+logging = []
 
 [dependencies]
 i18n_utility-rizzen-yazston = { workspace = true }

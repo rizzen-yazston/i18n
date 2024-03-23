@@ -20,7 +20,7 @@ use std::rc::Rc as RefCount;
 #[cfg(target_has_atomic = "ptr")]
 use std::sync::{Arc as RefCount, RwLock as MutCell};
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 use log::debug;
 
 #[cfg(doc)]
@@ -208,7 +208,7 @@ impl Localiser {
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using format().");
 
         #[cfg(not(feature = "sync"))]
@@ -287,7 +287,7 @@ impl Localiser {
         identifier: &str,
         values: &HashMap<String, PlaceholderValue>,
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using format_with_defaults().");
 
         #[cfg(not(feature = "sync"))]
@@ -369,7 +369,7 @@ impl Localiser {
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using literal().");
 
         #[cfg(not(feature = "sync"))]
@@ -436,7 +436,7 @@ impl Localiser {
         component: &str,
         identifier: &str,
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using literal_with_defaults().");
 
         #[cfg(not(feature = "sync"))]
@@ -621,7 +621,7 @@ impl Localiser {
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using format_error().");
 
         #[cfg(not(feature = "sync"))]
@@ -704,7 +704,7 @@ impl Localiser {
         &self,
         data: &LocalisationData,
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using format_error_with_defaults().");
 
         #[cfg(not(feature = "sync"))]
@@ -785,7 +785,7 @@ impl Localiser {
         fallback: Option<bool>, // true = fallback to default language, None = use the Localiser default.
         caching: Option<bool>, // true = cache the resultant Formatter for repeating use with different values.
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using format_error().");
 
         #[cfg(not(feature = "sync"))]
@@ -855,7 +855,7 @@ impl Localiser {
         &self,
         error: &impl LocalisationErrorTrait,
     ) -> Result<TaggedString, LocaliserError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Localiser is using format_error_with_defaults().");
 
         #[cfg(not(feature = "sync"))]
@@ -994,7 +994,7 @@ impl Localiser {
 
         // Cache the `Formatter`.
         {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             debug!("Caching formatting string.");
 
             if !_language_entry {
@@ -1178,7 +1178,7 @@ impl Localiser {
     }
 
     fn add_string_to_cache(&self, language_entry: bool, combined: &String, lstring: &TaggedString) {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Caching literal string.");
 
         if !language_entry {

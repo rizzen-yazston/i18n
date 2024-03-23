@@ -1,9 +1,27 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.9.1 (2024-??-??)
+== i18n 0.9.1 (2024-03-24)
+
+* Fixed logging of debugging information
+
+* Fixed project's root `README.asciidoc`.
+
+== Project wide changes
 
 * Changed debug information statements from `println!()` to `trace!()`.
+
+* Changed `#[cfg(feature = "log")]` to `#[cfg(feature = "logging")]` in source files of crates having `logging` feature.
+
+* Fixed logging statements, that was not processed during compiling with the feature `logging` due to incorrect `#[cfg(feature = "log")]` statements.
+
+=== i18n
+
+* Removed comments ifrom `lib.rs`.
+
+=== i18n_provider_sqlite3
+
+* Changed remaining (missed) `AsRef<str>` to `&str` of internal methods.
 
 == i18n 0.9.0 (2024-03-21)
 

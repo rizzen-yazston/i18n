@@ -28,7 +28,7 @@ use icu_provider_fs::FsDataProvider;
 
 use icu_segmenter::GraphemeClusterSegmenter;
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 use log::{debug, error};
 
 #[cfg(doc)]
@@ -105,7 +105,7 @@ impl IcuDataProvider {
         match data_provider.clone() {
             #[cfg(feature = "blob")]
             DataProvider::Blob(blob) => {
-                #[cfg(feature = "log")]
+                #[cfg(feature = "logging")]
                 debug!("BlobDataProvider was selected.");
 
                 grapheme_segmenter = Some(GraphemeClusterSegmenter::try_new_with_buffer_provider(
@@ -118,7 +118,7 @@ impl IcuDataProvider {
 
             #[cfg(feature = "fs")]
             DataProvider::Fs(fs) => {
-                #[cfg(feature = "log")]
+                #[cfg(feature = "logging")]
                 debug!("FsDataProvider was selected.");
 
                 grapheme_segmenter =
@@ -130,7 +130,7 @@ impl IcuDataProvider {
 
             #[cfg(feature = "icu_compiled_data")]
             DataProvider::Internal => {
-                #[cfg(feature = "log")]
+                #[cfg(feature = "logging")]
                 debug!("Internal data was selected.");
 
                 grapheme_segmenter = Some(GraphemeClusterSegmenter::new());
@@ -144,19 +144,19 @@ impl IcuDataProvider {
 
         // Do sanity check: None of `grapheme`, `white_space` or `syntax` can be `None`.
         if grapheme_segmenter.is_none() {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             error!("Missing grapheme segmenter.");
 
             return Err(IcuError::Syntax);
         }
         if syntax.is_none() {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             error!("Missing Pattern_Syntax properties.");
 
             return Err(IcuError::Syntax);
         }
         if white_space.is_none() {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             error!("Missing Pattern_White_Space properties.");
 
             return Err(IcuError::WhiteSpace);

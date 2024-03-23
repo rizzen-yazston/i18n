@@ -23,9 +23,6 @@ use icu_provider_blob::BlobDataProvider;
 #[cfg(feature = "fs")]
 use icu_provider_fs::FsDataProvider;
 
-#[cfg(feature = "log")]
-use log::{debug, error};
-
 use std::vec::IntoIter;
 use std::{char, str};
 //use core::fmt::{Display, Formatter, Result as FmtResult};

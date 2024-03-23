@@ -9,7 +9,7 @@ use i18n_provider::{
 use i18n_utility::{LanguageTag, LanguageTagRegistry, TaggedString};
 use rusqlite::{Connection, OpenFlags};
 
-#[cfg(feature = "log")]
+#[cfg(feature = "logging")]
 use log::{debug, error};
 
 use std::cmp::Ordering;
@@ -117,7 +117,7 @@ impl LocalisationProviderSqlite3 {
             return Err(ProviderSqlite3Error::PathConversion); // If not Infallible error.
         };
         if !directory.is_dir() {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             error!("{} is not a directory.", directory.display());
 
             return Err(ProviderSqlite3Error::NotDirectory(directory));
@@ -137,7 +137,10 @@ impl LocalisationProviderSqlite3 {
                 if extension == "sqlite3" {
                     let path = entry_data.path();
                     let component = path.file_stem().unwrap().to_str().unwrap().to_string();
-                    println!("Sqlite3 file: {}", component);
+
+                    #[cfg(logging)]
+                    trace!("Sqlite3 file: {}", component);
+
                     if component.as_str().cmp("all_in_one") == Ordering::Equal {
                         match Connection::open_with_flags(
                             path.clone(),
@@ -146,7 +149,7 @@ impl LocalisationProviderSqlite3 {
                                 | OpenFlags::SQLITE_OPEN_URI,
                         ) {
                             Err(_error) => {
-                                #[cfg(feature = "log")]
+                                #[cfg(feature = "logging")]
                                 error!("Unable to connect to {}: {}.", path.display(), _error);
                             }
                             Ok(connection) => {
@@ -157,7 +160,10 @@ impl LocalisationProviderSqlite3 {
                                     let mut rows = statement.query([])?;
                                     while let Some(row) = rows.next()? {
                                         let component: String = row.get(0)?;
-                                        println!("all_in_one.sqlite3 has component: {}", component);
+
+                                        #[cfg(logging)]
+                                        trace!("all_in_one.sqlite3 has component: {}", component);
+
                                         if let std::collections::hash_map::Entry::Vacant(e) =
                                             components.entry(component.clone())
                                         {
@@ -185,12 +191,15 @@ impl LocalisationProviderSqlite3 {
                                 | OpenFlags::SQLITE_OPEN_URI,
                         ) {
                             Err(_error) => {
-                                #[cfg(feature = "log")]
+                                #[cfg(feature = "logging")]
                                 error!("Unable to connect to {}: {}.", path.display(), _error);
                             }
                             Ok(connection) => {
                                 Self::verify_schema(&connection, false)?;
-                                println!("Added component: {}", component);
+
+                                #[cfg(logging)]
+                                trace!("Added component: {}", component);
+
                                 if components.contains_key(&component) {
                                     let value = components.get_mut(&component).unwrap();
                                     value.1 = true;
@@ -210,7 +219,7 @@ impl LocalisationProviderSqlite3 {
             }
         }
         if components.is_empty() {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             error!("No sqlite3 files are found in {}.", directory.display());
 
             return Err(ProviderSqlite3Error::NoSqlite3Files(directory));
@@ -260,53 +269,39 @@ impl LocalisationProviderSqlite3 {
     }
 
     #[cfg(not(feature = "sync"))]
-    fn connection<T: AsRef<str>>(
+    fn connection(
         &self,
-        component: T,
+        component: &str,
         all_in_one: bool,
     ) -> Result<RefCount<Connection>, ProviderError> {
-        #[cfg(feature = "log")]
-        debug!(
-            "Getting database connection for component '{}'.",
-            component.as_ref()
-        );
+        #[cfg(feature = "logging")]
+        debug!("Getting database connection for component '{}'.", component,);
 
         #[allow(unused_variables)]
-        let Some(value) = self.components.get(component.as_ref()) else {
-            return Err(ProviderError::ComponentNotFound(
-                component.as_ref().to_string(),
-            ));
+        let Some(value) = self.components.get(component) else {
+            return Err(ProviderError::ComponentNotFound(component.to_string()));
         };
         if all_in_one && value.0 {
             return Ok(RefCount::clone(self.connections.get("all_in_one").unwrap()));
         }
         if value.1 {
-            return Ok(RefCount::clone(
-                self.connections.get(component.as_ref()).unwrap(),
-            ));
+            return Ok(RefCount::clone(self.connections.get(component).unwrap()));
         }
-        Err(ProviderError::ComponentNotFound(
-            component.as_ref().to_string(),
-        ))
+        Err(ProviderError::ComponentNotFound(component.to_string()))
     }
 
     #[cfg(feature = "sync")]
-    fn connection_sync<T: AsRef<str>>(
+    fn connection_sync(
         &self,
-        component: T,
+        component: &str,
         all_in_one: bool,
     ) -> Result<Connection, ProviderError> {
-        #[cfg(feature = "log")]
-        debug!(
-            "Getting database connection for component '{}'.",
-            component.as_ref()
-        );
+        #[cfg(feature = "logging")]
+        debug!("Getting database connection for component '{}'.", component,);
 
         #[allow(unused_variables)]
-        let Some(value) = self.components.get(component.as_ref()) else {
-            return Err(ProviderError::ComponentNotFound(
-                component.as_ref().to_string(),
-            ));
+        let Some(value) = self.components.get(component) else {
+            return Err(ProviderError::ComponentNotFound(component.to_string()));
         };
         if all_in_one && value.0 {
             match Connection::open_with_flags(
@@ -327,7 +322,7 @@ impl LocalisationProviderSqlite3 {
         }
         if value.1 {
             match Connection::open_with_flags(
-                self.connections.get(component.as_ref()).unwrap(),
+                self.connections.get(component).unwrap(),
                 OpenFlags::SQLITE_OPEN_READ_ONLY
                     | OpenFlags::SQLITE_OPEN_NO_MUTEX
                     | OpenFlags::SQLITE_OPEN_URI,
@@ -342,9 +337,7 @@ impl LocalisationProviderSqlite3 {
                 }
             }
         }
-        Err(ProviderError::ComponentNotFound(
-            component.as_ref().to_string(),
-        ))
+        Err(ProviderError::ComponentNotFound(component.to_string()))
     }
 
     // Fallback to <component>.sqlite3 is handled by caller.
@@ -357,11 +350,11 @@ impl LocalisationProviderSqlite3 {
         only_one: bool,
         exact: bool,
     ) -> Result<Vec<TaggedString>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}' with all_in_one: {}, \
             only_one: {}, and exact: {}.",
-            identifier.as_ref(), component.as_ref(), language_tag, all_in_one, only_one, exact
+            identifier, component, language_tag.as_str(), all_in_one, only_one, exact
         );
 
         let mut query_identifier = "Pattern".to_string();
@@ -415,7 +408,7 @@ impl LocalisationProviderSqlite3 {
         #[cfg(feature = "sync")]
         let connection = self.connection_sync(component, all_in_one)?;
 
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("SQL query string: [{}].", _query.as_ref().unwrap());
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
@@ -472,11 +465,8 @@ impl LocalisationProviderSqlite3 {
                 strings.push(TaggedString::new(string, &language));
             }
             if !strings.is_empty() {
-                #[cfg(feature = "log")]
-                debug!(
-                    "Found at least 1 string from '{}.sqlite3'.",
-                    component.as_ref()
-                );
+                #[cfg(feature = "logging")]
+                debug!("Found at least 1 string from '{}.sqlite3'.", component,);
 
                 return Ok(strings);
             }
@@ -489,13 +479,13 @@ impl LocalisationProviderSqlite3 {
     }
 
     // Fallback to <component>.sqlite3 is handled by caller.
-    fn languages<T: AsRef<str>>(
+    fn languages(
         &self,
-        component: T,
+        component: &str,
         all_in_one: bool,
     ) -> Result<Vec<RefCount<LanguageTag>>, ProviderError> {
-        #[cfg(feature = "log")]
-        debug!("Get languages for component '{}'.", component.as_ref());
+        #[cfg(feature = "logging")]
+        debug!("Get languages for component '{}'.", component);
 
         let mut query_identifier = "Languages".to_string();
         if all_in_one {
@@ -536,10 +526,10 @@ impl LocalisationProviderSqlite3 {
         }
 
         #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component.as_ref(), all_in_one)?;
+        let connection = self.connection(component, all_in_one)?;
 
         #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component.as_ref(), all_in_one)?;
+        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -551,7 +541,7 @@ impl LocalisationProviderSqlite3 {
         };
         let mut languages = Vec::<RefCount<LanguageTag>>::new();
         let mut rows = if all_in_one {
-            match statement.query([component.as_ref()]) {
+            match statement.query([component]) {
                 Ok(value) => value,
                 Err(error) => {
                     return Err(ProviderError::Custom(RefCount::new(Box::new(
@@ -598,11 +588,10 @@ impl LocalisationProviderSqlite3 {
         identifier: &str,
         all_in_one: bool,
     ) -> Result<Vec<RefCount<LanguageTag>>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Get languages for identifier '{}' of component '{}'.",
-            identifier.as_ref(),
-            component.as_ref()
+            identifier, component,
         );
 
         let mut query_identifier = "Identifier".to_string();
@@ -701,17 +690,17 @@ impl LocalisationProviderSqlite3 {
     }
 
     // Fallback to <component>.sqlite3 is handled by caller.
-    fn contributors<T: AsRef<str>>(
+    fn contributors(
         &self,
-        component: T,
+        component: &str,
         language_tag: &RefCount<LanguageTag>,
         all_in_one: bool,
     ) -> Result<Vec<String>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Get contributors for component '{}' for language tag '{}'.",
-            component.as_ref(),
-            language_tag
+            component,
+            language_tag.as_str(),
         );
 
         let mut query_identifier = "Contributors".to_string();
@@ -753,10 +742,10 @@ impl LocalisationProviderSqlite3 {
         }
 
         #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component.as_ref(), all_in_one)?;
+        let connection = self.connection(component, all_in_one)?;
 
         #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component.as_ref(), all_in_one)?;
+        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -768,7 +757,7 @@ impl LocalisationProviderSqlite3 {
         };
         let mut contributors = Vec::<String>::new();
         let mut rows = if all_in_one {
-            match statement.query([language_tag.as_str(), component.as_ref()]) {
+            match statement.query([language_tag.as_str(), component]) {
                 Ok(value) => value,
                 Err(error) => {
                     return Err(ProviderError::Custom(RefCount::new(Box::new(
@@ -808,17 +797,17 @@ impl LocalisationProviderSqlite3 {
     }
 
     // Fallback to <component>.sqlite3 is handled by caller.
-    fn count<T: AsRef<str>>(
+    fn count(
         &self,
-        component: T,
+        component: &str,
         language_tag: &RefCount<LanguageTag>,
         all_in_one: bool,
     ) -> Result<usize, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Get string count for component '{}' for language tag '{}'.",
-            component.as_ref(),
-            language_tag
+            component,
+            language_tag.as_str(),
         );
 
         let mut query_identifier = "Count".to_string();
@@ -860,10 +849,10 @@ impl LocalisationProviderSqlite3 {
         }
 
         #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component.as_ref(), all_in_one)?;
+        let connection = self.connection(component, all_in_one)?;
 
         #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component.as_ref(), all_in_one)?;
+        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -875,7 +864,7 @@ impl LocalisationProviderSqlite3 {
         };
         let mut count = 0usize;
         let mut rows = if all_in_one {
-            match statement.query([language_tag.as_str(), component.as_ref()]) {
+            match statement.query([language_tag.as_str(), component]) {
                 Ok(value) => value,
                 Err(error) => {
                     return Err(ProviderError::Custom(RefCount::new(Box::new(
@@ -914,16 +903,13 @@ impl LocalisationProviderSqlite3 {
     }
 
     // Fallback to <component>.sqlite3 is handled by caller.
-    fn default_language<T: AsRef<str>>(
+    fn default_language(
         &self,
-        component: T,
+        component: &str,
         all_in_one: bool,
     ) -> Result<Option<RefCount<LanguageTag>>, ProviderError> {
-        #[cfg(feature = "log")]
-        debug!(
-            "Get default language for component '{}'",
-            component.as_ref()
-        );
+        #[cfg(feature = "logging")]
+        debug!("Get default language for component '{}'", component,);
 
         let mut query_identifier = "Default".to_string();
         if all_in_one {
@@ -964,10 +950,10 @@ impl LocalisationProviderSqlite3 {
         }
 
         #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component.as_ref(), all_in_one)?;
+        let connection = self.connection(component, all_in_one)?;
 
         #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component.as_ref(), all_in_one)?;
+        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -979,7 +965,7 @@ impl LocalisationProviderSqlite3 {
         };
         let mut tag: Option<RefCount<LanguageTag>> = None;
         let mut rows = if all_in_one {
-            match statement.query([component.as_ref()]) {
+            match statement.query([component]) {
                 Ok(value) => value,
                 Err(error) => {
                     return Err(ProviderError::Custom(RefCount::new(Box::new(
@@ -1020,7 +1006,7 @@ impl LocalisationProviderSqlite3 {
 
     // If all_in_one.sqlite3 fails, fallback to <component>.sqlite3
     fn build_cache(&self) -> Result<(), ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Building details cache.");
 
         let mut components_details = HashMap::<String, RefCount<ComponentDetails>>::new();
@@ -1098,7 +1084,7 @@ impl LocalisationProviderSqlite3 {
                 }
             }
 
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             debug!("Got languages.");
 
             // Get default language
@@ -1125,7 +1111,7 @@ impl LocalisationProviderSqlite3 {
                 repository_details.default = language;
             }
 
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             debug!("Got default language.");
 
             // Build language data
@@ -1182,13 +1168,13 @@ impl LocalisationProviderSqlite3 {
                 language_data.1.ratio = language_data.1.count as f32 / _count as f32;
             }
 
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             debug!("Got language data.");
 
             components_details.insert(component.0.to_string(), RefCount::new(component_details));
         }
 
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Components done.");
 
         if repository_details.default.is_some() {
@@ -1255,10 +1241,12 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         identifier: &str,
         language_tag: &RefCount<LanguageTag>,
     ) -> Result<Option<TaggedString>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Finding one string for identifier '{}' of component '{}' for language tag '{}'.",
-            identifier, component, language_tag
+            identifier,
+            component,
+            language_tag.as_str()
         );
 
         let Some(component_files) = self.components.get(component) else {
@@ -1267,7 +1255,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
 
         // Try all_in_one.sqlite3 first.
         if component_files.0 {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             debug!("Trying the 'all_in_one.sqlite3' for string.");
 
             let strings =
@@ -1278,7 +1266,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         }
 
         // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Trying the component sqlite3 file for string.");
 
         if component_files.1 {
@@ -1331,10 +1319,12 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         identifier: &str,
         language_tag: &RefCount<LanguageTag>,
     ) -> Result<Option<TaggedString>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
-            identifier, component, language_tag
+            identifier,
+            component,
+            language_tag.as_str()
         );
 
         let Some(component_files) = self.components.get(component) else {
@@ -1343,7 +1333,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
 
         // Try all_in_one.sqlite3 first.
         if component_files.0 {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             debug!("Trying the 'all_in_one.sqlite3' for exact match string.");
 
             let strings =
@@ -1354,7 +1344,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         }
 
         // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Trying the component sqlite3 file for exact match string.");
 
         if component_files.1 {
@@ -1409,10 +1399,12 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         identifier: &str,
         language_tag: &RefCount<LanguageTag>,
     ) -> Result<Vec<TaggedString>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
-            identifier, component, language_tag
+            identifier,
+            component,
+            language_tag.as_str()
         );
 
         let Some(component_files) = self.components.get(component) else {
@@ -1422,7 +1414,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
 
         // Try all_in_one.sqlite3 first.
         if component_files.0 {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "logging")]
             debug!("Trying the 'all_in_one.sqlite3' for strings.");
 
             strings = self.find_strings(component, identifier, language_tag, true, false, false)?;
@@ -1432,7 +1424,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         }
 
         // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Trying the component sqlite3 file for strings.");
 
         if component_files.1 {
@@ -1478,7 +1470,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         component: &str,
         identifier: &str,
     ) -> Result<IdentifierDetails, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!(
             "Getting identifier details for '{}' of component '{}'.",
             identifier, component
@@ -1541,7 +1533,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         &self,
         component: &str,
     ) -> Result<RefCount<ComponentDetails>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Getting component details for '{}'.", component);
 
         let components = match self.component_details.get() {
@@ -1589,7 +1581,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     /// }
     /// ```
     fn repository_details(&self) -> Result<RefCount<RepositoryDetails>, ProviderError> {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "logging")]
         debug!("Getting repository details.");
 
         match self.repository_details.get() {
