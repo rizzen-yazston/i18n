@@ -27,6 +27,7 @@ icu_extended = []
 
 [dependencies]
 icu_locid = { workspace = true }
+icu_locid_transform = { workspace = true }
 icu_calendar = { workspace = true }
 fixed_decimal = { workspace = true }
 

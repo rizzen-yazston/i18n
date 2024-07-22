@@ -146,3 +146,5 @@ pub(crate) mod tree;
 pub(crate) use tree::*;
 pub mod command;
 pub use command::*;
+mod script;
+use script::*;

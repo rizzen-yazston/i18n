@@ -59,6 +59,7 @@ i18n_provider_sqlite3-rizzen-yazston = { workspace = true }
 i18n_utility-rizzen-yazston = { workspace = true }
 icu_provider = { workspace = true }
 icu_locid = { workspace = true }
+icu_locid_transform = { workspace = true }
 icu_plurals = { workspace = true }
 icu_decimal = { workspace = true }
 icu_calendar = { workspace = true }

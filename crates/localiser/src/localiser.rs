@@ -1,14 +1,21 @@
 // This file is part of `i18n_localiser-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_localiser-rizzen-yazston` crate.
 
-use crate::{CommandRegistry, Formatter, FormatterError, LocaliserError};
+use crate::{CommandRegistry, DataProvider, Formatter, FormatterError, LocaliserError};
 use i18n_lexer::IcuDataProvider;
 use i18n_provider::LocalisationProviderTrait;
 use i18n_utility::{
     LanguageTag, LanguageTagRegistry, LocalisationData, LocalisationErrorTrait, PlaceholderValue,
-    TaggedString,
+    ScriptData, TaggedString,
 };
+use icu_locid_transform::{LocaleExpander, TransformResult};
 use std::collections::HashMap;
+
+#[cfg(not(feature = "icu_extended"))]
+use icu_locid::LanguageIdentifier;
+
+#[cfg(feature = "icu_extended")]
+use icu_locid::Locale;
 
 #[cfg(not(feature = "sync"))]
 use std::cell::RefCell as MutCell;
@@ -35,10 +42,13 @@ pub struct Localiser {
     language_registry: RefCount<LanguageTagRegistry>,
     localisation_provider: Box<dyn LocalisationProviderTrait>,
     command_registry: RefCount<CommandRegistry>,
+    script_data: DataProvider,
+    expander: LocaleExpander,
     fallback: MutCell<bool>,
     caching: MutCell<bool>,
     cache: MutCell<HashMap<RefCount<LanguageTag>, HashMap<String, CacheData>>>,
     language_tag: MutCell<RefCount<LanguageTag>>,
+    language_script_data: MutCell<Option<ScriptData>>,
 }
 
 impl Localiser {
@@ -121,19 +131,25 @@ impl Localiser {
         caching: bool,
         language_tag: &str,
     ) -> Result<Localiser, LocaliserError> {
+        let script_data = DataProvider::new();
+        let expander = LocaleExpander::new_extended();
         let tag = language_tag_registry.tag(language_tag)?;
+        let language_script_data = get_script_data(tag.as_str(), &script_data, &expander);
         Ok(Localiser {
             icu_data_provider: RefCount::clone(icu_data_provider),
             grammar: "{}`#".to_string(),
             language_registry: RefCount::clone(language_tag_registry),
             localisation_provider,
             command_registry: RefCount::clone(command_registry),
+            script_data,
+            expander,
             fallback: MutCell::new(fallback),
             caching: MutCell::new(caching),
             cache: MutCell::new(
                 HashMap::<RefCount<LanguageTag>, HashMap<String, CacheData>>::new(),
             ),
             language_tag: MutCell::new(tag),
+            language_script_data: MutCell::new(language_script_data),
         })
     }
 
@@ -462,9 +478,9 @@ impl Localiser {
 
     /// Change the defaults of `Localiser` instance.
     ///
-    /// The following can be reset:
+    /// The following can be set:
     ///
-    /// * `language_tag`: `Option<&str>`
+    /// * `language_tag`: `Option<RefCount<LanguageTag>>`
     ///
     /// * `fallback`: `Option<bool>`
     ///
@@ -479,11 +495,22 @@ impl Localiser {
     ) -> Result<(), LocaliserError> {
         if let Some(language_tag) = language_tag {
             #[cfg(not(feature = "sync"))]
-            self.language_tag.replace(language_tag);
+            {
+                self.language_tag.replace(language_tag);
+                let binding = self.language_tag.borrow();
+                self.language_script_data.replace(get_script_data(
+                    binding.as_str(),
+                    &self.script_data,
+                    &self.expander,
+                ));
+            }
 
             #[cfg(feature = "sync")]
             {
                 *self.language_tag.write().unwrap() = language_tag;
+                let binding = self.language_tag.read().unwrap();
+                *self.language_script_data.write().unwrap() =
+                    Self::get_script_data(binding.as_str(), &self.script_data, &self.expander);
             }
         }
         if let Some(fallback) = fallback {
@@ -880,6 +907,22 @@ impl Localiser {
         self.actual_format_localisation_data(&data, tag, bool_fallback, bool_caching)
     }
 
+    /// TODO: Complete documentation
+    pub fn script_data(&self) -> Option<ScriptData> {
+        #[cfg(not(feature = "sync"))]
+        let binding = self.language_script_data.borrow();
+
+        #[cfg(feature = "sync")]
+        let binding = self.language_script_data.read().unwrap();
+
+        binding.clone()
+    }
+
+    /// TODO: Complete documentation
+    pub fn script_data_for_language_tag(&self, tag: &RefCount<LanguageTag>) -> Option<ScriptData> {
+        get_script_data(tag.as_str(), &self.script_data, &self.expander)
+    }
+
     // Internal methods
 
     // For the specified string identifier, format a string for the specified language tag with the supplied values
@@ -1218,4 +1261,44 @@ impl Localiser {
 enum CacheData {
     TaggedString(TaggedString),
     Formatter(MutCell<Formatter>),
+}
+
+fn get_script_data(
+    tag: &str,
+    script_data: &DataProvider,
+    expander: &LocaleExpander,
+) -> Option<ScriptData> {
+    #[cfg(feature = "icu_extended")]
+    {
+        let mut locale = Locale::try_from_bytes(tag.as_bytes()).unwrap();
+        if locale.id.script.is_some() {
+            return script_data.get(locale.id.script.unwrap().as_str()).cloned();
+        } else {
+            match expander.maximize(locale.as_mut()) {
+                TransformResult::Modified => {
+                    return script_data.get(locale.id.script.unwrap().as_str()).cloned()
+                }
+                TransformResult::Unmodified => None,
+            }
+        }
+    }
+
+    #[cfg(not(feature = "icu_extended"))]
+    {
+        let mut identifier = LanguageIdentifier::try_from_bytes(tag.as_bytes()).unwrap();
+        if identifier.script.is_some() {
+            return script_data
+                .get(identifier.script.unwrap().as_str())
+                .cloned();
+        } else {
+            match expander.maximize(identifier.as_mut()) {
+                TransformResult::Modified => {
+                    return script_data
+                        .get(identifier.script.unwrap().as_str())
+                        .cloned()
+                }
+                TransformResult::Unmodified => None,
+            }
+        }
+    }
 }

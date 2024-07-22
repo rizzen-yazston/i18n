@@ -1,6 +1,24 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.9.2 (2024-07-22)
+
+* Added script directional support.
+
+* Added `icu_locid_transform` dependency to various `Cargo.toml` 
+
+* Added new feature `icu_extended` for expanded support. Provides additional scripts data, that is currently not available in `icu_locid_transform`.
+
+=== i18n_localiser
+
+* Added `scripts.rs` containing script direction data provider for the `icu_extended` feature, and added entry in `lib.rs`.
+
+* In `localiser.rs` added script direction support to the localiser, and added new public methods `script_data()` and `script_data_for_language_tag()`.
+
+=== i18n_utility
+
+* Added `scripts.rs` and added entry in `lib.rs`.
+
 == i18n 0.9.1 (2024-03-24)
 
 * Fixed logging of debugging information
@@ -17,7 +35,7 @@ Rizzen Yazston
 
 === i18n
 
-* Removed comments ifrom `lib.rs`.
+* Removed comments from `lib.rs`.
 
 === i18n_provider_sqlite3
 
