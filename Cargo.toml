@@ -31,18 +31,18 @@ keywords = [ "internationalization", "localization", "icu4x" ]
 license = "BSD-3-Clause"
 repository = "https://github.com/rizzen-yazston/i18n"
 rust-version = "1.70.0"
-version = "0.9.2" # Keep below crates in sync.
+version = "0.10.0" # Keep below crates in sync.
 
 [workspace.dependencies]
 
 # Project crates
 # KEEP IN SYNC WITH workspace.members
-i18n-rizzen-yazston = { version = "0.9.2", path = ".crates/i18n", default-features = false }
-i18n_lexer-rizzen-yazston = { version = "0.9.2", path = "crates/lexer", default-features = false }
-i18n_localiser-rizzen-yazston = { version = "0.9.2", path = "crates/localiser", default-features = false }
-i18n_provider-rizzen-yazston = { version = "0.9.2", path = "crates/provider/core", default-features = false }
-i18n_provider_sqlite3-rizzen-yazston = { version = "0.9.2", path = "crates/provider/sqlite3", default-features = false }
-i18n_utility-rizzen-yazston = { version = "0.9.2", path = "crates/utility", default-features = false }
+i18n-rizzen-yazston = { version = "0.10.0", path = ".crates/i18n", default-features = false }
+i18n_lexer-rizzen-yazston = { version = "0.10.0", path = "crates/lexer", default-features = false }
+i18n_localiser-rizzen-yazston = { version = "0.10.0", path = "crates/localiser", default-features = false }
+i18n_provider-rizzen-yazston = { version = "0.10.0", path = "crates/provider/core", default-features = false }
+i18n_provider_sqlite3-rizzen-yazston = { version = "0.10.0", path = "crates/provider/sqlite3", default-features = false }
+i18n_utility-rizzen-yazston = { version = "0.10.0", path = "crates/utility", default-features = false }
 #i18n_renderer-rizzen-yazston = { version = "0.0.0", path = "experimental/renderer", default-features = false }
 
 # ICU dependencies

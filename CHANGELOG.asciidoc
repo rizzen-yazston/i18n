@@ -1,7 +1,7 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.??.?? (2024-??-??)
+== i18n 0.10.0 (2024-08-02)
 
 WARNING: This update has API breaking changes.
 
