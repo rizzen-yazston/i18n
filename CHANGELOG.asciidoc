@@ -1,6 +1,80 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.??.?? (2024-??-??)
+
+WARNING: This update has API breaking changes.
+
+* Primary focus of this version was eliminating of `String` duplications, particular from the internal cache.
+
+* Changed the string returned type from `TaggedString` to a tuple `(RefCount<String>, RefCount<LanguageTag>)`, where `RefCount` is either `Rc` or `Arc`. This change allows the user of this library to discard the language tag with ease, without expensive copying of the `String`. However `TaggedString` will still remains in the `i18n_utility` crate, for those who still want the convenience of keeping string tagged with language.
+
+* Added to `LanguageTag` struct a method for creating an ICU `LanguageIdentifier` or `Locale` (with feature `icu_extended`) instance.
+
+* On the `LanguageTagRegistry`, made the caching of `LanguageIdentifier` or `Locale` instances optional by providing a dedicated method `icu_language` that will return a cached reference counted instance. If not already present in the cache, the method will create and add the instance immediately to the cache, then return the reference counted instance. 
+
+== Project wide changes
+
+* Altered the affected unit tests for the changes made.
+
+* Updated examples and documentation to reflect the changes made to structs, enums and methods.
+
+* Updated `Cargo.toml` to latest dependencies versions.
+
+=== i18n_localiser
+
+* In `error.rs`:
+
+** Added new variant `NeverReached` to the `LocaliserError` enum.
+
+* In `formatter.rs`:
+
+** Implemented new variant `Localised` in `PlaceholderValue` match statements.
+
+** Other minor editing.
+
+* In `localiser.rs`:
+
+** Changed the `TaggedString` to `(String, RefCount<LanguageTag>)` for methods: `format()`, `format_with_defaults()`, `literal()`, `literal_with_defaults()`, `format_localisation_data()`, `format_localisation_data_with_defaults()`, `format_error()`, `format_error_with_defaults()`, and internal methods.
+
+** Implemented new variant `Localised` in `PlaceholderValue` match statements.
+
+=== i18n_provider
+
+* In `provider.rs`:
+
+** Changed the `TaggedString` to `(String, RefCount<LanguageTag>)` for methods: `string()`, `string_exact_match()`, and `strings()`.
+
+=== i18n_provider_sqlite3
+
+* In `provider.rs`:
+
+** Changed the `TaggedString` to `(String, RefCount<LanguageTag>)` for methods: `string()`, `string_exact_match()`, `strings()`, and all internal methods.
+
+=== i18n_utility
+
+* In `language.rs`:
+
+** Added new method `ice_language()` to the `LanguageTag` type.
+
+** For the `LanguageTagRegistry`:
+
+*** changed the caching of `LanguageIdentifier` or `Locale` instances to be optional, that is no longer creates `LanguageIdentifier` or `Locale` instance and add to the cache when validating the supplied language tag.
+
+*** changed `tag()` method to only validate the supplied language tag without creating `LanguageIdentifier` or `Locale` instances.
+
+*** removed methods: `locale()` and `tag_and_locale()` as cache is made optional.
+
+*** added `icu_language()` method to obtain cached `LanguageIdentifier` or `Locale` instance for the supplied `LanguageTag`.
+
+* In `tagged_string`:
+
+** Added new method `as_string()` to return a reference `&String`.
+
+* In `types.rs`:
+
+** Added new variant `Localised(RefCount<String>, RefCount<LanguageTag>)` to the `PlaceholderValue` enum.
+
 == i18n 0.9.2 (2024-07-23)
 
 * Added script directional support.

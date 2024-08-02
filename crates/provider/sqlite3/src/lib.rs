@@ -51,8 +51,8 @@
 //!         &tag,
 //!     )?;
 //!     assert_eq!( strings.len(), 1, "There should be 1 string." );
-//!     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-//!     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
+//!     assert_eq!( strings[ 0 ].0.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+//!     assert_eq!( strings[ 0 ].1.as_str(), "en-ZA", "Must be en-ZA." );
 //!     Ok( () )
 //! }
 //! ```

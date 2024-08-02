@@ -2,7 +2,7 @@
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider-rizzen-yazston` crate.
 
 use crate::ProviderError;
-use i18n_utility::{LanguageTag, TaggedString};
+use i18n_utility::LanguageTag; //{LanguageTag, TaggedString};
 use std::collections::HashMap;
 
 #[cfg(not(feature = "sync"))]
@@ -32,6 +32,28 @@ use std::sync::Arc as RefCount;
 ///
 /// [UAX #31]: https://www.unicode.org/reports/tr31/
 pub trait LocalisationProviderTrait {
+    fn string(
+        &self,
+        component: &str,
+        identifier: &str,
+        language_tag: &RefCount<LanguageTag>,
+    ) -> Result<Option<(String, RefCount<LanguageTag>)>, ProviderError>;
+
+    fn string_exact_match(
+        &self,
+        component: &str,
+        identifier: &str,
+        language_tag: &RefCount<LanguageTag>,
+    ) -> Result<Option<(String, RefCount<LanguageTag>)>, ProviderError>;
+
+    fn strings(
+        &self,
+        component: &str,
+        identifier: &str,
+        language_tag: &RefCount<LanguageTag>,
+    ) -> Result<Vec<(String, RefCount<LanguageTag>)>, ProviderError>;
+
+    /*
     /// Obtain a localisation string ([`TaggedString`]) from the data repository for the provided parameters, though
     /// if an exact match is not found then search using similar language tags, else [`None`] returned indicating no
     /// possible match was found.
@@ -42,7 +64,7 @@ pub trait LocalisationProviderTrait {
     /// If more than one string matches the requested tag, then only one string is returned. This trait does not
     /// specify how the string is to be selected to be returned, thus varied results may be experienced. Look at
     /// `strings()` method to obtain all the strings, that matches the requested tag.
-    ///  
+    ///
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
     fn string(
         &self,
@@ -65,7 +87,7 @@ pub trait LocalisationProviderTrait {
     /// Similar to `string()`, except all the strings are returned for the matching requested tag.
     ///
     /// Empty [`Vec`] returned indicates no match was found.
-    ///  
+    ///
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository.
     fn strings(
         &self,
@@ -73,6 +95,7 @@ pub trait LocalisationProviderTrait {
         identifier: &str,
         language_tag: &RefCount<LanguageTag>,
     ) -> Result<Vec<TaggedString>, ProviderError>;
+    */
 
     /// Obtain the information details [`IdentifierDetails`] of an identifier within a component.
     ///

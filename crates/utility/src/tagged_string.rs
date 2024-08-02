@@ -86,6 +86,11 @@ impl TaggedString {
         &self.string
     }
 
+    /// Returns a reference (`&`[`String`]) to the internal `String`.
+    pub fn as_string(&self) -> &String {
+        &self.string
+    }
+
     /// Returns a reference to the tag [`Rc`]`<`[`LanguageTag`]`>` or [`Arc`]`<LanguageTag>`.
     ///
     /// # Examples

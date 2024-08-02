@@ -28,16 +28,15 @@
 //!
 //! ## `language`: Registry for holding ICU4X `Locale` objects.
 //!
-//! This module contains the [`LanguageTagRegistry`] type, to provide a simple container that caches the
-//! [BCP 47 Language Tag] strings and the [`LanguageIdentifier`] instances, or when the `icu_extended` feature is
-//! enabled the `Locale` instances is used instead.
+//! Registry for holding the validated [BCP 47 Language Tag] strings, and optionally holding the
+//! `ICU4X` [`LanguageIdentifier`] or [`Locale`] (using feature `icu_extended`) instances.
 //!
-//! The purpose of the registry is to reduce the need of parsing language tags repeatedly, by storing the result
-//! `LanguageIdentifier` for querying language tag in the registry, and uses the existing `LanguageIdentifier` for
-//!  the querying language tag when requested.
+//! The purpose of the registry is to reduce the need of parsing language tags repeatedly, by
+//! storing the validated language tag against the requested language tag.
 //!
-//! The `LanguageIdentifier` or `Locale` type can be provided by either the [`icu_locid`] crate or the `icu`
-//! meta-crate. These two crates are part of the [ICU4X] project developed by the [Unicode Consortium].
+//! The `LanguageIdentifier` or `Locale` type can be provided by either the [`icu_locid`] crate
+//! or the `icu` meta-crate. These two crates are part of the [ICU4X] project developed by the
+//! [Unicode Consortium].
 //!
 //! ### Examples
 //!
@@ -47,10 +46,10 @@
 //! use i18n_utility::LanguageTagRegistry;
 //!
 //! let mut registry = LanguageTagRegistry::new();
-//! let result = registry.tag_and_identifier("en_ZA").expect("Failed to parse language tag.");
+//! let result = registry.tag("en_ZA").expect("Failed to parse language tag.");
 //! let tags = registry.list().iter().count();
 //!
-//! assert_eq!(result.0.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format.");
+//! assert_eq!(result.as_str(), "en-ZA", "Did not convert en_ZA to en-ZA BCP 47 format.");
 //! assert_eq!(tags, 1, "Supposed to be 1 entries: en-ZA.")
 //! ```
 //!

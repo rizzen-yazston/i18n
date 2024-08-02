@@ -60,7 +60,7 @@ fn format() -> Result<(), Box<dyn Error>> {
         None,
     )?;
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the language \
         tag ‘en-ZA’. Fallback was used: True.",
         "Check placeholder values."
@@ -95,7 +95,7 @@ fn format_with_defaults() -> Result<(), Box<dyn Error>> {
     );
     let lstring = localiser.format_with_defaults("i18n_localiser", "cache_entry", &values)?;
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "Unable to get the string for the component ‘i18n_localiser’ with the identifier ‘cache_entry’ as the cache \
         entry requires values for formatting.",
         "Check placeholder values."
@@ -127,7 +127,7 @@ fn literal() -> Result<(), Box<dyn Error>> {
         None,
     )?;
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "Unable to get the string for the component ‘{component}’ with the identifier ‘{identifier}’ as the cache \
         entry requires values for formatting.",
         "Check placeholder values."
@@ -153,7 +153,7 @@ fn literal_with_defaults() -> Result<(), Box<dyn Error>> {
     )?;
     let lstring = localiser.literal_with_defaults("i18n_localiser", "cache_entry")?;
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "Unable to get the string for the component ‘{component}’ with the identifier ‘{identifier}’ as the cache \
         entry requires values for formatting.",
         "Check placeholder values."
@@ -202,7 +202,7 @@ fn format_localisation_data() -> Result<(), Box<dyn Error>> {
     };
     let lstring = localiser.format_localisation_data(&data, &language, None, None)?;
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the language \
         tag ‘en-ZA’. Fallback was used: True.",
         "Check placeholder values."
@@ -250,7 +250,7 @@ fn format_localisation_data_with_defaults() -> Result<(), Box<dyn Error>> {
     };
     let lstring = localiser.format_localisation_data_with_defaults(&data)?;
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the language \
         tag ‘en-ZA’. Fallback was used: True.",
         "Check placeholder values."
@@ -285,7 +285,7 @@ fn format_error() -> Result<(), Box<dyn Error>> {
         .format_error(&error, &language, None, None)
         .unwrap();
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "LocaliserError::StringNotFound: ‘No string was found for the component ‘application’ with identifier \
         ‘not_exists’ for the language tag ‘en-ZA’. Fallback was used: False.’.",
         "Check placeholder values."
@@ -318,7 +318,7 @@ fn format_error_with_defaults() -> Result<(), Box<dyn Error>> {
     );
     let lstring = localiser.format_error_with_defaults(&error).unwrap();
     assert_eq!(
-        lstring.as_str(),
+        lstring.0.as_str(),
         "LocaliserError::StringNotFound: ‘No string was found for the component ‘application’ with identifier \
         ‘not_exists’ for the language tag ‘en-ZA’. Fallback was used: False.’.",
         "Check placeholder values."

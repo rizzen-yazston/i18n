@@ -108,7 +108,7 @@
 //!         None
 //!     )?;
 //!     assert_eq!(
-//!         lstring.as_str(),
+//!         lstring.0.as_str(),
 //!         "No string was found for the component ‘i18n_localiser’ with identifier ‘string_not_found’ for the \
 //!             language tag ‘en-ZA’. Fallback was used: True.",
 //!         "Check placeholder values."

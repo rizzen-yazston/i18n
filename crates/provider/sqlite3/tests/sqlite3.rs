@@ -25,7 +25,7 @@ fn strings_for_en() -> Result<(), Box<dyn Error>> {
     let strings = provider.strings("i18n_provider_sqlite3", "path_conversion", &tag)?;
     assert_eq!(strings.len(), 1, "There should be 1 string.");
     assert_eq!(
-        strings[0].as_str(),
+        strings[0].0.as_str(),
         "Conversion to {`PathBuf`} error.",
         "Not correct string."
     );
@@ -69,7 +69,7 @@ fn one_string() -> Result<(), Box<dyn Error>> {
     let provider = LocalisationProviderSqlite3::try_new(path, &registry, false)?;
     let string = provider.string("i18n_provider_sqlite3", "path_conversion", &tag)?;
     assert_eq!(
-        string.unwrap().as_str(),
+        string.unwrap().0.as_str(),
         "Conversion to {`PathBuf`} error.",
         "Not correct string."
     );
@@ -84,7 +84,7 @@ fn exact_string() -> Result<(), Box<dyn Error>> {
     let provider = LocalisationProviderSqlite3::try_new(path, &registry, false)?;
     let string = provider.string_exact_match("i18n_provider_sqlite3", "path_conversion", &tag)?;
     assert_eq!(
-        string.unwrap().as_str(),
+        string.unwrap().0.as_str(),
         "Conversion to {`PathBuf`} error.",
         "Not correct string."
     );

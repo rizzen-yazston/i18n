@@ -475,6 +475,7 @@ pub enum LocaliserError {
     Provider(ProviderError),
     StringNotFound(String, String, String, bool), // component, identifier, language_tag, fallback
     CacheEntry(String, String),
+    NeverReached,
 }
 
 impl LocalisationErrorTrait for LocaliserError {}
@@ -605,6 +606,28 @@ impl LocalisationTrait for LocaliserError {
                     values: Some(values),
                 }
             }
+            LocaliserError::NeverReached => {
+                let message = LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "never_reach".to_string(),
+                    values: None,
+                };
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert("type".to_string(), type_string);
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String("NeverReached".to_string()),
+                );
+                values.insert(
+                    "message".to_string(),
+                    PlaceholderValue::LocalisationData(message),
+                );
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum".to_string(),
+                    values: Some(values),
+                }
+            }
         }
     }
 }
@@ -645,6 +668,8 @@ impl Display for LocaliserError {
                 component,
                 identifier
             ),
+            LocaliserError::NeverReached =>
+                write!( formatter, "LocaliserError::NeverReached: Build error: Should never have reached this match branch." ),
         }
     }
 }

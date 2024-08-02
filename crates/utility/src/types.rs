@@ -1,10 +1,17 @@
 // This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
-use crate::TaggedString;
+use crate::{LanguageTag, TaggedString};
 use fixed_decimal::FixedDecimal;
 use icu_calendar::{types::Time, Date, DateTime, Iso};
 use std::collections::HashMap;
+
+#[cfg(not(feature = "sync"))]
+use std::rc::Rc as RefCount;
+
+#[cfg(feature = "sync")]
+#[cfg(target_has_atomic = "ptr")]
+use std::sync::Arc as RefCount;
 
 /// A simple data structure containing the data for localisation of an enum or struct.
 ///
@@ -50,9 +57,10 @@ pub enum PlaceholderValue {
     Unsigned(u128),
     Float(f64),
     TaggedString(TaggedString),
+    Localised(RefCount<String>, RefCount<LanguageTag>),
+    LocalisationData(LocalisationData),
     FixedDecimal(FixedDecimal),
     DateTime(DateTime<Iso>),
     Date(Date<Iso>),
     Time(Time),
-    LocalisationData(LocalisationData),
 }

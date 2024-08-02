@@ -6,7 +6,7 @@ use i18n_provider::{
     ComponentDetails, IdentifierDetails, LanguageData, LocalisationProviderTrait, ProviderError,
     RepositoryDetails,
 };
-use i18n_utility::{LanguageTag, LanguageTagRegistry, TaggedString};
+use i18n_utility::{LanguageTag, LanguageTagRegistry}; //, TaggedString};
 use rusqlite::{Connection, OpenFlags};
 
 #[cfg(feature = "logging")]
@@ -67,8 +67,8 @@ use std::path::PathBuf;
 ///         &tag,
 ///     )?;
 ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
-///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
+///     assert_eq!( strings[ 0 ].0.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+///     assert_eq!( strings[ 0 ].1.as_str(), "en-ZA", "Must be en-ZA." );
 ///     Ok( () )
 /// }
 /// ```
@@ -349,7 +349,7 @@ impl LocalisationProviderSqlite3 {
         all_in_one: bool,
         only_one: bool,
         exact: bool,
-    ) -> Result<Vec<TaggedString>, ProviderError> {
+    ) -> Result<Vec<(String, RefCount<LanguageTag>) /*TaggedString*/>, ProviderError> {
         #[cfg(feature = "logging")]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}' with all_in_one: {}, \
@@ -419,7 +419,7 @@ impl LocalisationProviderSqlite3 {
                 ))))
             }
         };
-        let mut strings = Vec::<TaggedString>::new();
+        let mut strings = Vec::<(String, RefCount<LanguageTag>) /*TaggedString*/>::new();
         let mut tag = language_tag.as_str().to_string();
         while !tag.is_empty() {
             if !exact {
@@ -462,7 +462,9 @@ impl LocalisationProviderSqlite3 {
                     }
                 };
                 let language = self.language_tag_registry.as_ref().tag(tag_raw.as_str())?;
-                strings.push(TaggedString::new(string, &language));
+                strings.push(
+                    (string, language), /*TaggedString::new(string, &language)*/
+                );
             }
             if !strings.is_empty() {
                 #[cfg(feature = "logging")]
@@ -1200,13 +1202,14 @@ impl LocalisationProviderSqlite3 {
 }
 
 impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
-    /// Obtain a localisation string ([`TaggedString`]) from the data repository for the provided parameters, though
-    /// if an exact match is not found then search using similar language tags, else [`None`] returned indicating no
-    /// possible match was found.
+    /// Obtain a localisation string as `(`[`String`]`, `[`Rc`]`<`[`LanguageTag`]`>)` from the
+    /// data repository for the provided parameters, though if an exact match is not found
+    /// then search using similar language tags, else [`None`] returned indicating no possible
+    /// match was found. [`Rc`] can be replaced with [`Arc`] when using feature `sync`.
     ///
-    /// Return of [`ProviderError`] indicates there was an error in accessing the data repository. The
-    /// `ProviderError` contains the actual error [`ProviderSqlite3Error`], usually indicates
-    /// there was a Sqlite3 error.
+    /// Return of [`ProviderError`] indicates there was an error in accessing the data
+    /// repository. The `ProviderError` contains the actual error [`ProviderSqlite3Error`],
+    /// usually indicates there was a Sqlite3 error.
     ///
     /// # Examples
     ///
@@ -1230,17 +1233,20 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     ///         "path_conversion",
     ///         &tag,
     ///     )?.unwrap();
-    ///     assert_eq!( string.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    ///     assert_eq!( string.tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     assert_eq!( string.0.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    ///     assert_eq!( string.1.as_str(), "en-ZA", "Must be en-ZA." );
     ///     Ok( () )
     /// }
     /// ```
+    ///
+    /// [`Rc`]: std::rc::Rc
+    /// [`Arc`]: std::sync::Arc
     fn string(
         &self,
         component: &str,
         identifier: &str,
         language_tag: &RefCount<LanguageTag>,
-    ) -> Result<Option<TaggedString>, ProviderError> {
+    ) -> Result<Option<(String, RefCount<LanguageTag>)>, ProviderError> {
         #[cfg(feature = "logging")]
         debug!(
             "Finding one string for identifier '{}' of component '{}' for language tag '{}'.",
@@ -1258,10 +1264,10 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             #[cfg(feature = "logging")]
             debug!("Trying the 'all_in_one.sqlite3' for string.");
 
-            let strings =
+            let mut strings =
                 self.find_strings(component, identifier, language_tag, true, true, false)?;
             if !strings.is_empty() {
-                return Ok(Some(strings[0].clone()));
+                return Ok(strings.pop());
             }
         }
 
@@ -1270,17 +1276,19 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         debug!("Trying the component sqlite3 file for string.");
 
         if component_files.1 {
-            let strings =
+            let mut strings =
                 self.find_strings(component, identifier, language_tag, false, true, false)?;
             if !strings.is_empty() {
-                return Ok(Some(strings[0].clone()));
+                return Ok(strings.pop());
             }
         }
         Ok(None)
     }
 
-    /// Obtain a localisation string ([`TaggedString`]) only if there is an exact match in the data repository for the
-    /// provided parameters, else [`None`] returned indicating no exact match was found.
+    /// Obtain a localisation string as `(`[`String`]`, `[`Rc`]`<`[`LanguageTag`]`>)` only if
+    /// there is an exact match in the data repository for the provided parameters, else [`None`]
+    /// returned indicating no exact match was found. [`Rc`] can be replaced with [`Arc`] when
+    /// using feature `sync`.
     ///
     /// Return of [`ProviderError`] indicates there was an error in accessing the data repository. The
     /// `ProviderError` contains the actual error [`ProviderSqlite3Error`], usually indicates
@@ -1308,17 +1316,20 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     ///         "path_conversion",
     ///         &tag,
     ///     )?.unwrap();
-    ///     assert_eq!( string.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    ///     assert_eq!( string.tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     assert_eq!( string.0.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    ///     assert_eq!( string.1.as_str(), "en-ZA", "Must be en-ZA." );
     ///     Ok( () )
     /// }
     /// ```
+    ///
+    /// [`Rc`]: std::rc::Rc
+    /// [`Arc`]: std::sync::Arc
     fn string_exact_match(
         &self,
         component: &str,
         identifier: &str,
         language_tag: &RefCount<LanguageTag>,
-    ) -> Result<Option<TaggedString>, ProviderError> {
+    ) -> Result<Option<(String, RefCount<LanguageTag>)>, ProviderError> {
         #[cfg(feature = "logging")]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
@@ -1336,10 +1347,10 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             #[cfg(feature = "logging")]
             debug!("Trying the 'all_in_one.sqlite3' for exact match string.");
 
-            let strings =
+            let mut strings =
                 self.find_strings(component, identifier, language_tag, true, true, true)?;
             if !strings.is_empty() {
-                return Ok(Some(strings[0].clone()));
+                return Ok(strings.pop());
             }
         }
 
@@ -1348,10 +1359,10 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         debug!("Trying the component sqlite3 file for exact match string.");
 
         if component_files.1 {
-            let strings =
+            let mut strings =
                 self.find_strings(component, identifier, language_tag, false, true, true)?;
             if !strings.is_empty() {
-                return Ok(Some(strings[0].clone()));
+                return Ok(strings.pop());
             }
         }
         Ok(None)
@@ -1388,17 +1399,20 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     ///         &tag,
     ///     )?;
     ///     assert_eq!( strings.len(), 1, "There should be 1 string." );
-    ///     assert_eq!( strings[ 0 ].as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
-    ///     assert_eq!( strings[ 0 ].tag().as_str(), "en-ZA", "Must be en-ZA." );
+    ///     assert_eq!( strings[ 0 ].0.as_str(), "Conversion to {`PathBuf`} error.", "Not correct string." );
+    ///     assert_eq!( strings[ 0 ].1.as_str(), "en-ZA", "Must be en-ZA." );
     ///     Ok( () )
     /// }
     /// ```
+    ///
+    /// [`Rc`]: std::rc::Rc
+    /// [`Arc`]: std::sync::Arc
     fn strings(
         &self,
         component: &str,
         identifier: &str,
         language_tag: &RefCount<LanguageTag>,
-    ) -> Result<Vec<TaggedString>, ProviderError> {
+    ) -> Result<Vec<(String, RefCount<LanguageTag>)>, ProviderError> {
         #[cfg(feature = "logging")]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}'.",
@@ -1410,7 +1424,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         let Some(component_files) = self.components.get(component) else {
             return Err(ProviderError::ComponentNotFound(component.to_string()));
         };
-        let mut strings = Vec::<TaggedString>::new();
+        let mut strings = Vec::<(String, RefCount<LanguageTag>)>::new();
 
         // Try all_in_one.sqlite3 first.
         if component_files.0 {

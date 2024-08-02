@@ -7,7 +7,7 @@ use crate::{CommandRegistry, FormatterError, Localiser, NodeType, Tree};
 use fixed_decimal::{DoublePrecision, FixedDecimal, SignDisplay};
 #[allow(unused_imports)]
 use i18n_lexer::{DataProvider, IcuDataProvider, Token, TokenType};
-use i18n_utility::{LanguageTag, PlaceholderValue, TaggedString};
+use i18n_utility::{LanguageTag, PlaceholderValue};
 use icu_calendar::{
     types::{IsoHour, IsoMinute, IsoSecond, NanoSecond, Time},
     Date, DateTime, Iso,
@@ -21,10 +21,10 @@ use icu_plurals::{PluralCategory, PluralRules};
 use icu_provider::prelude::DataLocale;
 
 #[cfg(not(feature = "extend"))]
-use icu_locid::LanguageIdentifier as Locale;
+use icu_locid::LanguageIdentifier as IcuLanguage;
 
 #[cfg(feature = "extend")]
-use icu_locid::Locale;
+use icu_locid::Locale as IcuLanguage;
 
 #[cfg(feature = "logging")]
 use log::{debug, trace};
@@ -42,7 +42,7 @@ use std::str::FromStr;
 
 pub(crate) struct Formatter {
     language_tag: RefCount<LanguageTag>,
-    locale: RefCount<Locale>,
+    icu_language: RefCount<IcuLanguage>,
     patterns: HashMap<String, Vec<PatternPart>>,
     numbers: Vec<String>,
     selectors: Vec<HashMap<String, String>>,
@@ -53,8 +53,8 @@ impl Formatter {
     /// During the creation of the formatter for the supplied string, the semantic analyse is done.
     pub fn try_new(
         localiser: &Localiser,
-        language_tag: &RefCount<LanguageTag>,
         string: &str,
+        language_tag: &RefCount<LanguageTag>,
     ) -> Result<Formatter, FormatterError> {
         #[cfg(feature = "logging")]
         debug!(
@@ -73,10 +73,7 @@ impl Formatter {
         if !tree.has_grammar() {
             return Err(FormatterError::NoGrammar);
         }
-        let locale = localiser
-            .language_tag_registry()
-            .identifier(language_tag.as_str())
-            .unwrap();
+        let icu_language = localiser.language_tag_registry().icu_language(language_tag);
         let mut patterns = HashMap::<String, Vec<PatternPart>>::new();
         patterns.insert("_".to_string(), Vec::<PatternPart>::new()); // Insert empty main pattern.
         let mut numbers = Vec::<String>::new();
@@ -138,7 +135,7 @@ impl Formatter {
                             child,
                             &mut selectors,
                             &option_selectors,
-                            &locale,
+                            &icu_language,
                         )?;
                     } else if node_type == &NodeType::Command {
                         part_command(&mut pattern, &tree, child, localiser.command_registry())?;
@@ -168,7 +165,7 @@ impl Formatter {
                     child,
                     &mut selectors,
                     &option_selectors,
-                    &locale,
+                    &icu_language,
                 )?;
             } else if tree.node_type(child) == &NodeType::Command {
                 part_command(&mut pattern, &tree, child, localiser.command_registry())?;
@@ -180,7 +177,7 @@ impl Formatter {
         patterns.insert("_".to_string(), pattern);
         Ok(Formatter {
             language_tag: RefCount::clone(language_tag),
-            locale,
+            icu_language,
             patterns,
             numbers,
             selectors,
@@ -192,9 +189,9 @@ impl Formatter {
         &mut self,
         localiser: &Localiser,
         values: &HashMap<String, PlaceholderValue>,
-    ) -> Result<TaggedString, FormatterError> {
+    ) -> Result<(String, &RefCount<LanguageTag>), FormatterError> {
         let pattern_string = self.format_pattern(localiser, values, "_")?;
-        Ok(TaggedString::new(pattern_string, &self.language_tag))
+        Ok((pattern_string, &self.language_tag))
     }
 
     // Internal methods
@@ -247,6 +244,7 @@ impl Formatter {
                     match value {
                         PlaceholderValue::String(value) => string.push_str(value),
                         PlaceholderValue::TaggedString(value) => string.push_str(value.as_str()),
+                        PlaceholderValue::Localised(value, _) => string.push_str(value.as_str()),
                         _ => return Err(FormatterError::InvalidValue("PatternString".to_string())),
                     }
                 }
@@ -264,7 +262,7 @@ impl Formatter {
                             placeholder.to_string(),
                         ));
                     };
-                    let data_locale = DataLocale::from(RefCount::as_ref(&self.locale));
+                    let data_locale = DataLocale::from(RefCount::as_ref(&self.icu_language));
                     let mut options: options::FixedDecimalFormatterOptions = Default::default();
                     if group.is_some() {
                         options.grouping_strategy = group.unwrap();
@@ -337,7 +335,7 @@ impl Formatter {
                     };
                     let options = Bag::from_date_time_style(length_date, length_time);
                     let data_locale = match calendar {
-                        None => DataLocale::from(RefCount::as_ref(&self.locale)),
+                        None => DataLocale::from(RefCount::as_ref(&self.icu_language)),
                         Some(locale) => DataLocale::from(locale),
                     };
                     match value {
@@ -405,7 +403,7 @@ impl Formatter {
                         ));
                     };
                     let selectors_index = selectors;
-                    let data_locale = DataLocale::from(RefCount::as_ref(&self.locale));
+                    let data_locale = DataLocale::from(RefCount::as_ref(&self.icu_language));
                     match complex {
                         ComplexType::Plural => {
                             let plurals = self.plural_rules_cardinal(localiser, &data_locale)?;
@@ -500,12 +498,22 @@ impl Formatter {
                                     )?;
                                 }
                                 PlaceholderValue::TaggedString(value) => {
-                                    // Locale is not used, and LSring is just treated as String for the selector
+                                    // LanguageTag is not used, and TaggedString is just treated as String for the selector
                                     self.select(
                                         localiser,
                                         values,
                                         &mut string,
-                                        &value.as_str().to_string(),
+                                        value.as_string(),
+                                        *selectors_index,
+                                    )?;
+                                }
+                                PlaceholderValue::Localised(localised, _) => {
+                                    // LanguageTag is not used, and TaggedString is just treated as String for the selector
+                                    self.select(
+                                        localiser,
+                                        values,
+                                        &mut string,
+                                        localised,
                                         *selectors_index,
                                     )?;
                                 }
@@ -1031,7 +1039,7 @@ fn part_pattern(
     index: &usize,
     selectors: &mut Vec<HashMap<String, String>>,
     option_selectors: &OptionSelectors,
-    locale: &RefCount<Locale>,
+    icu_language: &RefCount<IcuLanguage>,
 ) -> Result<(), FormatterError> {
     #[cfg(feature = "logging")]
     trace!("Processing pattern node.");
@@ -1094,7 +1102,7 @@ fn part_pattern(
         let strings = pattern_selectors(tree, index)?;
         let mut length_date: Option<DateLength> = None;
         let mut length_time: Option<TimeLength> = None;
-        let mut calendar: Option<Locale> = None;
+        let mut calendar: Option<IcuLanguage> = None;
         for (key, value) in strings.iter() {
             if key.as_str() == "date" {
                 length_date = Some(date_length(value.as_str())?);
@@ -1110,7 +1118,7 @@ fn part_pattern(
                 }
                 let mut new_calendar = "-u-ca-".to_string();
                 new_calendar.push_str(value.as_str());
-                let mut locale_string = locale.to_string();
+                let mut locale_string = icu_language.to_string();
                 match locale_string.find("-u-ca-") {
                     None => {
                         locale_string.push_str(new_calendar.as_str());
@@ -1442,7 +1450,7 @@ enum PatternPart {
         placeholder: String,
         length_date: Option<DateLength>,
         length_time: Option<TimeLength>,
-        calendar: Option<Locale>,
+        calendar: Option<IcuLanguage>,
     },
     PatternComplex {
         placeholder: String,
