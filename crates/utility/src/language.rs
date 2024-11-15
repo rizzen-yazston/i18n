@@ -1,6 +1,8 @@
 // This file is part of `i18n_utility-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_utility-rizzen-yazston` crate.
 
+#![allow(unexpected_cfgs)]
+
 use crate::RegistryError;
 
 #[cfg(not(feature = "extend"))]
@@ -310,13 +312,7 @@ impl LanguageTagRegistry {
         return Vec::from_iter(self.tags.borrow().values().map(RefCount::clone));
 
         #[cfg(feature = "sync")]
-        Vec::from_iter(
-            self.tags
-                .lock()
-                .unwrap()
-                .values()
-                .map(RefCount::clone),
-        )
+        Vec::from_iter(self.tags.lock().unwrap().values().map(RefCount::clone))
     }
 
     /// Returns a vector list of all the registered language tags of deprecated specification.
@@ -340,12 +336,7 @@ impl LanguageTagRegistry {
     /// ```
     pub fn list_deprecated(&self) -> Vec<RefCount<LanguageTag>> {
         #[cfg(not(feature = "sync"))]
-        return Vec::from_iter(
-            self.deprecated
-                .borrow()
-                .values()
-                .map(RefCount::clone),
-        );
+        return Vec::from_iter(self.deprecated.borrow().values().map(RefCount::clone));
 
         #[cfg(feature = "sync")]
         Vec::from_iter(
@@ -383,26 +374,13 @@ impl LanguageTagRegistry {
     /// [BCP 47 Language Tag]: https://www.rfc-editor.org/rfc/bcp/bcp47.txt
     pub fn list_all(&self) -> Vec<RefCount<LanguageTag>> {
         #[cfg(not(feature = "sync"))]
-        let mut list = Vec::from_iter(
-            self.tags.borrow().values().map(RefCount::clone)
-        );
+        let mut list = Vec::from_iter(self.tags.borrow().values().map(RefCount::clone));
 
         #[cfg(feature = "sync")]
-        let mut list = Vec::from_iter(
-            self.tags
-                .lock()
-                .unwrap()
-                .values()
-                .map(RefCount::clone),
-        );
+        let mut list = Vec::from_iter(self.tags.lock().unwrap().values().map(RefCount::clone));
 
         #[cfg(not(feature = "sync"))]
-        let mut deprecated = Vec::from_iter(
-            self.deprecated
-                .borrow()
-                .values()
-                .map(RefCount::clone),
-        );
+        let mut deprecated = Vec::from_iter(self.deprecated.borrow().values().map(RefCount::clone));
 
         #[cfg(feature = "sync")]
         let mut deprecated = Vec::from_iter(

@@ -1,6 +1,8 @@
 // This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
 
+#![allow(unexpected_cfgs)]
+
 use crate::{IcuDataProvider, LexerError};
 
 #[allow(unused_imports)]
@@ -56,7 +58,7 @@ use icu_provider_fs::FsDataProvider;
 /// - Grammar contains a single syntax character: any of the valid grammar syntax characters;
 ///
 /// - Syntax contains only syntax (Pattern_Syntax (UAX #31)) characters, which generally consists of punctuation and
-/// control characters, and not including grammar syntax characters.
+///   control characters, and not including grammar syntax characters.
 ///
 /// [UAX #31]: https://www.unicode.org/reports/tr31/
 #[derive(Debug, Copy, Clone, PartialEq)]

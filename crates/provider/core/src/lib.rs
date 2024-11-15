@@ -14,7 +14,7 @@
 //! Available features for `i18n_provider` crate:
 //!
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
-//! [`RefCell`].
+//!   [`RefCell`].
 //!
 //! # Modules
 //!

@@ -1,16 +1,18 @@
 // This file is part of `i18n_provider_sqlite3-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_provider_sqlite3-rizzen-yazston` crate.
 
+#![allow(unexpected_cfgs)]
+
 use crate::{ProviderSqlite3Error, SchemaError};
 use i18n_provider::{
     ComponentDetails, IdentifierDetails, LanguageData, LocalisationProviderTrait, ProviderError,
     RepositoryDetails,
 };
-use i18n_utility::{LanguageTag, LanguageTagRegistry}; //, TaggedString};
-use rusqlite::{Connection, OpenFlags};
+use i18n_utility::{LanguageTag, LanguageTagRegistry};
+use rusqlite::{Connection, OpenFlags, Row};
 
 #[cfg(feature = "logging")]
-use log::{debug, error};
+use log::{debug, error, trace};
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -34,13 +36,13 @@ use std::path::PathBuf;
 /// supports internationalisation.
 ///
 /// As this provider is directory based, there may be one or more Sqlite3 files present for application's
-/// localisation. There may just be a single file `all_in_one.sqlite3` containing all the localisation strings of
+/// localisation. There may just be a single file `__all_in_one__.sqlite3` containing all the localisation strings of
 /// all the components (application and libraries, or data files), or there may be multiple separate Sqlite3 for
 /// each components (for application the `application.sqlite3` must be present), or even a combination of
-/// `all_in_one.sqlite3` and separate component files.
+/// `__all_in_one__.sqlite3` and separate component files.
 ///
-/// If `all_in_one.sqlite3` and separate component files are present, then the `all_in_one.sqlite3` is accessed
-/// first. If a string is not found in the `all_in_one.sqlite3` then the separate component file is accessed.
+/// If `__all_in_one__.sqlite3` and separate component files are present, then the `__all_in_one__.sqlite3` is accessed
+/// first. If a string is not found in the `__all_in_one__.sqlite3` then the separate component file is accessed.
 ///
 /// Any non-sqlite3 files and sub directories present will be ignored.
 ///
@@ -80,10 +82,12 @@ pub struct LocalisationProviderSqlite3 {
     components: HashMap<String, (bool, bool)>, // 1st: in all_in_one, 2nd: as own sqlite3 file.
 
     #[cfg(not(feature = "sync"))]
-    connections: HashMap<String, RefCount<Connection>>, // None => already tried and failed.
+    connections: HashMap<String, (RefCount<Connection>, String)>, // ( ..., String) is schema_version
 
-    #[cfg(feature = "sync")] // remove the not()
-    connections: HashMap<String, PathBuf>, // None = tried and failed verification.
+    #[cfg(feature = "sync")]
+    // Due to the Connection containing a RefCell field, instead the path to
+    // the verified database file is stored.
+    connections: HashMap<String, (PathBuf, String)>, // ( ..., String) is schema_version
 
     // Cached data (long running sql queries)
     repository_details: OnceMut<RefCount<RepositoryDetails>>,
@@ -107,7 +111,6 @@ impl LocalisationProviderSqlite3 {
     ///
     /// Returns `ProviderSqlite3Error` when there is an error in verifying the path is a directory and it
     /// does not contain `.sqlite3` files, or Sqlite error occurred.
-    // TODO: do schema verification.
     pub fn try_new<T: TryInto<PathBuf>>(
         directory_path: T,
         language_tag_registry: &RefCount<LanguageTagRegistry>,
@@ -125,10 +128,10 @@ impl LocalisationProviderSqlite3 {
         let mut components = HashMap::<String, (bool, bool)>::new();
 
         #[cfg(not(feature = "sync"))]
-        let mut connections = HashMap::<String, RefCount<Connection>>::new();
+        let mut connections = HashMap::<String, (RefCount<Connection>, String)>::new();
 
         #[cfg(feature = "sync")]
-        let mut connections = HashMap::<String, PathBuf>::new();
+        let mut connections = HashMap::<String, (PathBuf, String)>::new();
 
         let iterator = directory.read_dir()?; // If IO error is returned, usually it is a permission issue.
         for entry in iterator {
@@ -141,7 +144,7 @@ impl LocalisationProviderSqlite3 {
                     #[cfg(logging)]
                     trace!("Sqlite3 file: {}", component);
 
-                    if component.as_str().cmp("all_in_one") == Ordering::Equal {
+                    if component.as_str().cmp("__all_in_one__") == Ordering::Equal {
                         match Connection::open_with_flags(
                             path.clone(),
                             OpenFlags::SQLITE_OPEN_READ_ONLY
@@ -153,7 +156,7 @@ impl LocalisationProviderSqlite3 {
                                 error!("Unable to connect to {}: {}.", path.display(), _error);
                             }
                             Ok(connection) => {
-                                Self::verify_schema(&connection, true)?;
+                                let schema_version = verify_schema(&connection)?;
                                 {
                                     let mut statement = connection
                                         .prepare_cached("SELECT identifier FROM component")?;
@@ -162,7 +165,10 @@ impl LocalisationProviderSqlite3 {
                                         let component: String = row.get(0)?;
 
                                         #[cfg(logging)]
-                                        trace!("all_in_one.sqlite3 has component: {}", component);
+                                        trace!(
+                                            "__all_in_one__.sqlite3 has component: {}",
+                                            component
+                                        );
 
                                         if let std::collections::hash_map::Entry::Vacant(e) =
                                             components.entry(component.clone())
@@ -176,11 +182,14 @@ impl LocalisationProviderSqlite3 {
                                 }
 
                                 #[cfg(not(feature = "sync"))]
-                                connections
-                                    .insert("all_in_one".to_string(), RefCount::new(connection));
+                                connections.insert(
+                                    "__all_in_one__".to_string(),
+                                    (RefCount::new(connection), schema_version),
+                                );
 
                                 #[cfg(feature = "sync")]
-                                connections.insert("all_in_one".to_string(), path);
+                                connections
+                                    .insert("__all_in_one__".to_string(), (path, schema_version));
                             }
                         }
                     } else {
@@ -195,7 +204,7 @@ impl LocalisationProviderSqlite3 {
                                 error!("Unable to connect to {}: {}.", path.display(), _error);
                             }
                             Ok(connection) => {
-                                Self::verify_schema(&connection, false)?;
+                                let schema_version = verify_schema(&connection)?;
 
                                 #[cfg(logging)]
                                 trace!("Added component: {}", component);
@@ -208,10 +217,11 @@ impl LocalisationProviderSqlite3 {
                                 }
 
                                 #[cfg(not(feature = "sync"))]
-                                connections.insert(component, RefCount::new(connection));
+                                connections
+                                    .insert(component, (RefCount::new(connection), schema_version));
 
                                 #[cfg(feature = "sync")]
-                                connections.insert(component, path);
+                                connections.insert(component, (path, schema_version));
                             }
                         }
                     }
@@ -237,43 +247,12 @@ impl LocalisationProviderSqlite3 {
 
     // Internal functions.
 
-    fn verify_schema(
-        connection: &Connection,
-        _all_in_one: bool,
-    ) -> Result<(), ProviderSqlite3Error> {
-        let mut statement =
-            connection.prepare_cached("SELECT value FROM metadata WHERE key = 'schema_version'")?;
-        let mut rows = statement.query([])?;
-        let mut count = 0;
-        while let Some(row) = rows.next()? {
-            count += 1;
-            let version: String = row.get(0)?;
-            if "1.0".cmp(version.as_str()) != Ordering::Equal {
-                return Err(ProviderSqlite3Error::SchemaInvalid(SchemaError::Version(
-                    connection.path().unwrap().to_string(),
-                    "1.0".to_string(),
-                )));
-            }
-        }
-        if count == 0 {
-            return Err(ProviderSqlite3Error::SchemaInvalid(
-                SchemaError::MissingVersion(connection.path().unwrap().to_string()),
-            ));
-        }
-
-        // Verify the schema
-        // Still to implement, once research is done on how to do it.
-        // _all_in_one will be used here to determine which file schema to check.
-
-        Ok(())
-    }
-
     #[cfg(not(feature = "sync"))]
     fn connection(
         &self,
         component: &str,
         all_in_one: bool,
-    ) -> Result<RefCount<Connection>, ProviderError> {
+    ) -> Result<(RefCount<Connection>, &str), ProviderError> {
         #[cfg(feature = "logging")]
         debug!("Getting database connection for component '{}'.", component,);
 
@@ -282,10 +261,12 @@ impl LocalisationProviderSqlite3 {
             return Err(ProviderError::ComponentNotFound(component.to_string()));
         };
         if all_in_one && value.0 {
-            return Ok(RefCount::clone(self.connections.get("all_in_one").unwrap()));
+            let result = self.connections.get("__all_in_one__").unwrap();
+            return Ok((RefCount::clone(&result.0), result.1.as_str()));
         }
         if value.1 {
-            return Ok(RefCount::clone(self.connections.get(component).unwrap()));
+            let result = self.connections.get(component).unwrap();
+            return Ok((RefCount::clone(&result.0), result.1.as_str()));
         }
         Err(ProviderError::ComponentNotFound(component.to_string()))
     }
@@ -295,7 +276,7 @@ impl LocalisationProviderSqlite3 {
         &self,
         component: &str,
         all_in_one: bool,
-    ) -> Result<Connection, ProviderError> {
+    ) -> Result<(Connection, &str), ProviderError> {
         #[cfg(feature = "logging")]
         debug!("Getting database connection for component '{}'.", component,);
 
@@ -304,13 +285,14 @@ impl LocalisationProviderSqlite3 {
             return Err(ProviderError::ComponentNotFound(component.to_string()));
         };
         if all_in_one && value.0 {
+            let result = self.connections.get("__all_in_one__").unwrap();
             match Connection::open_with_flags(
-                self.connections.get("all_in_one").unwrap(),
+                &result.0,
                 OpenFlags::SQLITE_OPEN_READ_ONLY
                     | OpenFlags::SQLITE_OPEN_NO_MUTEX
                     | OpenFlags::SQLITE_OPEN_URI,
             ) {
-                Ok(value) => return Ok(value),
+                Ok(value) => return Ok((value, result.1.as_str())),
 
                 // Possible Sqlite is concurrency lock on file.
                 Err(error) => {
@@ -321,13 +303,14 @@ impl LocalisationProviderSqlite3 {
             }
         }
         if value.1 {
+            let result = self.connections.get(component).unwrap();
             match Connection::open_with_flags(
-                self.connections.get(component).unwrap(),
+                &result.0,
                 OpenFlags::SQLITE_OPEN_READ_ONLY
                     | OpenFlags::SQLITE_OPEN_NO_MUTEX
                     | OpenFlags::SQLITE_OPEN_URI,
             ) {
-                Ok(value) => return Ok(value),
+                Ok(value) => return Ok((value, result.1.as_str())),
 
                 // Possible Sqlite is concurrency lock on file.
                 Err(error) => {
@@ -349,7 +332,7 @@ impl LocalisationProviderSqlite3 {
         all_in_one: bool,
         only_one: bool,
         exact: bool,
-    ) -> Result<Vec<(String, RefCount<LanguageTag>) /*TaggedString*/>, ProviderError> {
+    ) -> Result<Vec<(String, RefCount<LanguageTag>)>, ProviderError> {
         #[cfg(feature = "logging")]
         debug!(
             "Finding strings for identifier '{}' of component '{}' for language tag '{}' with all_in_one: {}, \
@@ -357,6 +340,14 @@ impl LocalisationProviderSqlite3 {
             identifier, component, language_tag.as_str(), all_in_one, only_one, exact
         );
 
+        // Get connection and schema_version.
+        #[cfg(not(feature = "sync"))]
+        let (connection, schema_version) = self.connection(component, all_in_one)?;
+
+        #[cfg(feature = "sync")]
+        let (connection, schema_version) = self.connection_sync(component, all_in_one)?;
+
+        // Construct query identifier and get query statement.
         let mut query_identifier = "Pattern".to_string();
         if exact {
             query_identifier.push_str("Exact");
@@ -383,7 +374,7 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries.borrow_mut().insert(
                     query_identifier.clone(),
-                    query_pattern(all_in_one, only_one, exact),
+                    query_pattern(schema_version, only_one, exact),
                 );
             }
             let borrow = self.queries.borrow();
@@ -395,18 +386,12 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries.lock().unwrap().insert(
                     query_identifier.clone(),
-                    query_pattern(all_in_one, only_one, exact),
+                    query_pattern(schema_version, only_one, exact),
                 );
             }
             let borrow = self.queries.lock().unwrap();
             _query = borrow.get(&query_identifier).cloned();
         }
-
-        #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component, all_in_one)?;
-
-        #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component, all_in_one)?;
 
         #[cfg(feature = "logging")]
         debug!("SQL query string: [{}].", _query.as_ref().unwrap());
@@ -419,17 +404,13 @@ impl LocalisationProviderSqlite3 {
                 ))))
             }
         };
-        let mut strings = Vec::<(String, RefCount<LanguageTag>) /*TaggedString*/>::new();
+        let mut strings = Vec::<(String, RefCount<LanguageTag>)>::new();
         let mut tag = language_tag.as_str().to_string();
         while !tag.is_empty() {
             if !exact {
                 tag.push('%');
             }
-            let mut rows = match if all_in_one {
-                statement.query([identifier, tag.as_str(), component])
-            } else {
-                statement.query([identifier, tag.as_str()])
-            } {
+            let mut rows = match statement.query([identifier, tag.as_str(), component]) {
                 Ok(value) => value,
                 Err(error) => {
                     return Err(ProviderError::Custom(RefCount::new(Box::new(
@@ -462,9 +443,7 @@ impl LocalisationProviderSqlite3 {
                     }
                 };
                 let language = self.language_tag_registry.as_ref().tag(tag_raw.as_str())?;
-                strings.push(
-                    (string, language), /*TaggedString::new(string, &language)*/
-                );
+                strings.push((string, language));
             }
             if !strings.is_empty() {
                 #[cfg(feature = "logging")]
@@ -489,6 +468,14 @@ impl LocalisationProviderSqlite3 {
         #[cfg(feature = "logging")]
         debug!("Get languages for component '{}'.", component);
 
+        // Get connection and schema_version.
+        #[cfg(not(feature = "sync"))]
+        let (connection, schema_version) = self.connection(component, all_in_one)?;
+
+        #[cfg(feature = "sync")]
+        let (connection, schema_version) = self.connection_sync(component, all_in_one)?;
+
+        // Construct query identifier and get query statement.
         let mut query_identifier = "Languages".to_string();
         if all_in_one {
             query_identifier.push_str("Aio");
@@ -509,7 +496,7 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries
                     .borrow_mut()
-                    .insert(query_identifier.clone(), query_languages(all_in_one));
+                    .insert(query_identifier.clone(), query_languages(schema_version));
             }
             let borrow = self.queries.borrow();
             _query = borrow.get(&query_identifier).cloned();
@@ -521,17 +508,11 @@ impl LocalisationProviderSqlite3 {
                 self.queries
                     .lock()
                     .unwrap()
-                    .insert(query_identifier.clone(), query_languages(all_in_one));
+                    .insert(query_identifier.clone(), query_languages(schema_version));
             }
             let borrow = self.queries.lock().unwrap();
             _query = borrow.get(&query_identifier).cloned();
         }
-
-        #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component, all_in_one)?;
-
-        #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -542,23 +523,12 @@ impl LocalisationProviderSqlite3 {
             }
         };
         let mut languages = Vec::<RefCount<LanguageTag>>::new();
-        let mut rows = if all_in_one {
-            match statement.query([component]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
-            }
-        } else {
-            match statement.query([]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
+        let mut rows = match statement.query([component]) {
+            Ok(value) => value,
+            Err(error) => {
+                return Err(ProviderError::Custom(RefCount::new(Box::new(
+                    ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
+                ))))
             }
         };
         while let Some(row) = match rows.next() {
@@ -596,6 +566,14 @@ impl LocalisationProviderSqlite3 {
             identifier, component,
         );
 
+        // Get connection and schema_version.
+        #[cfg(not(feature = "sync"))]
+        let (connection, schema_version) = self.connection(component, all_in_one)?;
+
+        #[cfg(feature = "sync")]
+        let (connection, schema_version) = self.connection_sync(component, all_in_one)?;
+
+        // Construct query identifier and get query statement.
         let mut query_identifier = "Identifier".to_string();
         if all_in_one {
             query_identifier.push_str("Aio");
@@ -616,7 +594,7 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries.borrow_mut().insert(
                     query_identifier.clone(),
-                    query_identifier_languages(all_in_one),
+                    query_identifier_languages(schema_version),
                 );
             }
             let borrow = self.queries.borrow();
@@ -628,18 +606,12 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries.lock().unwrap().insert(
                     query_identifier.clone(),
-                    query_identifier_languages(all_in_one),
+                    query_identifier_languages(schema_version),
                 );
             }
             let borrow = self.queries.lock().unwrap();
             _query = borrow.get(&query_identifier).cloned();
         }
-
-        #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component, all_in_one)?;
-
-        #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -650,23 +622,12 @@ impl LocalisationProviderSqlite3 {
             }
         };
         let mut languages = Vec::<RefCount<LanguageTag>>::new();
-        let mut rows = if all_in_one {
-            match statement.query([identifier, component]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
-            }
-        } else {
-            match statement.query([identifier]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
+        let mut rows = match statement.query([identifier, component]) {
+            Ok(value) => value,
+            Err(error) => {
+                return Err(ProviderError::Custom(RefCount::new(Box::new(
+                    ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
+                ))))
             }
         };
         while let Some(row) = match rows.next() {
@@ -705,6 +666,14 @@ impl LocalisationProviderSqlite3 {
             language_tag.as_str(),
         );
 
+        // Get connection and schema_version.
+        #[cfg(not(feature = "sync"))]
+        let (connection, schema_version) = self.connection(component, all_in_one)?;
+
+        #[cfg(feature = "sync")]
+        let (connection, schema_version) = self.connection_sync(component, all_in_one)?;
+
+        // Construct query identifier and get query statement.
         let mut query_identifier = "Contributors".to_string();
         if all_in_one {
             query_identifier.push_str("Aio");
@@ -725,7 +694,7 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries
                     .borrow_mut()
-                    .insert(query_identifier.clone(), query_contributors(all_in_one));
+                    .insert(query_identifier.clone(), query_contributors(schema_version));
             }
             let borrow = self.queries.borrow();
             _query = borrow.get(&query_identifier).cloned();
@@ -737,17 +706,11 @@ impl LocalisationProviderSqlite3 {
                 self.queries
                     .lock()
                     .unwrap()
-                    .insert(query_identifier.clone(), query_contributors(all_in_one));
+                    .insert(query_identifier.clone(), query_contributors(schema_version));
             }
             let borrow = self.queries.lock().unwrap();
             _query = borrow.get(&query_identifier).cloned();
         }
-
-        #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component, all_in_one)?;
-
-        #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -758,23 +721,12 @@ impl LocalisationProviderSqlite3 {
             }
         };
         let mut contributors = Vec::<String>::new();
-        let mut rows = if all_in_one {
-            match statement.query([language_tag.as_str(), component]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
-            }
-        } else {
-            match statement.query([language_tag.as_str()]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
+        let mut rows = match statement.query([language_tag.as_str(), component]) {
+            Ok(value) => value,
+            Err(error) => {
+                return Err(ProviderError::Custom(RefCount::new(Box::new(
+                    ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
+                ))))
             }
         };
         while let Some(row) = match rows.next() {
@@ -812,6 +764,14 @@ impl LocalisationProviderSqlite3 {
             language_tag.as_str(),
         );
 
+        // Get connection and schema_version.
+        #[cfg(not(feature = "sync"))]
+        let (connection, schema_version) = self.connection(component, all_in_one)?;
+
+        #[cfg(feature = "sync")]
+        let (connection, schema_version) = self.connection_sync(component, all_in_one)?;
+
+        // Construct query identifier and get query statement.
         let mut query_identifier = "Count".to_string();
         if all_in_one {
             query_identifier.push_str("Aio");
@@ -832,7 +792,7 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries
                     .borrow_mut()
-                    .insert(query_identifier.clone(), query_count(all_in_one));
+                    .insert(query_identifier.clone(), query_count(schema_version));
             }
             let borrow = self.queries.borrow();
             _query = borrow.get(&query_identifier).cloned();
@@ -844,17 +804,11 @@ impl LocalisationProviderSqlite3 {
                 self.queries
                     .lock()
                     .unwrap()
-                    .insert(query_identifier.clone(), query_count(all_in_one));
+                    .insert(query_identifier.clone(), query_count(schema_version));
             }
             let borrow = self.queries.lock().unwrap();
             _query = borrow.get(&query_identifier).cloned();
         }
-
-        #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component, all_in_one)?;
-
-        #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -865,23 +819,12 @@ impl LocalisationProviderSqlite3 {
             }
         };
         let mut count = 0usize;
-        let mut rows = if all_in_one {
-            match statement.query([language_tag.as_str(), component]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
-            }
-        } else {
-            match statement.query([language_tag.as_str()]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
+        let mut rows = match statement.query([language_tag.as_str(), component]) {
+            Ok(value) => value,
+            Err(error) => {
+                return Err(ProviderError::Custom(RefCount::new(Box::new(
+                    ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
+                ))))
             }
         };
         while let Some(row) = match rows.next() {
@@ -913,6 +856,14 @@ impl LocalisationProviderSqlite3 {
         #[cfg(feature = "logging")]
         debug!("Get default language for component '{}'", component,);
 
+        // Get connection and schema_version.
+        #[cfg(not(feature = "sync"))]
+        let (connection, schema_version) = self.connection(component, all_in_one)?;
+
+        #[cfg(feature = "sync")]
+        let (connection, schema_version) = self.connection_sync(component, all_in_one)?;
+
+        // Construct query identifier and get query statement.
         let mut query_identifier = "Default".to_string();
         if all_in_one {
             query_identifier.push_str("Aio");
@@ -933,7 +884,7 @@ impl LocalisationProviderSqlite3 {
             {
                 self.queries
                     .borrow_mut()
-                    .insert(query_identifier.clone(), query_default(all_in_one));
+                    .insert(query_identifier.clone(), query_default(schema_version));
             }
             let borrow = self.queries.borrow();
             _query = borrow.get(&query_identifier).cloned();
@@ -945,17 +896,11 @@ impl LocalisationProviderSqlite3 {
                 self.queries
                     .lock()
                     .unwrap()
-                    .insert(query_identifier.clone(), query_default(all_in_one));
+                    .insert(query_identifier.clone(), query_default(schema_version));
             }
             let borrow = self.queries.lock().unwrap();
             _query = borrow.get(&query_identifier).cloned();
         }
-
-        #[cfg(not(feature = "sync"))]
-        let connection = self.connection(component, all_in_one)?;
-
-        #[cfg(feature = "sync")]
-        let connection = self.connection_sync(component, all_in_one)?;
 
         let mut statement = match connection.prepare_cached(_query.unwrap().as_str()) {
             Ok(value) => value,
@@ -966,23 +911,12 @@ impl LocalisationProviderSqlite3 {
             }
         };
         let mut tag: Option<RefCount<LanguageTag>> = None;
-        let mut rows = if all_in_one {
-            match statement.query([component]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
-            }
-        } else {
-            match statement.query([]) {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(ProviderError::Custom(RefCount::new(Box::new(
-                        ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
-                    ))))
-                }
+        let mut rows = match statement.query([component]) {
+            Ok(value) => value,
+            Err(error) => {
+                return Err(ProviderError::Custom(RefCount::new(Box::new(
+                    ProviderSqlite3Error::Sqlite3(RefCount::new(error)),
+                ))))
             }
         };
         while let Some(row) = match rows.next() {
@@ -1006,7 +940,7 @@ impl LocalisationProviderSqlite3 {
         Ok(tag)
     }
 
-    // If all_in_one.sqlite3 fails, fallback to <component>.sqlite3
+    // If __all_in_one__.sqlite3 fails, fallback to <component>.sqlite3
     fn build_cache(&self) -> Result<(), ProviderError> {
         #[cfg(feature = "logging")]
         debug!("Building details cache.");
@@ -1033,7 +967,7 @@ impl LocalisationProviderSqlite3 {
             // Get languages
             let mut languages = Vec::<RefCount<LanguageTag>>::new();
             if component.1 .0 {
-                // In all_in_one.sqlite3
+                // In __all_in_one__.sqlite3
                 languages = self.languages(component.0, true)?;
                 let languages_iterator = languages.iter();
                 for language in languages_iterator {
@@ -1259,10 +1193,10 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             return Err(ProviderError::ComponentNotFound(component.to_string()));
         };
 
-        // Try all_in_one.sqlite3 first.
+        // Try __all_in_one__.sqlite3 first.
         if component_files.0 {
             #[cfg(feature = "logging")]
-            debug!("Trying the 'all_in_one.sqlite3' for string.");
+            debug!("Trying the '__all_in_one__.sqlite3' for string.");
 
             let mut strings =
                 self.find_strings(component, identifier, language_tag, true, true, false)?;
@@ -1271,7 +1205,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             }
         }
 
-        // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
+        // Not found in __all_in_one__.sqlite3 or not present. Trying individual <component>.sqlite3 file.
         #[cfg(feature = "logging")]
         debug!("Trying the component sqlite3 file for string.");
 
@@ -1342,10 +1276,10 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             return Err(ProviderError::ComponentNotFound(component.to_string()));
         };
 
-        // Try all_in_one.sqlite3 first.
+        // Try __all_in_one__.sqlite3 first.
         if component_files.0 {
             #[cfg(feature = "logging")]
-            debug!("Trying the 'all_in_one.sqlite3' for exact match string.");
+            debug!("Trying the '__all_in_one__.sqlite3' for exact match string.");
 
             let mut strings =
                 self.find_strings(component, identifier, language_tag, true, true, true)?;
@@ -1354,7 +1288,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             }
         }
 
-        // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
+        // Not found in __all_in_one__.sqlite3 or not present. Trying individual <component>.sqlite3 file.
         #[cfg(feature = "logging")]
         debug!("Trying the component sqlite3 file for exact match string.");
 
@@ -1426,10 +1360,10 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
         };
         let mut strings = Vec::<(String, RefCount<LanguageTag>)>::new();
 
-        // Try all_in_one.sqlite3 first.
+        // Try __all_in_one__.sqlite3 first.
         if component_files.0 {
             #[cfg(feature = "logging")]
-            debug!("Trying the 'all_in_one.sqlite3' for strings.");
+            debug!("Trying the '__all_in_one__.sqlite3' for strings.");
 
             strings = self.find_strings(component, identifier, language_tag, true, false, false)?;
             if !strings.is_empty() {
@@ -1437,7 +1371,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
             }
         }
 
-        // Not found in all_in_one.sqlite3 or not present. Trying individual <component>.sqlite3 file.
+        // Not found in __all_in_one__.sqlite3 or not present. Trying individual <component>.sqlite3 file.
         #[cfg(feature = "logging")]
         debug!("Trying the component sqlite3 file for strings.");
 
@@ -1539,7 +1473,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     ///     )?;
     ///     assert_eq!( details.default, registry.tag( "en-ZA" )?, "Should be en-ZA." );
     ///     assert_eq!( details.languages.iter().count(), 2, "Should be 2 languages" );
-    ///     assert_eq!( details.total_strings, 16, "Should be 16 strings for component" );
+    ///     assert_eq!( details.total_strings, 26, "Should be 26 strings for component" );
     ///     Ok( () )
     /// }
     /// ```
@@ -1588,7 +1522,7 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     ///     let details = provider.repository_details()?;
     ///     assert_eq!( details.default.as_ref().unwrap(), &registry.tag( "en-US" )?, "Should be en-US." );
     ///     assert_eq!( details.languages.iter().count(), 3, "Should be 3 languages" );
-    ///     assert_eq!( details.total_strings, 20, "Should be 20 strings for repository" );
+    ///     assert_eq!( details.total_strings, 30, "Should be 30 strings for repository" );
     ///     assert_eq!( details.components.iter().count(), 2, "Should be 2 components" );
     ///     assert_eq!( details.contributors.iter().count(), 2, "Should be contributors" );
     ///     Ok( () )
@@ -1608,67 +1542,679 @@ impl LocalisationProviderTrait for LocalisationProviderSqlite3 {
     }
 }
 
+/// Database schema verification. The schema version is return if successfully verified.
+pub fn verify_schema(connection: &Connection) -> Result<String, SchemaError> {
+    let mut schema_version = String::new();
+    let mut table_list = Vec::new();
+    let mut metadata = false;
+    {
+        let mut statement = connection.prepare("SELECT name FROM pragma_table_list;")?;
+        let mut rows = statement.query([])?;
+        while let Some(row) = rows.next()? {
+            let name: String = row.get(0)?;
+            if name.as_str() == "metadata" {
+                metadata = true;
+            }
+            table_list.push(name);
+        }
+    }
+    if !metadata {
+        return Err(SchemaError::MissingTable("metadata".to_string()));
+    }
+    {
+        let mut statement =
+            connection.prepare("SELECT value FROM metadata WHERE key = 'schema_version';")?;
+        let mut rows = statement.query([])?;
+        while let Some(row) = rows.next()? {
+            schema_version = row.get(0)?;
+        }
+
+        #[cfg(feature = "logging")]
+        trace!("schema_version {:?}", schema_version);
+    }
+    match schema_version.as_str() {
+        "1.0" => {
+            // Required tables exists
+            table_exists(&table_list, "contributor")?;
+            table_exists(&table_list, "language")?;
+            table_exists(&table_list, "pattern")?;
+            table_exists(&table_list, "component")?;
+            table_exists(&table_list, "languageData")?;
+
+            // Check required columns exists
+            // Table: contributor
+            let mut statement =
+                connection.prepare("SELECT * FROM pragma_table_info('contributor');")?;
+            let mut rows = statement.query([])?;
+            while let Some(row) = rows.next()? {
+                let cid: usize = row.get(0)?;
+                match cid {
+                    0 => {
+                        columns_check(
+                            "contributor",
+                            row,
+                            "rowID",
+                            "INTEGER",
+                            1,
+                            1,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    1 => {
+                        columns_check(
+                            "contributor",
+                            row,
+                            "component",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    2 => {
+                        columns_check(
+                            "contributor",
+                            row,
+                            "languageTag",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    3 => {
+                        columns_check(
+                            "contributor",
+                            row,
+                            "contributor",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    4 => {
+                        columns_check(
+                            "contributor",
+                            row,
+                            "substituteFor",
+                            "TEXT",
+                            0,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    5 => {
+                        columns_check(
+                            "contributor",
+                            row,
+                            "comment",
+                            "TEXT",
+                            0,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    6 => {
+                        columns_check(
+                            "contributor",
+                            row,
+                            "verified",
+                            "DATE",
+                            0,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    _ => {}
+                }
+            }
+
+            // Table: language
+            let mut statement =
+                connection.prepare("SELECT * FROM pragma_table_info('language');")?;
+            let mut rows = statement.query([])?;
+            while let Some(row) = rows.next()? {
+                let cid: usize = row.get(0)?;
+                match cid {
+                    0 => {
+                        columns_check(
+                            "language",
+                            row,
+                            "rowID",
+                            "INTEGER",
+                            1,
+                            1,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    1 => {
+                        columns_check("language", row, "tag", "TEXT", 1, 0, DefaultValue::Null)?;
+                    }
+                    2 => {
+                        columns_check(
+                            "language",
+                            row,
+                            "englishName",
+                            "TEXT",
+                            0,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    3 => {
+                        columns_check("language", row, "added", "DATE", 1, 0, DefaultValue::Null)?;
+                    }
+                    _ => {}
+                }
+            }
+
+            // Table: pattern
+            let mut statement =
+                connection.prepare("SELECT * FROM pragma_table_info('pattern');")?;
+            let mut rows = statement.query([])?;
+            while let Some(row) = rows.next()? {
+                let cid: usize = row.get(0)?;
+                match cid {
+                    0 => {
+                        columns_check(
+                            "pattern",
+                            row,
+                            "rowID",
+                            "INTEGER",
+                            1,
+                            1,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    1 => {
+                        columns_check(
+                            "pattern",
+                            row,
+                            "component",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    2 => {
+                        columns_check(
+                            "pattern",
+                            row,
+                            "identifier",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    3 => {
+                        columns_check(
+                            "pattern",
+                            row,
+                            "languageTag",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    4 => {
+                        columns_check("pattern", row, "string", "TEXT", 1, 0, DefaultValue::Null)?;
+                    }
+                    5 => {
+                        columns_check("pattern", row, "comment", "TEXT", 0, 0, DefaultValue::Null)?;
+                    }
+                    6 => {
+                        columns_check(
+                            "pattern",
+                            row,
+                            "verified",
+                            "DATE",
+                            0,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    _ => {}
+                }
+            }
+
+            // Table: component
+            let mut statement =
+                connection.prepare("SELECT * FROM pragma_table_info('component');")?;
+            let mut rows = statement.query([])?;
+            while let Some(row) = rows.next()? {
+                let cid: usize = row.get(0)?;
+                match cid {
+                    0 => {
+                        columns_check(
+                            "component",
+                            row,
+                            "rowID",
+                            "INTEGER",
+                            1,
+                            1,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    1 => {
+                        columns_check(
+                            "component",
+                            row,
+                            "identifier",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    2 => {
+                        columns_check(
+                            "component",
+                            row,
+                            "languageTag",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    3 => {
+                        columns_check(
+                            "component",
+                            row,
+                            "comment",
+                            "TEXT",
+                            0,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    4 => {
+                        columns_check("component", row, "added", "DATE", 1, 0, DefaultValue::Null)?;
+                    }
+                    _ => {}
+                }
+            }
+
+            // Table: languageData
+            let mut statement =
+                connection.prepare("SELECT * FROM pragma_table_info('languageData');")?;
+            let mut rows = statement.query([])?;
+            while let Some(row) = rows.next()? {
+                let cid: usize = row.get(0)?;
+                match cid {
+                    0 => {
+                        columns_check(
+                            "languageData",
+                            row,
+                            "rowID",
+                            "INTEGER",
+                            1,
+                            1,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    1 => {
+                        columns_check(
+                            "languageData",
+                            row,
+                            "component",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    2 => {
+                        columns_check(
+                            "languageData",
+                            row,
+                            "languageTag",
+                            "TEXT",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    3 => {
+                        columns_check(
+                            "languageData",
+                            row,
+                            "count",
+                            "INTEGER",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    4 => {
+                        columns_check(
+                            "languageData",
+                            row,
+                            "ratio",
+                            "REAL",
+                            1,
+                            0,
+                            DefaultValue::Null,
+                        )?;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {
+            return Err(SchemaError::Version(
+                connection.path().unwrap().to_string(),
+                "1.0".to_string(),
+            ))
+        }
+    }
+    Ok(schema_version)
+}
+
 // Internal structs, enum, and functions
 
-// Created these functions to avoid code duplicates of getting around a known incorrect rust parsing error where
-// preceding statements with attribute "#[cfg( not( feature = "sync" ) )]" inside `if` branch. These Github issues are
+/// Check table exists.
+fn table_exists(table_list: &Vec<String>, name: &str) -> Result<(), SchemaError> {
+    let mut found = false;
+    for table in table_list {
+        if table.as_str() == name {
+            found = true;
+        }
+    }
+    if !found {
+        return Err(SchemaError::MissingTable(name.to_string()));
+    }
+    Ok(())
+}
+
+/// Holds the default value of the column.
+#[allow(dead_code)]
+enum DefaultValue {
+    Null,
+
+    // Included even though currently no default values are used.
+    Integer(usize),
+    Real(f64),
+    Text(String),
+    Date(String),
+}
+
+/// Check schema of the table's columns.
+fn columns_check(
+    table: &str,
+    row: &Row,
+    name: &str,
+    type_: &str,
+    notnull: usize,
+    pk: usize,
+    default: DefaultValue,
+) -> Result<(), SchemaError> {
+    let name_: String = row.get(1)?;
+    if name_.as_str() != name {
+        return Err(SchemaError::MissingColumn(
+            table.to_string(),
+            name.to_string(),
+        ));
+    }
+    let type__: String = row.get(2)?;
+    if type__.as_str() != type_ {
+        return Err(SchemaError::ColumnProperty(
+            table.to_string(),
+            name.to_string(),
+            type_.to_string(),
+        ));
+    }
+    let notnull_: usize = row.get(3)?;
+    if notnull_ != notnull {
+        return Err(SchemaError::ColumnProperty(
+            table.to_string(),
+            name.to_string(),
+            match notnull {
+                1 => "NOT NULL",
+                _ => "NULL",
+            }
+            .to_string(),
+        ));
+    }
+    let pk_: usize = row.get(5)?;
+    if pk_ != pk {
+        return Err(SchemaError::ColumnProperty(
+            table.to_string(),
+            name.to_string(),
+            match notnull {
+                1 => "PRIMARY KEY",
+                _ => "",
+            }
+            .to_string(),
+        ));
+    }
+
+    #[cfg(feature = "logging")]
+    trace!(
+        "column details: name {:?}, type {:?}, notnull {:?}, pk {:?}",
+        name,
+        type_,
+        notnull,
+        pk
+    );
+    match type_ {
+        "INTEGER" => {
+            let dflt_value: Option<usize> = row.get(4)?;
+            match default {
+                DefaultValue::Null => {
+                    if dflt_value.is_some() {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            "NULL".to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", "NULL");
+                }
+                // Included even though currently no default values are used.
+                DefaultValue::Integer(value) => {
+                    if dflt_value.is_none() || dflt_value != Some(value) {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            value.to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", value);
+                }
+                _ => {
+                    return Err(SchemaError::ColumnMismatch(
+                        table.to_string(),
+                        name.to_string(),
+                    ));
+                }
+            }
+        }
+        "REAL" => {
+            let dflt_value: Option<f64> = row.get(4)?;
+            match default {
+                DefaultValue::Null => {
+                    if dflt_value.is_some() {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            "NULL".to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", "NULL");
+                }
+                // Included even though currently no default values are used.
+                DefaultValue::Real(value) => {
+                    if dflt_value.is_none() || dflt_value != Some(value) {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            value.to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", value);
+                }
+                _ => {
+                    return Err(SchemaError::ColumnMismatch(
+                        table.to_string(),
+                        name.to_string(),
+                    ));
+                }
+            }
+        }
+        "TEXT" => {
+            let dflt_value: Option<String> = row.get(4)?;
+            match default {
+                DefaultValue::Null => {
+                    if dflt_value.is_some() {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            "NULL".to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", "NULL");
+                }
+                // Included even though currently no default values are used.
+                DefaultValue::Text(ref value) => {
+                    if dflt_value.is_none() || dflt_value != Some(value.clone()) {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            value.to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", value);
+                }
+                _ => {
+                    return Err(SchemaError::ColumnMismatch(
+                        table.to_string(),
+                        name.to_string(),
+                    ));
+                }
+            }
+        }
+        "DATE" => {
+            let dflt_value: Option<String> = row.get(4)?;
+            match default {
+                DefaultValue::Null => {
+                    if dflt_value.is_some() {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            "NULL".to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", "NULL");
+                }
+                // Included even though currently no default values are used.
+                DefaultValue::Date(ref value) => {
+                    if dflt_value.is_none() || dflt_value != Some(value.clone()) {
+                        return Err(SchemaError::ColumnDefault(
+                            table.to_string(),
+                            name.to_string(),
+                            value.to_string(),
+                        ));
+                    }
+
+                    #[cfg(feature = "logging")]
+                    trace!("column details: dflt_value {:?}", value);
+                }
+                _ => {
+                    return Err(SchemaError::ColumnMismatch(
+                        table.to_string(),
+                        name.to_string(),
+                    ));
+                }
+            }
+        }
+        _ => {} // Unreachable branch
+    }
+    Ok(())
+}
+
+// Created these functions to avoid code duplicates of getting around a known
+// incorrect rust parsing error where preceding statements with attribute
+// "#[cfg(not(feature="sync"))]" inside `if` branch. These Github issues are
 // still open relating to this incorrect parsing error.
 
-fn query_pattern(all_in_one: bool, only_one: bool, exact: bool) -> String {
-    let mut query = "SELECT string, languageTag FROM pattern WHERE identifier = ?1 AND \
-    languageTag "
-        .to_string();
-    if exact {
-        query.push_str("= ?2")
-    } else {
-        query.push_str("LIKE ?2")
+fn query_pattern(schema_version: &str, only_one: bool, exact: bool) -> String {
+    match schema_version {
+        "1.0" => {
+            let mut query = "SELECT string, languageTag FROM pattern WHERE identifier = ?1 AND \
+            languageTag "
+                .to_string();
+            if exact {
+                query.push_str("= ?2")
+            } else {
+                query.push_str("LIKE ?2")
+            }
+            query.push_str(" AND component = ?3");
+            if only_one {
+                query.push_str(" LIMIT 1")
+            }
+            query
+        }
+        &_ => todo!(),
     }
-    if all_in_one {
-        query.push_str(" AND component = ?3")
-    }
-    if only_one {
-        query.push_str(" LIMIT 1")
-    }
-    query
 }
 
-fn query_languages(all_in_one: bool) -> String {
-    let mut query = "SELECT DISTINCT languageTag FROM contributor".to_string();
-    if all_in_one {
-        query.push_str(" WHERE component = ?1")
+fn query_languages(schema_version: &str) -> String {
+    match schema_version {
+        "1.0" => "SELECT DISTINCT languageTag FROM contributor WHERE component = ?1".to_string(),
+        &_ => todo!(),
     }
-    query
 }
 
-fn query_identifier_languages(all_in_one: bool) -> String {
-    let mut query = "SELECT languageTag FROM pattern WHERE identifier = ?1".to_string();
-    if all_in_one {
-        query.push_str(" AND component = ?2")
+fn query_identifier_languages(schema_version: &str) -> String {
+    match schema_version {
+        "1.0" => {
+            "SELECT languageTag FROM pattern WHERE identifier = ?1 AND component = ?2".to_string()
+        }
+        &_ => todo!(),
     }
-    query
 }
 
-fn query_contributors(all_in_one: bool) -> String {
-    let mut query =
-        "SELECT DISTINCT contributor FROM contributor WHERE languageTag = ?1".to_string();
-    if all_in_one {
-        query.push_str(" AND component = ?2")
+fn query_contributors(schema_version: &str) -> String {
+    match schema_version {
+        "1.0" => {
+            "SELECT DISTINCT contributor FROM contributor WHERE languageTag = ?1 AND component = ?2"
+                .to_string()
+        }
+        &_ => todo!(),
     }
-    query
 }
 
-fn query_count(all_in_one: bool) -> String {
-    let mut query = "SELECT count( * ) FROM pattern WHERE languageTag = ?1".to_string();
-    if all_in_one {
-        query.push_str(" AND component = ?2")
+fn query_count(schema_version: &str) -> String {
+    match schema_version {
+        "1.0" => {
+            "SELECT count( * ) FROM pattern WHERE languageTag = ?1 AND component = ?2".to_string()
+        }
+        &_ => todo!(),
     }
-    query
 }
 
-fn query_default(all_in_one: bool) -> String {
-    if all_in_one {
-        "SELECT languageTag FROM component WHERE identifier = ?1".to_string()
-    } else {
-        "SELECT value FROM metadata WHERE key = 'default_language_tag'".to_string()
+fn query_default(schema_version: &str) -> String {
+    match schema_version {
+        "1.0" => "SELECT languageTag FROM component WHERE identifier = ?1".to_string(),
+        &_ => todo!(),
     }
 }

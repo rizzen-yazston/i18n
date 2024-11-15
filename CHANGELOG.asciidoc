@@ -1,6 +1,36 @@
 = Changelog
 Rizzen Yazston
 
+== i18n 0.10.1 (202?-??-??)
+
+* Update affects the Sqlite data provider:
+
+** Dropped the non-component based schema to simply data repository management. Affected `.sqlite3` databases were migrated to the component based schema, where the filename is used to populate the `component` column entries.
+
+** Added schema verification function.
+
+** Minor documentation formatting.
+
+=== Project wide changes
+
+* Added `#![allow(unexpected_cfgs)]` to files containing optional feature options, to eliminate warnings from being emitted.
+
+* Migrated the `.sqlite3` databases in the crate's subdirectory `l10n` to the component based schema.
+
+=== i18n_provider_sqlite3
+
+* In `error.rs`:
+
+** Added new error variants that are used in the `verify_schema()` function.
+
+* In `provider.rs`:
+
+** New public function `verify_schema()`. Reason for public is to allow the localisation editor to verify the database structure before editing of the contents. In addition, the schema version is returned, so that the provider and localisation editor can take appropriate actions, such as adjusting query statements, migrating from older version to newer version, etc.
+
+** Added internal enum `DefaultValue` added, to pass the expected default value of a column.
+
+** Added internal functions `table_exists()` and `columns_check()`.
+
 == i18n 0.10.0 (2024-08-02)
 
 WARNING: This update has API breaking changes.
@@ -13,7 +43,7 @@ WARNING: This update has API breaking changes.
 
 * On the `LanguageTagRegistry`, made the caching of `LanguageIdentifier` or `Locale` instances optional by providing a dedicated method `icu_language` that will return a cached reference counted instance. If not already present in the cache, the method will create and add the instance immediately to the cache, then return the reference counted instance. 
 
-== Project wide changes
+=== Project wide changes
 
 * Altered the affected unit tests for the changes made.
 

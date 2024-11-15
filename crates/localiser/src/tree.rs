@@ -28,7 +28,7 @@ use std::rc::Rc;
 /// The following node types are available:
 ///
 /// * Root: \[Container\] The top level, which may optional contained NamedGroup container, and required String
-/// container,
+///   container,
 ///
 /// * NamedGroup: \[Container\] Container: Exists if at least 1 named substring (NamedString node) is detected,
 ///

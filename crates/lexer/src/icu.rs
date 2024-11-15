@@ -1,6 +1,8 @@
 // This file is part of `i18n_lexer-rizzen-yazston` crate. For the terms of use, please see the file
 // called `LICENSE-BSD-3-Clause` at the top level of the `i18n_lexer-rizzen-yazston` crate.
 
+#![allow(unexpected_cfgs)]
+
 use crate::IcuError;
 
 #[allow(unused_imports)]
@@ -49,14 +51,14 @@ use std::cell::RefCell;
 /// Indicates which data provider to use for various supported ICU4X components:
 ///
 /// * Internal (Preferred): Will use the internal BakedDateProvider of various ICU4X components. Requires the
-/// `icu_compiled_data` feature. The internal data of ICU4X components are sufficient for most use cases needing
-/// localisation, and is recommended by ICU4X.
+///   `icu_compiled_data` feature. The internal data of ICU4X components are sufficient for most use cases needing
+///   localisation, and is recommended by ICU4X.
 ///
 /// * Blob: The [`BlobDataProvider`] will be used for the various ICU4X components. Requires the `blob` feature. An
-/// alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
+///   alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
 ///
 /// * Fs: The [`FsDataProvider`] will be used for the various ICU4X components. Requires the `fs` feature. An
-/// alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
+///   alternative provider when the internal data of ICU4X components are insufficient for a particular use case.
 #[derive(Debug, Clone)]
 pub enum DataProvider {
     #[cfg(feature = "icu_compiled_data")]

@@ -3,6 +3,8 @@
 
 // Future feature option: language tag wrapping
 
+#![allow(unexpected_cfgs)]
+
 use crate::{CommandRegistry, FormatterError, Localiser, NodeType, Tree};
 use fixed_decimal::{DoublePrecision, FixedDecimal, SignDisplay};
 #[allow(unused_imports)]

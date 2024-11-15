@@ -32,6 +32,7 @@ fn strings_for_en() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/*
 // Feature test: extend
 #[cfg(extend)]
 #[test] // positive
@@ -49,6 +50,7 @@ fn strings_for_en_za_u_ca_julian() -> Result<(), Box<dyn Error>> {
     );
     Ok(())
 }
+*/
 
 #[test] // negative (private use subtag)
 fn strings_for_qz() -> Result<(), Box<dyn Error>> {
@@ -122,8 +124,8 @@ fn component_details() -> Result<(), Box<dyn Error>> {
     assert_eq!(details.default, registry.tag("en-ZA")?, "Should be en-ZA.");
     assert_eq!(details.languages.iter().count(), 2, "Should be 2 languages");
     assert_eq!(
-        details.total_strings, 16,
-        "Should be 16 strings for component"
+        details.total_strings, 26,
+        "Should be 26 strings for component"
     );
     Ok(())
 }
@@ -141,8 +143,8 @@ fn repository_details() -> Result<(), Box<dyn Error>> {
     );
     assert_eq!(details.languages.iter().count(), 3, "Should be 3 languages");
     assert_eq!(
-        details.total_strings, 20,
-        "Should be 20 strings for repository"
+        details.total_strings, 30,
+        "Should be 30 strings for repository"
     );
     assert_eq!(
         details.components.iter().count(),

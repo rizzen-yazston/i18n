@@ -263,6 +263,12 @@ impl From<Sqlite3Error> for ProviderSqlite3Error {
     }
 }
 
+impl From<SchemaError> for ProviderSqlite3Error {
+    fn from(error: SchemaError) -> ProviderSqlite3Error {
+        ProviderSqlite3Error::SchemaInvalid(error)
+    }
+}
+
 impl From<ProviderSqlite3Error> for ProviderError {
     fn from(error: ProviderSqlite3Error) -> ProviderError {
         ProviderError::Custom(RefCount::new(Box::new(error)))
@@ -279,15 +285,50 @@ impl From<ProviderSqlite3Error> for ProviderError {
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum SchemaError {
-    Version(String, String), // path, expected version
-    MissingVersion(String),  // path
     Sqlite3(RefCount<Sqlite3Error>),
+    MissingTable(String),                   // table name
+    Version(String, String),                // path, expected version
+    MissingVersion(String),                 // path
+    MissingColumn(String, String),          // table name, column name
+    ColumnProperty(String, String, String), // table name, column name, property
+    ColumnDefault(String, String, String),  // table name, column name, value
+    ColumnMismatch(String, String),         // table name, column name
 }
 
 impl LocalisationTrait for SchemaError {
     fn localisation_data(&self) -> LocalisationData {
         let type_string = PlaceholderValue::String("SchemaError".to_string());
         match self {
+            SchemaError::Sqlite3(ref error) => {
+                // Currently no localisation is available for this error type: Sqlite3Error.
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert("type".to_string(), type_string);
+                values.insert(
+                    "variant".to_string(),
+                    PlaceholderValue::String("Sqlite3".to_string()),
+                );
+                values.insert(
+                    "error".to_string(),
+                    PlaceholderValue::String(error.to_string()),
+                );
+                LocalisationData {
+                    component: "i18n_localiser".to_string(),
+                    identifier: "error_format_enum_embedded".to_string(),
+                    values: Some(values),
+                }
+            }
+            SchemaError::MissingTable(name) => {
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert(
+                    "name".to_string(),
+                    PlaceholderValue::String(name.to_string()),
+                );
+                LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "missing_table".to_string(),
+                    values: Some(values),
+                }
+            }
             SchemaError::Version(ref path, ref version) => {
                 let mut message_values = HashMap::<String, PlaceholderValue>::new();
                 message_values.insert("path".to_string(), PlaceholderValue::String(path.clone()));
@@ -340,21 +381,75 @@ impl LocalisationTrait for SchemaError {
                     values: Some(values),
                 }
             }
-            SchemaError::Sqlite3(ref error) => {
-                // Currently no localisation is available for this error type: Sqlite3Error.
+            SchemaError::MissingColumn(table, column) => {
                 let mut values = HashMap::<String, PlaceholderValue>::new();
-                values.insert("type".to_string(), type_string);
                 values.insert(
-                    "variant".to_string(),
-                    PlaceholderValue::String("Sqlite3".to_string()),
+                    "table".to_string(),
+                    PlaceholderValue::String(table.to_string()),
                 );
                 values.insert(
-                    "error".to_string(),
-                    PlaceholderValue::String(error.to_string()),
+                    "column".to_string(),
+                    PlaceholderValue::String(column.to_string()),
                 );
                 LocalisationData {
-                    component: "i18n_localiser".to_string(),
-                    identifier: "error_format_enum_embedded".to_string(),
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "missing_column".to_string(),
+                    values: Some(values),
+                }
+            }
+            SchemaError::ColumnProperty(table, column, property) => {
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert(
+                    "table".to_string(),
+                    PlaceholderValue::String(table.to_string()),
+                );
+                values.insert(
+                    "column".to_string(),
+                    PlaceholderValue::String(column.to_string()),
+                );
+                values.insert(
+                    "property".to_string(),
+                    PlaceholderValue::String(property.to_string()),
+                );
+                LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "column_property".to_string(),
+                    values: Some(values),
+                }
+            }
+            SchemaError::ColumnDefault(table, column, default) => {
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert(
+                    "table".to_string(),
+                    PlaceholderValue::String(table.to_string()),
+                );
+                values.insert(
+                    "column".to_string(),
+                    PlaceholderValue::String(column.to_string()),
+                );
+                values.insert(
+                    "default".to_string(),
+                    PlaceholderValue::String(default.to_string()),
+                );
+                LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "column_default".to_string(),
+                    values: Some(values),
+                }
+            }
+            SchemaError::ColumnMismatch(table, column) => {
+                let mut values = HashMap::<String, PlaceholderValue>::new();
+                values.insert(
+                    "table".to_string(),
+                    PlaceholderValue::String(table.to_string()),
+                );
+                values.insert(
+                    "column".to_string(),
+                    PlaceholderValue::String(column.to_string()),
+                );
+                LocalisationData {
+                    component: "i18n_provider_sqlite3".to_string(),
+                    identifier: "column_mismatch".to_string(),
                     values: Some(values),
                 }
             }
@@ -365,6 +460,14 @@ impl LocalisationTrait for SchemaError {
 impl Display for SchemaError {
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         match *self {
+            SchemaError::Sqlite3( ref error ) => write!(
+                formatter, "SchemaError::Sqlite3: [{}].", error
+            ),
+            SchemaError::MissingTable(ref name) => write!(
+                formatter,
+                "The database is missing table ‘{}’.",
+                name
+            ),
             SchemaError::Version( ref path, ref version ) => write!(
                 formatter,
                 "SchemaError::Version: The Sqlite3 file ‘{}’ is using unsupported schema version. The schema version \
@@ -378,8 +481,32 @@ impl Display for SchemaError {
                 ‘metadata’ table.",
                 path,
             ),
-            SchemaError::Sqlite3( ref error ) => write!(
-                formatter, "SchemaError::Sqlite3: [{}].", error
+            SchemaError::MissingColumn(ref table, ref column) => write!(
+                formatter,
+                "The table ‘{}’ is missing column ‘{}’.",
+                table,
+                column
+            ),
+            SchemaError::ColumnProperty(ref table, ref column, ref property) => write!(
+                formatter,
+                "The column ‘{}’ of table ‘{}’ is missing property ‘{}’.",
+                column,
+                table,
+                property
+            ),
+            SchemaError::ColumnDefault(ref table, ref column, ref default) => write!(
+                formatter,
+                "The column ‘{}’ of table ‘{}’ must have a default value of ‘{}’.",
+                column,
+                table,
+                default
+            ),
+            SchemaError::ColumnMismatch(ref table, ref column) => write!(
+                formatter,
+                "Check `verify_schema()` as default value type does not match column type for \
+                the column ‘{}’ of table ‘{}’.",
+                table,
+                column
             ),
         }
     }

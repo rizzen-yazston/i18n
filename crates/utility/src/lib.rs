@@ -22,7 +22,7 @@
 //! * `icu_extended`: Use the more detailed ICU information structs, types, and methods.
 //!
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of [`Arc`] and [`Mutex`] instead [`Rc`] and
-//! [`RefCell`].
+//!   [`RefCell`].
 //!
 //! # Modules
 //!

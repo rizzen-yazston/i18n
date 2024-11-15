@@ -30,21 +30,21 @@
 //! Available features for `i18n_icu` crate:
 //!
 //! * `icu_blob`: Allow for instances of `BlobDataProvider` to be used various ICU4X components that supports
-//! [`BufferProvider`]. An alternative provider when the internal data of ICU4X components are insufficient for a
-//! particular use case.
+//!   [`BufferProvider`]. An alternative provider when the internal data of ICU4X components are insufficient for a
+//!   particular use case.
 //!
 //! * `icu_compiled_data` \[default\]: Allow for the internal data of the various ICU4X components.
 //!
 //! * `icu_extended`: Use the more detailed ICU information structs, types, and methods.
 //!
 //! * `icu_fs`: Allow for instances of `FsDataProvider` to be used various ICU4X components that supports
-//! `BufferProvider`. An alternative provider when the internal data of ICU4X components are insufficient for a
-//! particular use case.
+//!   `BufferProvider`. An alternative provider when the internal data of ICU4X components are insufficient for a
+//!   particular use case.
 //!
 //! * `logging`: To provide some logging information.
 //!
 //! * `sync`: Allow for rust's concurrency capabilities to be used. Use of `Arc` and `Mutex` instead `Rc` and
-//! `RefCell`.
+//!   `RefCell`.
 //!
 //! ## Examples
 //!
