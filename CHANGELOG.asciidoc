@@ -1,7 +1,7 @@
 = Changelog
 Rizzen Yazston
 
-== i18n 0.10.1 (202?-??-??)
+== i18n 0.10.1 (2024-11-15)
 
 * Update affects the Sqlite data provider:
 
